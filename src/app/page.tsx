@@ -25,19 +25,45 @@ export default function HomePage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isGroupsOpen, setIsGroupsOpen] = useState(false);
   const [isAppLoading, setIsAppLoading] = useState(true);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   // Инициализация при монтировании
   useEffect(() => {
+    // 1. Мгновенная инициализация из кэша (0мс)
+    const cachedUser = dataStore.getCachedUser();
+    const cachedGroups = dataStore.getCachedGroups();
+    const cachedMembers = dataStore.getCachedMembers();
+
+    if (cachedUser) {
+      setCurrentUser(cachedUser);
+      if (cachedGroups && cachedGroups.length > 0) {
+        setUserGroups(cachedGroups);
+        setSelectedGroupId(cachedGroups[0].id);
+      }
+      if (cachedMembers && cachedMembers.length > 0) {
+        setFamilyMembers(cachedMembers);
+        setSelectedUserId(cachedUser.id);
+      }
+      setIsDataLoaded(true);
+      setIsAppLoading(false);
+    }
+
+    // 2. Фоновая проверка и актуализация с Supabase
     const init = async () => {
       try {
         const user = await dataStore.getCurrentUser();
         if (user) {
           setCurrentUser(user);
           await loadUserData(user.id);
+        } else {
+          setCurrentUser(null);
+          setUserGroups([]);
+          setFamilyMembers([]);
         }
       } catch (err) {
         console.error('Initialization error:', err);
       } finally {
+        setIsDataLoaded(true);
         setIsAppLoading(false);
       }
     };
@@ -60,6 +86,7 @@ export default function HomePage() {
 
     const members = await dataStore.getFamilyMembers(userId, activeGroupId);
     setFamilyMembers(members);
+    dataStore.setCachedMembers(members);
 
     const activeTargetId = selectedUserId && members.some((m) => m.id === selectedUserId)
       ? selectedUserId
@@ -67,6 +94,7 @@ export default function HomePage() {
 
     setSelectedUserId(activeTargetId);
     await loadWishes(activeTargetId, userId);
+    setIsDataLoaded(true);
   };
 
   const handleSwitchGroup = async (groupId: string) => {
@@ -179,8 +207,8 @@ export default function HomePage() {
       />
 
       <main className="max-w-5xl w-full mx-auto px-5 sm:px-8 py-8 flex-1 space-y-7">
-        {/* Onboarding — нет семей */}
-        {userGroups.length === 0 ? (
+        {/* Onboarding — только если данные загружены и групп реально 0 */}
+        {isDataLoaded && userGroups.length === 0 ? (
           <div className="bg-white border border-warm-200/60 rounded-3xl p-10 sm:p-14 text-center max-w-lg mx-auto shadow-sm shadow-warm-200/20">
             <div className="w-16 h-16 rounded-3xl bg-accent/8 text-accent flex items-center justify-center mx-auto mb-5">
               <Users className="w-8 h-8" strokeWidth={1.5} />
