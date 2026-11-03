@@ -8,6 +8,28 @@ const STORAGE_WISHES = 'fw_wishes';
 const STORAGE_RESERVATIONS = 'fw_reservations';
 const STORAGE_SESSION = 'fw_session_user_id';
 
+const LATIN_TO_CYRILLIC: Record<string, string> = {
+  A: 'А', B: 'В', C: 'С', E: 'Е', H: 'Н',
+  K: 'К', M: 'М', O: 'О', P: 'Р', T: 'Т',
+  X: 'Х', Y: 'У',
+};
+
+export function normalizeInviteCode(raw: string): string {
+  let code = raw.trim().toUpperCase().replace(/[\u2010-\u2015\u2212\s_]+/g, '-');
+  if (!code.includes('-') && code.length >= 4) {
+    code = code.slice(0, 3) + '-' + code.slice(3);
+  }
+  const parts = code.split('-');
+  const prefix = parts[0];
+  if (/[А-ЯЁ]/.test(prefix)) {
+    parts[0] = prefix
+      .split('')
+      .map((ch) => LATIN_TO_CYRILLIC[ch] || ch)
+      .join('');
+  }
+  return parts.join('-');
+}
+
 class WishlistDataStore {
   private isClient = typeof window !== 'undefined';
 
@@ -83,7 +105,7 @@ class WishlistDataStore {
     inviteCode: string,
     name: string
   ): Promise<{ success: boolean; user?: User; error?: string }> {
-    const cleanCode = inviteCode.trim().toUpperCase();
+    const cleanCode = normalizeInviteCode(inviteCode);
     const cleanName = name.trim();
 
     if (!cleanCode || !cleanName) {
@@ -92,11 +114,11 @@ class WishlistDataStore {
 
     if (isSupabaseConfigured() && supabase) {
       try {
-        // 1. Проверяем существование группы
+        // 1. Проверяем существование группы (регистронезависимо через ilike)
         const { data: group, error: grpErr } = await supabase
           .from('family_groups')
           .select('*')
-          .eq('invite_code', cleanCode)
+          .ilike('invite_code', cleanCode)
           .maybeSingle();
 
         if (grpErr || !group) {
@@ -406,7 +428,7 @@ class WishlistDataStore {
     inviteCode: string,
     userId: string
   ): Promise<{ success: boolean; error?: string; group?: FamilyGroup }> {
-    const code = inviteCode.trim().toUpperCase();
+    const code = normalizeInviteCode(inviteCode);
 
     if (isSupabaseConfigured() && supabase) {
       try {
@@ -416,7 +438,7 @@ class WishlistDataStore {
         const { data: group, error } = await supabase
           .from('family_groups')
           .select('*')
-          .eq('invite_code', code)
+          .ilike('invite_code', code)
           .maybeSingle();
 
         if (error || !group) {
@@ -457,15 +479,20 @@ class WishlistDataStore {
     return { success: true, group };
   }
 
-  public async getFamilyMembers(userId: string): Promise<User[]> {
+  public async getFamilyMembers(userId: string, groupId?: string): Promise<User[]> {
     if (isSupabaseConfigured() && supabase) {
       try {
-        const { data: myMemberships } = await supabase
-          .from('group_members')
-          .select('group_id')
-          .eq('user_id', userId);
+        let groupIds: string[] = [];
+        if (groupId && groupId !== 'all') {
+          groupIds = [groupId];
+        } else {
+          const { data: myMemberships } = await supabase
+            .from('group_members')
+            .select('group_id')
+            .eq('user_id', userId);
+          groupIds = (myMemberships || []).map((m) => m.group_id);
+        }
 
-        const groupIds = (myMemberships || []).map((m) => m.group_id);
         if (groupIds.length === 0) {
           const { data: me } = await supabase
             .from('profiles')
@@ -481,7 +508,9 @@ class WishlistDataStore {
           .in('group_id', groupIds);
 
         const userIds = Array.from(new Set((allGroupMembers || []).map((m) => m.user_id)));
-        userIds.push(userId);
+        if (!userIds.includes(userId)) {
+          userIds.push(userId);
+        }
 
         const { data: profiles } = await supabase
           .from('profiles')
@@ -495,7 +524,10 @@ class WishlistDataStore {
     }
 
     // Local fallback
-    const userGroups = (await this.getUserGroups(userId)).map((g) => g.id);
+    const targetGroupIds = groupId && groupId !== 'all'
+      ? [groupId]
+      : (await this.getUserGroups(userId)).map((g) => g.id);
+
     const memberships = this.getLocal<{ group_id: string; user_id: string }[]>(
       STORAGE_MEMBERSHIPS,
       []
@@ -504,7 +536,7 @@ class WishlistDataStore {
     const relatedUserIds = new Set<string>([userId]);
 
     memberships.forEach((m) => {
-      if (userGroups.includes(m.group_id)) relatedUserIds.add(m.user_id);
+      if (targetGroupIds.includes(m.group_id)) relatedUserIds.add(m.user_id);
     });
 
     return users.filter((u) => relatedUserIds.has(u.id));
