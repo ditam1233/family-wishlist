@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-cream: #faf8f5;
+  --color-cream-dark: #f2ede8;
+  --color-warm-50: #fdfbf9;
+  --color-warm-100: #f9f5f0;
+  --color-warm-200: #f0e8dd;
+  --color-warm-300: #e2d5c3;
+  --color-warm-400: #c4aa8c;
+  --color-warm-500: #a68c6d;
+  --color-warm-600: #8a7259;
+  --color-warm-700: #6b5743;
+  --color-warm-800: #4a3c2f;
+  --color-warm-900: #2d241c;
+  --color-accent: #e06c4f;
+  --color-accent-hover: #d45a3c;
+  --color-accent-light: #fef0ec;
+  --color-accent-soft: #f9d5cb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-cream);
+  color: var(--color-warm-900);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: var(--color-accent);
+  color: #fff;
+}
+
+/* Hide scrollbar but allow scrolling */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Smooth placeholder fade */
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-warm-400);
+}
