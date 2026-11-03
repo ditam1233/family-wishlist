@@ -859,6 +859,61 @@ class WishlistDataStore {
     );
     return true;
   }
+public async getMyReservations(viewerId: string): Promise<(Wish & { owner_name?: string })[]> {
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        const { data: reservations } = await supabase
+          .from('reservations')
+          .select('wish_id')
+          .eq('reserved_by', viewerId);
+
+        const wishIds = (reservations || []).map((r) => r.wish_id);
+        if (wishIds.length === 0) return [];
+
+        const { data: wishes } = await supabase
+          .from('wishes')
+          .select('*')
+          .in('id', wishIds);
+
+        if (!wishes || wishes.length === 0) return [];
+
+        const userIds = Array.from(new Set(wishes.map((w) => w.user_id)));
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .in('id', userIds);
+
+        const profileMap = new Map((profiles || []).map((p) => [p.id, p.name]));
+
+        return wishes.map((w) => ({
+          ...w,
+          is_reserved: true,
+          reserved_by_me: true,
+          owner_name: profileMap.get(w.user_id) || 'Родственник',
+        }));
+      } catch (err) {
+        console.error('Error fetching my reservations:', err);
+      }
+    }
+
+    // Local fallback
+    const reservations = this.getLocal<Reservation[]>(STORAGE_RESERVATIONS, []).filter(
+      (r) => r.reserved_by === viewerId
+    );
+    const wishIds = new Set(reservations.map((r) => r.wish_id));
+    const allWishes = this.getLocal<Wish[]>(STORAGE_WISHES, []);
+    const users = this.getLocal<User[]>(STORAGE_USERS, []);
+    const userMap = new Map(users.map((u) => [u.id, u.name]));
+
+    return allWishes
+      .filter((w) => wishIds.has(w.id))
+      .map((w) => ({
+        ...w,
+        is_reserved: true,
+        reserved_by_me: true,
+        owner_name: userMap.get(w.user_id) || 'Родственник',
+      }));
+  }
 }
 
 export const dataStore = new WishlistDataStore();
