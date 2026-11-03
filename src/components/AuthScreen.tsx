@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { dataStore } from '@/lib/data';
 import { User } from '@/types';
-import { Gift, ArrowRight, Loader2, KeyRound, Lock, Mail, User as UserIcon } from 'lucide-react';
+import { getAvatarGradient, getInitials } from '@/lib/avatar';
+import { Gift, ArrowRight, Loader2, KeyRound, Lock, Mail, User as UserIcon, Check, Users } from 'lucide-react';
 
 interface AuthScreenProps {
   onSuccess: (user: User) => void;
@@ -16,6 +17,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
   // Поля для входа по коду
   const [inviteCode, setInviteCode] = useState('');
   const [relativeName, setRelativeName] = useState('');
+  const [foundFamily, setFoundFamily] = useState<{ name: string; id: string } | null>(null);
+  const [familyMembers, setFamilyMembers] = useState<User[]>([]);
 
   // Поля для создателей (Email / Пароль)
   const [isRegister, setIsRegister] = useState(false);
@@ -37,6 +40,53 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
       }
     }
   }, []);
+
+  // Проверка семьи и загрузка участников при вводе кода
+  useEffect(() => {
+    const checkFamily = async () => {
+      const clean = inviteCode.trim();
+      if (clean.length >= 4) {
+        try {
+          const info = await dataStore.getFamilyInfoByCode(clean);
+          if (info.group) {
+            setFoundFamily({ name: info.group.name, id: info.group.id });
+            setFamilyMembers(info.members);
+          } else {
+            setFoundFamily(null);
+            setFamilyMembers([]);
+          }
+        } catch {
+          setFoundFamily(null);
+          setFamilyMembers([]);
+        }
+      } else {
+        setFoundFamily(null);
+        setFamilyMembers([]);
+      }
+    };
+    checkFamily();
+  }, [inviteCode]);
+
+  // Быстрый вход по нажатию на своё имя
+  const handleQuickMemberLogin = async (memberName: string) => {
+    setRelativeName(memberName);
+    setError(null);
+    setLoading(true);
+
+    try {
+      const res = await dataStore.joinByCode(inviteCode, memberName);
+      if (res.success && res.user) {
+        onSuccess(res.user);
+      } else {
+        setError(res.error || 'Не удалось войти');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Произошла ошибка';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Вход по коду приглашения (для родных)
   const handleCodeSubmit = async (e: React.FormEvent) => {
@@ -154,9 +204,46 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                   />
                 </div>
 
+                {foundFamily && (
+                  <div className="p-3.5 bg-warm-100/70 border border-warm-200/80 rounded-2xl">
+                    <div className="flex items-center gap-1.5 text-xs text-warm-800 font-semibold mb-1">
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Семья: «{foundFamily.name}»</span>
+                    </div>
+
+                    {familyMembers.length > 0 && (
+                      <div className="mt-2.5 pt-2 border-t border-warm-200/60">
+                        <p className="text-[11px] text-warm-500 mb-2 font-medium">
+                          Уже есть в этой семье? Нажмите для входа:
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {familyMembers.map((m) => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              disabled={loading}
+                              onClick={() => handleQuickMemberLogin(m.name)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-warm-200/80 hover:border-accent hover:text-accent text-warm-800 text-xs font-medium transition-all shadow-xs cursor-pointer active:scale-95"
+                            >
+                              <div
+                                className={`w-5 h-5 rounded-full bg-gradient-to-br ${getAvatarGradient(m.name)} flex items-center justify-center text-white text-[9px] font-bold`}
+                              >
+                                {getInitials(m.name)}
+                              </div>
+                              <span>{m.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-xs font-medium text-warm-700 mb-1.5 ml-0.5">
-                    Как вас зовут?
+                    {foundFamily && familyMembers.length > 0
+                      ? 'Или введите другое имя:'
+                      : 'Как вас зовут?'}
                   </label>
                   <input
                     type="text"
