@@ -24,21 +24,25 @@ export default function HomePage() {
   const [selectedEvent, setSelectedEvent] = useState('Все');
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isGroupsOpen, setIsGroupsOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [isAppLoading, setIsAppLoading] = useState(true);
 
   // Инициализация при монтировании
   useEffect(() => {
-    setMounted(true);
-    checkSession();
+    const init = async () => {
+      try {
+        const user = await dataStore.getCurrentUser();
+        if (user) {
+          setCurrentUser(user);
+          await loadUserData(user.id);
+        }
+      } catch (err) {
+        console.error('Initialization error:', err);
+      } finally {
+        setIsAppLoading(false);
+      }
+    };
+    init();
   }, []);
-
-  const checkSession = async () => {
-    const user = await dataStore.getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
-      await loadUserData(user.id);
-    }
-  };
 
   const loadUserData = async (userId: string, preferredGroupId?: string) => {
     const groups = await dataStore.getUserGroups(userId);
@@ -143,10 +147,14 @@ export default function HomePage() {
     await loadWishes(selectedUserId, currentUser.id);
   };
 
-  if (!mounted) {
+  if (isAppLoading) {
     return (
-      <div className="min-h-screen bg-cream flex items-center justify-center">
-        <div className="animate-pulse text-warm-400 text-xs font-medium">Загрузка...</div>
+      <div className="min-h-screen bg-cream flex flex-col items-center justify-center p-6">
+        <div className="w-14 h-14 rounded-2xl bg-white shadow-md shadow-warm-300/30 flex items-center justify-center mb-3 animate-pulse">
+          <Gift className="w-7 h-7 text-accent" strokeWidth={1.5} />
+        </div>
+        <div className="text-sm font-semibold text-warm-800 tracking-tight">Семейный Вишлист</div>
+        <div className="text-xs text-warm-400 mt-1">Загрузка данных...</div>
       </div>
     );
   }
