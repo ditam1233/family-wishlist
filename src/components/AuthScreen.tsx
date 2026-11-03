@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { dataStore } from '@/lib/data';
 import { User } from '@/types';
 import { getAvatarGradient, getInitials } from '@/lib/avatar';
-import { Gift, ArrowRight, Loader2, KeyRound, Lock, Mail, User as UserIcon, Check, Users } from 'lucide-react';
+import { Gift, ArrowRight, Loader2, KeyRound, Lock, Mail, User as UserIcon, Check, Sparkles } from 'lucide-react';
 
 interface AuthScreenProps {
   onSuccess: (user: User) => void;
@@ -134,258 +134,240 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-cream flex">
-      {/* Левая декоративная часть */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-warm-100 via-cream to-accent-light items-center justify-center relative overflow-hidden">
-        <div className="absolute top-20 -left-20 w-72 h-72 bg-accent/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-10 w-60 h-60 bg-amber-200/20 rounded-full blur-3xl" />
-        <div className="relative z-10 text-center px-12 max-w-md">
-          <div className="w-20 h-20 rounded-3xl bg-white shadow-lg shadow-warm-300/40 flex items-center justify-center mx-auto mb-8">
-            <Gift className="w-10 h-10 text-accent" strokeWidth={1.5} />
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
+      {/* Background ambient decorative shapes */}
+      <div className="absolute top-0 -left-20 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 -right-20 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200/80 shadow-2xl shadow-slate-200/60 p-6 sm:p-8 relative z-10">
+        {/* App Brand Header */}
+        <div className="text-center mb-6">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-rose-500 text-white flex items-center justify-center mx-auto mb-3 shadow-lg shadow-indigo-500/25">
+            <Gift className="w-7 h-7" strokeWidth={1.8} />
           </div>
-          <h2 className="text-3xl font-semibold text-warm-800 tracking-tight leading-snug mb-4">
-            Семейный Вишлист
-          </h2>
-          <p className="text-warm-500 text-sm leading-relaxed">
-            Подарки для всей семьи без дубликатов и с сохранением сюрприза.
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            Family Wishlist
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Секретные бронирования подарков без дубликатов
           </p>
         </div>
-      </div>
 
-      {/* Правая часть с формой */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
-        <div className="w-full max-w-sm">
-          {/* Мобильный логотип */}
-          <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="w-11 h-11 rounded-2xl bg-white shadow-md shadow-warm-300/30 flex items-center justify-center">
-              <Gift className="w-6 h-6 text-accent" strokeWidth={1.5} />
-            </div>
-            <span className="text-xl font-semibold text-warm-800 tracking-tight">
-              Семейный Вишлист
-            </span>
+        {/* Tab switcher */}
+        <div className="flex bg-slate-100 p-1 rounded-2xl mb-6">
+          <button
+            type="button"
+            onClick={() => {
+              setMode('code');
+              setError(null);
+            }}
+            className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${
+              mode === 'code'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            Вход по коду семьи
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMode('admin');
+              setError(null);
+            }}
+            className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${
+              mode === 'admin'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            Организатор
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-5 p-3.5 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 text-xs font-medium text-center">
+            {error}
           </div>
+        )}
 
-          {error && (
-            <div className="mb-5 p-3.5 rounded-2xl bg-red-50 border border-red-100 text-red-600 text-xs font-medium">
-              {error}
-            </div>
-          )}
-
-          {/* ======================================================== */}
-          {/* РЕЖИМ 1: Вход по коду семьи (для родственников)        */}
-          {/* ======================================================== */}
-          {mode === 'code' ? (
-            <div>
-              <div className="mb-7">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/10 text-accent text-xs font-semibold mb-3">
-                  <KeyRound className="w-3.5 h-3.5" />
-                  Вход для членов семьи
-                </div>
-                <h1 className="text-2xl font-semibold text-warm-900 tracking-tight mb-1">
-                  Присоединиться к семье
-                </h1>
-                <p className="text-xs text-warm-500 leading-relaxed">
-                  Введите код семьи, который вам прислали, и напишите, как вас зовут. Пароль не требуется!
-                </p>
-              </div>
-
-              <form onSubmit={handleCodeSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-warm-700 mb-1.5 ml-0.5">
-                    Код семьи
-                  </label>
+        {/* Mode 1: Code Login */}
+        {mode === 'code' ? (
+          <div>
+            <form onSubmit={handleCodeSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5 ml-0.5">
+                  Код приглашения
+                </label>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     required
                     value={inviteCode}
                     onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                    placeholder="Например: СТЕ-4821"
-                    className="w-full bg-white border border-warm-200 rounded-2xl px-4 py-3.5 text-base font-mono font-semibold tracking-wider text-warm-900 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 transition-all placeholder:font-sans placeholder:text-sm placeholder:font-normal placeholder:text-warm-300 uppercase"
+                    placeholder="Например: ФЭМ-3031"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3.5 text-base font-mono font-bold tracking-wider text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all uppercase placeholder:font-sans placeholder:text-sm placeholder:font-normal placeholder:text-slate-400"
                   />
                 </div>
+              </div>
 
-                {foundFamily && (
-                  <div className="p-3.5 bg-warm-100/70 border border-warm-200/80 rounded-2xl">
-                    <div className="flex items-center gap-1.5 text-xs text-warm-800 font-semibold mb-1">
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Семья: «{foundFamily.name}»</span>
-                    </div>
-
-                    {familyMembers.length > 0 && (
-                      <div className="mt-2.5 pt-2 border-t border-warm-200/60">
-                        <p className="text-[11px] text-warm-500 mb-2 font-medium">
-                          Уже есть в этой семье? Нажмите для входа:
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {familyMembers.map((m) => (
-                            <button
-                              key={m.id}
-                              type="button"
-                              disabled={loading}
-                              onClick={() => handleQuickMemberLogin(m.name)}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-warm-200/80 hover:border-accent hover:text-accent text-warm-800 text-xs font-medium transition-all shadow-xs cursor-pointer active:scale-95"
-                            >
-                              <div
-                                className={`w-5 h-5 rounded-full bg-gradient-to-br ${getAvatarGradient(m.name)} flex items-center justify-center text-white text-[9px] font-bold`}
-                              >
-                                {getInitials(m.name)}
-                              </div>
-                              <span>{m.name}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+              {/* Family info & members */}
+              {foundFamily && (
+                <div className="p-4 bg-indigo-50/70 border border-indigo-100 rounded-2xl animate-in fade-in duration-300">
+                  <div className="flex items-center gap-2 text-xs text-indigo-900 font-bold">
+                    <Check className="w-4 h-4 text-emerald-600" />
+                    <span>Семья найдена: «{foundFamily.name}»</span>
                   </div>
-                )}
 
-                <div>
-                  <label className="block text-xs font-medium text-warm-700 mb-1.5 ml-0.5">
-                    {foundFamily && familyMembers.length > 0
-                      ? 'Или введите другое имя:'
-                      : 'Как вас зовут?'}
-                  </label>
+                  {familyMembers.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-indigo-200/50">
+                      <p className="text-[11px] text-slate-600 mb-2 font-medium">
+                        Уже есть в этой семье? Нажмите на имя:
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {familyMembers.map((m) => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            disabled={loading}
+                            onClick={() => handleQuickMemberLogin(m.name)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-indigo-200 hover:border-indigo-500 hover:text-indigo-600 text-slate-800 text-xs font-semibold transition-all shadow-xs cursor-pointer active:scale-95"
+                          >
+                            <div
+                              className={`w-5 h-5 rounded-full bg-gradient-to-br ${getAvatarGradient(
+                                m.name
+                              )} flex items-center justify-center text-white text-[9px] font-bold`}
+                            >
+                              {getInitials(m.name)}
+                            </div>
+                            <span>{m.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5 ml-0.5">
+                  {foundFamily && familyMembers.length > 0
+                    ? 'Или введите своё имя:'
+                    : 'Как вас зовут?'}
+                </label>
+                <div className="relative">
+                  <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     required
                     value={relativeName}
                     onChange={(e) => setRelativeName(e.target.value)}
-                    placeholder="Например: Мама Лена или Папа Саша"
-                    className="w-full bg-white border border-warm-200 rounded-2xl px-4 py-3.5 text-sm text-warm-900 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 transition-all placeholder:text-warm-300"
+                    placeholder="Например: Мама, Папа Саша, Бабушка..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3.5 text-sm font-medium text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400"
                   />
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full mt-2 py-4 px-4 rounded-2xl bg-accent hover:bg-accent-hover disabled:bg-warm-300 text-white font-semibold text-sm shadow-lg shadow-accent/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  {loading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <>
-                      <span>Войти в семью</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </form>
-
-              <div className="mt-8 pt-6 border-t border-warm-200/60 text-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('admin');
-                    setError(null);
-                  }}
-                  className="text-xs text-warm-500 hover:text-accent font-medium transition-colors cursor-pointer"
-                >
-                  Вы создатель? Войти по Email и паролю →
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* ======================================================== */
-            /* РЕЖИМ 2: Вход / Регистрация по Email (для создателей)    */
-            /* ======================================================== */
-            <div>
-              <div className="mb-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('code');
-                    setError(null);
-                  }}
-                  className="text-xs text-accent hover:underline mb-3 inline-block font-medium"
-                >
-                  ← Назад к входу по коду семьи
-                </button>
-                <h1 className="text-2xl font-semibold text-warm-900 tracking-tight mb-1">
-                  {isRegister ? 'Регистрация создателя' : 'Вход для создателя'}
-                </h1>
-                <p className="text-xs text-warm-500">
-                  {isRegister
-                    ? 'Создайте аккаунт, чтобы управлять семьями'
-                    : 'Войдите со своим email и паролем'}
-                </p>
               </div>
 
-              <form onSubmit={handleAdminSubmit} className="space-y-4">
-                {isRegister && (
-                  <div>
-                    <label className="block text-xs font-medium text-warm-600 mb-1.5 ml-0.5">
-                      Ваше имя
-                    </label>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full mt-2 py-3.5 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:opacity-50 text-white font-semibold text-sm shadow-md shadow-indigo-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <span>Войти в семью</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        ) : (
+          /* Mode 2: Organizer (Email / Password) */
+          <div>
+            <form onSubmit={handleAdminSubmit} className="space-y-3.5">
+              {isRegister && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1 ml-0.5">
+                    Ваше имя
+                  </label>
+                  <div className="relative">
+                    <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Степан"
-                      className="w-full bg-white border border-warm-200 rounded-2xl px-4 py-3 text-sm text-warm-900 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 transition-all placeholder:text-warm-300"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
                     />
                   </div>
-                )}
+                </div>
+              )}
 
-                <div>
-                  <label className="block text-xs font-medium text-warm-600 mb-1.5 ml-0.5">
-                    Email
-                  </label>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 ml-0.5">
+                  Email
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="stepan@mail.ru"
-                    className="w-full bg-white border border-warm-200 rounded-2xl px-4 py-3 text-sm text-warm-900 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 transition-all placeholder:text-warm-300"
+                    placeholder="name@example.com"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
                   />
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-warm-600 mb-1.5 ml-0.5">
-                    Пароль
-                  </label>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 ml-0.5">
+                  Пароль
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-white border border-warm-200 rounded-2xl px-4 py-3 text-sm text-warm-900 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 transition-all placeholder:text-warm-300"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
                   />
                 </div>
+              </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full mt-2 py-3.5 px-4 rounded-2xl bg-accent hover:bg-accent-hover disabled:bg-warm-300 text-white font-semibold text-sm shadow-lg shadow-accent/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  {loading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <>
-                      <span>{isRegister ? 'Зарегистрироваться' : 'Войти'}</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </form>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full mt-3 py-3.5 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:opacity-50 text-white font-semibold text-sm shadow-md shadow-indigo-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <span>{isRegister ? 'Зарегистрироваться' : 'Войти'}</span>
+                )}
+              </button>
 
-              <div className="mt-6 text-center">
+              <div className="text-center pt-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsRegister(!isRegister);
-                    setError(null);
-                  }}
-                  className="text-xs text-warm-500 hover:text-accent transition-colors cursor-pointer"
+                  onClick={() => setIsRegister(!isRegister)}
+                  className="text-xs text-indigo-600 hover:underline font-semibold cursor-pointer"
                 >
-                  {isRegister ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
+                  {isRegister
+                    ? 'Уже есть аккаунт? Войти'
+                    : 'Нет аккаунта? Зарегистрироваться'}
                 </button>
               </div>
-            </div>
-          )}
-        </div>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );
