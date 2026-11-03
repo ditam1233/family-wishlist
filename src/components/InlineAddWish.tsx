@@ -22,7 +22,11 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
   const normalizeUrl = (text: string): string | null => {
     let clean = text.trim();
     if (!clean) return null;
-    if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(clean) && !clean.startsWith('http://') && !clean.startsWith('https://')) {
+    if (
+      /^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(clean) &&
+      !clean.startsWith('http://') &&
+      !clean.startsWith('https://')
+    ) {
       clean = 'https://' + clean;
     }
     try {
@@ -58,7 +62,6 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
           price: data.price ? parseFloat(data.price) : undefined,
           currency: '₽',
           priority: 'nice_to_have',
-          event_tag: 'Без повода',
         });
       } catch {
         onAddWish({
@@ -67,7 +70,6 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
           link_url: detectedUrl,
           currency: '₽',
           priority: 'nice_to_have',
-          event_tag: 'Без повода',
         });
       } finally {
         setLoading(false);
@@ -78,7 +80,6 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
         title: clean,
         currency: '₽',
         priority: 'nice_to_have',
-        event_tag: 'Без повода',
       });
     }
 
@@ -101,9 +102,9 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white rounded-2xl border border-stone-200/90 hover:border-stone-400/80 transition-colors p-2 flex items-center gap-1.5 shadow-2xs"
+      className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 dark:border-stone-800 hover:border-stone-400/80 dark:hover:border-stone-600 transition-colors p-2 flex items-center gap-1.5 shadow-2xs"
     >
-      <div className="pl-2 text-stone-400">
+      <div className="pl-2 text-stone-400 dark:text-stone-500">
         <Plus className="w-4 h-4 stroke-[2]" />
       </div>
 
@@ -112,7 +113,7 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
         value={inputVal}
         onChange={(e) => setInputVal(e.target.value)}
         placeholder="Ссылка на товар или название..."
-        className="w-full bg-transparent px-2 py-1 text-base sm:text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none"
+        className="w-full bg-transparent px-2 py-1 text-base sm:text-xs text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none"
       />
 
       <div className="flex items-center gap-1 shrink-0 pr-0.5">
@@ -120,7 +121,7 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
           type="button"
           onClick={onOpenFullModal}
           title="Подробная форма"
-          className="p-2 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-xl transition-colors cursor-pointer"
+          className="p-2 text-stone-400 dark:text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition-colors cursor-pointer"
         >
           <SlidersHorizontal className="w-4 h-4" />
         </button>
@@ -128,7 +129,7 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
         <button
           type="submit"
           disabled={loading || !inputVal.trim()}
-          className="h-9 px-3.5 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-30 text-white font-medium text-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+          className="h-9 px-3.5 rounded-xl bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white disabled:opacity-30 text-white dark:text-stone-950 font-medium text-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
         >
           {loading ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />

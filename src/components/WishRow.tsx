@@ -14,9 +14,9 @@ interface WishRowProps {
 }
 
 const PRIORITY_CONFIG: Record<Priority, { label: string; dot: string }> = {
-  must_have: { label: 'Очень хочу', dot: 'bg-stone-900' },
-  nice_to_have: { label: 'Хочется', dot: 'bg-stone-400' },
-  dream: { label: 'Мечта', dot: 'bg-stone-300' },
+  must_have: { label: 'Очень хочу', dot: 'bg-stone-900 dark:bg-stone-100' },
+  nice_to_have: { label: 'Хочется', dot: 'bg-stone-400 dark:bg-stone-500' },
+  dream: { label: 'Мечта', dot: 'bg-stone-300 dark:bg-stone-600' },
 };
 
 export const WishRow: React.FC<WishRowProps> = ({
@@ -55,9 +55,9 @@ export const WishRow: React.FC<WishRowProps> = ({
   };
 
   return (
-    <div className="group bg-white hover:bg-stone-50/80 active:bg-stone-100/70 p-3 sm:p-4 flex items-center justify-between gap-3 transition-colors">
-      {/* Left: iOS Rounded Thumbnail */}
-      <div className="relative w-12 h-12 sm:w-11 sm:h-11 rounded-xl bg-stone-100 border border-stone-200/70 overflow-hidden shrink-0 flex items-center justify-center">
+    <div className="group bg-white dark:bg-stone-900 hover:bg-stone-50/80 dark:hover:bg-stone-800/60 active:bg-stone-100/70 dark:active:bg-stone-800 p-3 sm:p-4 flex items-center justify-between gap-3 transition-colors">
+      {/* Left: Rounded Thumbnail */}
+      <div className="relative w-12 h-12 sm:w-11 sm:h-11 rounded-xl bg-stone-100 dark:bg-stone-800 border border-stone-200/70 dark:border-stone-700 overflow-hidden shrink-0 flex items-center justify-center">
         {wish.image_url && !imageError ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -67,31 +67,25 @@ export const WishRow: React.FC<WishRowProps> = ({
             className="w-full h-full object-cover"
           />
         ) : (
-          <Gift className="w-5 h-5 text-stone-300 stroke-[1.5]" />
+          <Gift className="w-5 h-5 text-stone-300 dark:text-stone-600 stroke-[1.5]" />
         )}
       </div>
 
       {/* Middle: Title, Shop & Metadata */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="font-semibold sm:font-medium text-[13.5px] sm:text-sm text-stone-950 truncate max-w-full">
+          <span className="font-semibold sm:font-medium text-[13.5px] sm:text-sm text-stone-950 dark:text-stone-100 truncate max-w-full">
             {wish.title}
           </span>
-
-          {wish.event_tag && wish.event_tag !== 'Без повода' && (
-            <span className="px-1.5 py-0.2 rounded-md text-[10px] font-mono bg-stone-100 text-stone-600 shrink-0">
-              {wish.event_tag}
-            </span>
-          )}
         </div>
 
         {wish.description && (
-          <p className="text-[11px] text-stone-400 line-clamp-1 mt-0.5">
+          <p className="text-[11px] text-stone-400 dark:text-stone-500 line-clamp-1 mt-0.5">
             {wish.description}
           </p>
         )}
 
-        <div className="flex items-center gap-2 mt-1 text-[11px] text-stone-500">
+        <div className="flex items-center gap-2 mt-1 text-[11px] text-stone-500 dark:text-stone-400">
           <span className="inline-flex items-center gap-1 font-mono text-[10px]">
             <span className={`w-1.5 h-1.5 rounded-full ${prio.dot}`} />
             <span>{prio.label}</span>
@@ -103,7 +97,7 @@ export const WishRow: React.FC<WishRowProps> = ({
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1 text-stone-400 hover:text-stone-900 active:text-stone-900 transition-colors font-mono text-[10px]"
+              className="inline-flex items-center gap-1 text-stone-400 dark:text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 transition-colors font-mono text-[10px]"
             >
               <ExternalLink className="w-2.5 h-2.5" />
               <span className="truncate max-w-[120px]">
@@ -117,7 +111,7 @@ export const WishRow: React.FC<WishRowProps> = ({
       {/* Right: Price & Tap Action */}
       <div className="flex flex-col sm:flex-row sm:items-center items-end gap-1.5 sm:gap-3 shrink-0">
         {wish.price !== undefined && wish.price > 0 && (
-          <div className="text-xs sm:text-sm font-bold font-mono text-stone-900">
+          <div className="text-xs sm:text-sm font-bold font-mono text-stone-900 dark:text-stone-100">
             {formatPrice(wish.price, wish.currency)}
           </div>
         )}
@@ -127,22 +121,22 @@ export const WishRow: React.FC<WishRowProps> = ({
             {wish.reserved_by_me ? (
               <button
                 onClick={handleReserve}
-                className="px-2.5 py-1.5 rounded-full bg-stone-900 text-white text-[11px] font-medium flex items-center gap-1 shadow-2xs active:scale-95 transition-transform cursor-pointer"
+                className="px-2.5 py-1.5 rounded-full bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-[11px] font-medium flex items-center gap-1 shadow-2xs active:scale-95 transition-transform cursor-pointer"
               >
-                <Check className="w-3 h-3 text-stone-300 stroke-[2.5]" />
+                <Check className="w-3 h-3 text-stone-300 dark:text-stone-700 stroke-[2.5]" />
                 <span>Вы дарите</span>
               </button>
             ) : wish.is_reserved ? (
-              <span className="px-2.5 py-1 rounded-full bg-stone-100 text-stone-400 text-[11px] font-medium flex items-center gap-1">
-                <Lock className="w-2.5 h-2.5 text-stone-400" />
+              <span className="px-2.5 py-1 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-500 text-[11px] font-medium flex items-center gap-1">
+                <Lock className="w-2.5 h-2.5 text-stone-400 dark:text-stone-500" />
                 <span>Занято</span>
               </span>
             ) : (
               <button
                 onClick={handleReserve}
-                className="px-3 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200 active:bg-stone-300 text-stone-900 border border-stone-200 text-[11px] font-semibold flex items-center gap-1 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                className="px-3 py-1.5 rounded-full bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-900 dark:text-stone-100 border border-stone-200 dark:border-stone-700 text-[11px] font-semibold flex items-center gap-1 shadow-2xs active:scale-95 transition-all cursor-pointer"
               >
-                <Lock className="w-2.5 h-2.5 text-stone-600" />
+                <Lock className="w-2.5 h-2.5 text-stone-600 dark:text-stone-300" />
                 <span>Подарю я</span>
               </button>
             )}
@@ -151,7 +145,7 @@ export const WishRow: React.FC<WishRowProps> = ({
           <button
             onClick={() => onDeleteWish(wish.id)}
             title="Удалить желание"
-            className="p-2 text-stone-300 hover:text-red-600 active:text-red-600 rounded-lg transition-colors cursor-pointer"
+            className="p-2 text-stone-300 dark:text-stone-600 hover:text-red-600 dark:hover:text-red-400 rounded-lg transition-colors cursor-pointer"
           >
             <Trash2 className="w-4 h-4 stroke-[1.75]" />
           </button>

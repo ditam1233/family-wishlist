@@ -1,8 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Wish, Priority } from '@/types';
-import { X, Sparkles, Loader2, Link2, DollarSign, Tag, Gift } from 'lucide-react';
+import {
+  X,
+  Sparkles,
+  Loader2,
+  Link2,
+  Gift,
+  Upload,
+  Image as ImageIcon,
+  Trash2,
+} from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface AddWishModalProps {
@@ -13,12 +22,10 @@ interface AddWishModalProps {
 }
 
 const PRIORITIES: { value: Priority; label: string; dot: string }[] = [
-  { value: 'must_have', label: 'Очень хочу', dot: 'bg-stone-900' },
-  { value: 'nice_to_have', label: 'Хочется', dot: 'bg-stone-400' },
-  { value: 'dream', label: 'Мечта', dot: 'bg-stone-300' },
+  { value: 'must_have', label: 'Очень хочу', dot: 'bg-stone-900 dark:bg-stone-100' },
+  { value: 'nice_to_have', label: 'Хочется', dot: 'bg-stone-400 dark:bg-stone-500' },
+  { value: 'dream', label: 'Мечта', dot: 'bg-stone-300 dark:bg-stone-600' },
 ];
-
-const EVENTS = ['Без повода', 'День рождения', 'Новый год', 'Годовщина'];
 
 export const AddWishModal: React.FC<AddWishModalProps> = ({
   isOpen,
@@ -32,24 +39,31 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
   const [imageUrl, setImageUrl] = useState('');
   const [price, setPrice] = useState('');
   const [priority, setPriority] = useState<Priority>('nice_to_have');
-  const [eventTag, setEventTag] = useState('Без повода');
   const [loading, setLoading] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [imageTab, setImageTab] = useState<'upload' | 'url'>('upload');
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const scrapeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   if (!isOpen) return null;
 
   const normalizeUrl = (raw: string): string => {
     let clean = raw.trim();
     if (!clean) return '';
-    if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+    if (
+      /^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(clean) &&
+      !clean.startsWith('http://') &&
+      !clean.startsWith('https://')
+    ) {
       clean = 'https://' + clean;
     }
     return clean;
   };
 
-  const handleScrape = async () => {
-    const cleanUrl = normalizeUrl(linkUrl);
-    if (!cleanUrl) return;
+  const executeScrape = async (targetUrl: string) => {
+    const cleanUrl = normalizeUrl(targetUrl);
+    if (!cleanUrl || !cleanUrl.startsWith('http')) return;
 
     setLoading(true);
     setImgError(false);
@@ -61,15 +75,54 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
       });
       const data = await res.json();
 
-      if (data.title && !title) setTitle(data.title);
-      if (data.description && !description) setDescription(data.description);
-      if (data.image && !imageUrl) setImageUrl(data.image);
-      if (data.price && !price) setPrice(data.price);
+      if (data.title) setTitle(data.title);
+      if (data.description) setDescription(data.description);
+      if (data.image) {
+        setImageUrl(data.image);
+        setImageTab('url');
+      }
+      if (data.price) setPrice(String(data.price));
     } catch {
       // ignore
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle URL change with auto-scraping
+  const handleUrlChange = (val: string) => {
+    setLinkUrl(val);
+    const clean = normalizeUrl(val);
+
+    if (scrapeTimeoutRef.current) {
+      clearTimeout(scrapeTimeoutRef.current);
+    }
+
+    if (clean.startsWith('http://') || clean.startsWith('https://')) {
+      scrapeTimeoutRef.current = setTimeout(() => {
+        executeScrape(clean);
+      }, 700);
+    }
+  };
+
+  // Handle file upload from gallery / device
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Размер фото не должен превышать 5 МБ');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setImageUrl(reader.result);
+        setImgError(false);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -85,7 +138,6 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
       price: price ? parseFloat(price) : undefined,
       currency: '₽',
       priority,
-      event_tag: eventTag,
     });
 
     try {
@@ -99,39 +151,37 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
       // noop
     }
 
-    // Reset
+    // Reset fields
     setTitle('');
     setDescription('');
     setLinkUrl('');
     setImageUrl('');
     setPrice('');
     setPriority('nice_to_have');
-    setEventTag('Без повода');
     onClose();
   };
 
-  // text-base on mobile prevents iOS Safari zoom; sm:text-xs on desktop keeps it compact
   const inputClass =
-    'w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-stone-900 focus:bg-white focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-all placeholder:text-stone-400';
+    'w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-900 focus:border-stone-900 dark:focus:border-stone-100 focus:ring-1 focus:ring-stone-900 dark:focus:ring-stone-100 transition-all placeholder:text-stone-400 dark:placeholder:text-stone-500';
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-950/40 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-lg w-full max-h-[92vh] overflow-y-auto border-t sm:border border-stone-200/90 shadow-2xl p-5 sm:p-6 relative">
+      <div className="bg-white dark:bg-stone-900 rounded-t-3xl sm:rounded-2xl max-w-lg w-full border-t sm:border border-stone-200/90 dark:border-stone-800 shadow-2xl p-5 sm:p-6 relative max-h-[92vh] overflow-y-auto">
         {/* Mobile handle indicator */}
-        <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto -mt-1 mb-4 sm:hidden" />
+        <div className="w-10 h-1 bg-stone-300 dark:bg-stone-700 rounded-full mx-auto -mt-1 mb-4 sm:hidden" />
 
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer"
+          className="absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors cursor-pointer"
         >
           <X className="w-4 h-4" />
         </button>
 
         <div className="mb-5">
-          <h2 className="text-sm font-semibold text-stone-900 tracking-tight">
+          <h2 className="text-sm font-semibold text-stone-900 dark:text-stone-100 tracking-tight">
             Новое желание
           </h2>
-          <p className="text-[11px] text-stone-500 font-mono">
+          <p className="text-[11px] text-stone-500 dark:text-stone-400 font-mono">
             / добавьте подарок в ваш список
           </p>
         </div>
@@ -139,28 +189,36 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Link URL with auto-fill */}
           <div>
-            <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1.5">
-              Ссылка на товар (Ozon, WB, Маркет...)
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[11px] font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                Ссылка на товар (Ozon, WB, Маркет...)
+              </label>
+              {loading && (
+                <span className="text-[11px] font-mono text-stone-500 flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Распознаём товар...
+                </span>
+              )}
+            </div>
+
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Link2 className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={linkUrl}
-                  onChange={(e) => setLinkUrl(e.target.value)}
-                  onBlur={() => {
-                    if (linkUrl && !title) handleScrape();
-                  }}
-                  placeholder="https://..."
+                  onChange={(e) => handleUrlChange(e.target.value)}
+                  placeholder="Вставьте ссылку на товар..."
                   className={`${inputClass} pl-9`}
                 />
               </div>
+
               <button
                 type="button"
-                onClick={handleScrape}
+                onClick={() => executeScrape(linkUrl)}
                 disabled={loading || !linkUrl.trim()}
-                className="px-3.5 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 disabled:opacity-40 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+                title="Заполнить название, цену и фото автоматически"
+                className="px-3 py-2 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 disabled:opacity-40 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
               >
                 {loading ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -176,7 +234,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
 
           {/* Title */}
           <div>
-            <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1.5">
+            <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">
               Название <span className="text-stone-400">*</span>
             </label>
             <input
@@ -189,48 +247,138 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
             />
           </div>
 
-          {/* Price & Event */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1.5">
-                Примерная цена (₽)
-              </label>
-              <div className="relative">
-                <DollarSign className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="number"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  placeholder="5000"
-                  className={`${inputClass} pl-9 font-mono`}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1.5">
-                Повод
-              </label>
-              <div className="relative">
-                <Tag className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <select
-                  value={eventTag}
-                  onChange={(e) => setEventTag(e.target.value)}
-                  className={`${inputClass} pl-9 appearance-none bg-right`}
-                >
-                  {EVENTS.map((ev) => (
-                    <option key={ev} value={ev}>
-                      {ev}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          {/* Стоимость (Price) with ₽ symbol */}
+          <div>
+            <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">
+              Стоимость
+            </label>
+            <div className="relative">
+              <span className="font-mono text-stone-500 dark:text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-xs select-none">
+                ₽
+              </span>
+              <input
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="например: 3500"
+                className={`${inputClass} pl-8 font-mono`}
+              />
             </div>
           </div>
 
-          {/* Priority switcher */}
+          {/* Image: Gallery upload or URL link */}
           <div>
-            <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1.5">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[11px] font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                Изображение
+              </label>
+
+              <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 p-0.5 rounded-lg text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setImageTab('upload')}
+                  className={`px-2 py-0.5 rounded-md font-medium transition-colors cursor-pointer ${
+                    imageTab === 'upload'
+                      ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-2xs'
+                      : 'text-stone-500 hover:text-stone-900 dark:hover:text-stone-200'
+                  }`}
+                >
+                  Из галереи
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImageTab('url')}
+                  className={`px-2 py-0.5 rounded-md font-medium transition-colors cursor-pointer ${
+                    imageTab === 'url'
+                      ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-2xs'
+                      : 'text-stone-500 hover:text-stone-900 dark:hover:text-stone-200'
+                  }`}
+                >
+                  По ссылке
+                </button>
+              </div>
+            </div>
+
+            {imageTab === 'upload' ? (
+              <div>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-stone-200 dark:border-stone-700 hover:border-stone-400 dark:hover:border-stone-500 rounded-xl p-3.5 text-center cursor-pointer transition-colors bg-stone-50/50 dark:bg-stone-800/40"
+                >
+                  <Upload className="w-5 h-5 mx-auto text-stone-400 mb-1" />
+                  <p className="text-xs font-medium text-stone-800 dark:text-stone-200">
+                    Нажмите, чтобы выбрать фото из галереи
+                  </p>
+                  <p className="text-[10px] text-stone-400 mt-0.5">
+                    PNG, JPG, WebP до 5 МБ
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="relative">
+                <ImageIcon className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={imageUrl}
+                  onChange={(e) => {
+                    setImageUrl(e.target.value);
+                    setImgError(false);
+                  }}
+                  placeholder="https://example.com/photo.jpg"
+                  className={`${inputClass} pl-9`}
+                />
+              </div>
+            )}
+
+            {/* Thumbnail Preview if present */}
+            {imageUrl && (
+              <div className="mt-2.5 flex items-center gap-2.5 p-2 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700">
+                <div className="w-12 h-12 rounded-lg bg-stone-100 dark:bg-stone-700 overflow-hidden shrink-0 border border-stone-200 dark:border-stone-600 flex items-center justify-center">
+                  {!imgError ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={imageUrl}
+                      alt="Preview"
+                      onError={() => setImgError(true)}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Gift className="w-5 h-5 text-stone-400" />
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-medium text-stone-900 dark:text-stone-100 truncate block">
+                    Фото прикреплено
+                  </span>
+                  <span className="text-[10px] text-stone-400 font-mono">
+                    {imageUrl.startsWith('data:') ? 'Из галереи' : 'Ссылка на картинку'}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setImageUrl('')}
+                  title="Удалить фото"
+                  className="p-1.5 text-stone-400 hover:text-red-500 rounded-lg hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Priority */}
+          <div>
+            <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">
               Приоритет
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -241,15 +389,15 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
                     key={p.value}
                     type="button"
                     onClick={() => setPriority(p.value)}
-                    className={`py-2.5 px-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    className={`py-2 px-2.5 rounded-xl text-xs font-medium border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-stone-900 text-white border-stone-900 shadow-2xs'
-                        : 'bg-white border-stone-200 text-stone-600 hover:border-stone-300'
+                        ? 'border-stone-900 dark:border-stone-100 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 shadow-2xs'
+                        : 'border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600 text-stone-600 dark:text-stone-400'
                     }`}
                   >
                     <span
                       className={`w-1.5 h-1.5 rounded-full ${
-                        isSelected ? 'bg-white' : p.dot
+                        isSelected ? 'bg-white dark:bg-stone-900' : p.dot
                       }`}
                     />
                     <span>{p.label}</span>
@@ -259,44 +407,16 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
             </div>
           </div>
 
-          {/* Image URL preview */}
+          {/* Description */}
           <div>
-            <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1.5">
-              Ссылка на изображение
-            </label>
-            <input
-              type="text"
-              value={imageUrl}
-              onChange={(e) => {
-                setImageUrl(e.target.value);
-                setImgError(false);
-              }}
-              placeholder="https://.../photo.jpg"
-              className={inputClass}
-            />
-            {imageUrl && !imgError && (
-              <div className="mt-2.5 w-16 h-16 rounded-xl border border-stone-200 overflow-hidden bg-stone-50">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={imageUrl}
-                  alt="preview"
-                  className="w-full h-full object-cover"
-                  onError={() => setImgError(true)}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Note */}
-          <div>
-            <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1.5">
+            <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">
               Примечание (размер, цвет, пожелания)
             </label>
             <textarea
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Например: цвет серый, размер M..."
+              placeholder="Например: черный цвет, размер M..."
               className={inputClass}
             />
           </div>
@@ -305,10 +425,9 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
           <div className="pt-2">
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+              className="w-full py-3 rounded-xl bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white text-white dark:text-stone-900 font-medium text-xs transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.99]"
             >
-              <Gift className="w-4 h-4" />
-              <span>Добавить в вишлист</span>
+              <span>Сохранить в вишлист</span>
             </button>
           </div>
         </form>

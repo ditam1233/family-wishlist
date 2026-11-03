@@ -4,7 +4,19 @@ import React, { useState, useEffect } from 'react';
 import { dataStore } from '@/lib/data';
 import { User } from '@/types';
 import { getAvatarStyle, getInitials } from '@/lib/avatar';
-import { Gift, ArrowRight, Loader2, KeyRound, Lock, Mail, User as UserIcon, Check } from 'lucide-react';
+import { getStoredTheme, applyTheme, Theme } from '@/lib/theme';
+import {
+  Gift,
+  ArrowRight,
+  Loader2,
+  KeyRound,
+  Lock,
+  Mail,
+  User as UserIcon,
+  Check,
+  Sun,
+  Moon,
+} from 'lucide-react';
 
 interface AuthScreenProps {
   onSuccess: (user: User) => void;
@@ -27,6 +39,19 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentTheme, setCurrentTheme] = useState<Theme>('light');
+
+  // Initialize theme
+  useEffect(() => {
+    const t = getStoredTheme();
+    setCurrentTheme(t);
+  }, []);
+
+  const handleToggleTheme = () => {
+    const nextTheme: Theme = currentTheme === 'dark' ? 'light' : 'dark';
+    setCurrentTheme(nextTheme);
+    applyTheme(nextTheme);
+  };
 
   // Auto-fill code from URL: ?code=STE-1234
   useEffect(() => {
@@ -66,54 +91,66 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
     checkFamily();
   }, [inviteCode]);
 
-  const handleQuickMemberLogin = async (memberName: string) => {
-    setRelativeName(memberName);
-    setError(null);
-    setLoading(true);
+  // Handle Code-based Quick Access
+  const handleCodeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteCode.trim() || !relativeName.trim()) {
+      setError('Заполните код семьи и ваше имя');
+      return;
+    }
 
+    setLoading(true);
+    setError(null);
     try {
-      const res = await dataStore.joinByCode(inviteCode, memberName);
+      const res = await dataStore.joinByCode(
+        inviteCode.trim(),
+        relativeName.trim()
+      );
+      if (res.success && res.user) {
+        onSuccess(res.user);
+      } else {
+        setError(res.error || 'Неверный код приглашения или ошибка входа');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Произошла ошибка';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Existing Member Tap
+  const handleSelectExistingMember = async (member: User) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await dataStore.joinByCode(inviteCode.trim(), member.name);
       if (res.success && res.user) {
         onSuccess(res.user);
       } else {
         setError(res.error || 'Не удалось войти');
       }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Произошла ошибка';
-      setError(msg);
+    } catch {
+      setError('Не удалось войти');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCodeSubmit = async (e: React.FormEvent) => {
+  // Handle Email/Password
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setLoading(true);
-
-    try {
-      const res = await dataStore.joinByCode(inviteCode, relativeName);
-      if (res.success && res.user) {
-        onSuccess(res.user);
-      } else {
-        setError(res.error || 'Не удалось войти по коду');
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Произошла ошибка';
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAdminSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
     setError(null);
-    setLoading(true);
 
     try {
       if (isRegister) {
-        const res = await dataStore.register(name, email, password);
+        if (!name.trim()) {
+          setError('Введите имя');
+          setLoading(false);
+          return;
+        }
+        const res = await dataStore.register(email, password, name);
         if (res.success && res.user) onSuccess(res.user);
         else setError(res.error || 'Ошибка регистрации');
       } else {
@@ -130,26 +167,39 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
   };
 
   const inputClass =
-    'w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 text-base sm:text-xs text-stone-900 focus:bg-white focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-all placeholder:text-stone-400';
+    'w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-3.5 py-3 text-base sm:text-xs text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-900 focus:border-stone-900 dark:focus:border-stone-100 focus:ring-1 focus:ring-stone-900 dark:focus:ring-stone-100 transition-all placeholder:text-stone-400 dark:placeholder:text-stone-500';
 
   return (
-    <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4 sm:p-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
-      <div className="w-full max-w-sm bg-white rounded-2xl border border-stone-200/90 shadow-xl p-6 sm:p-8">
+    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 flex items-center justify-center p-4 sm:p-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <div className="w-full max-w-sm bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 dark:border-stone-800 shadow-xl p-6 sm:p-8 relative">
+        {/* Theme toggle */}
+        <button
+          onClick={handleToggleTheme}
+          title="Сменить тему"
+          className="absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition-colors cursor-pointer"
+        >
+          {currentTheme === 'dark' ? (
+            <Sun className="w-4 h-4 text-amber-400" />
+          ) : (
+            <Moon className="w-4 h-4 text-stone-600" />
+          )}
+        </button>
+
         {/* Brand header */}
         <div className="text-center mb-6">
-          <div className="w-10 h-10 rounded-xl bg-stone-900 text-stone-100 flex items-center justify-center mx-auto mb-3">
+          <div className="w-10 h-10 rounded-xl bg-stone-900 dark:bg-stone-100 text-stone-100 dark:text-stone-900 flex items-center justify-center mx-auto mb-3 shadow-2xs">
             <Gift className="w-5 h-5 stroke-[1.75]" />
           </div>
-          <h1 className="text-lg font-semibold text-stone-900 tracking-tight font-mono uppercase">
+          <h1 className="text-lg font-semibold text-stone-900 dark:text-stone-100 tracking-tight font-mono uppercase">
             Family Wishlist
           </h1>
-          <p className="text-xs text-stone-500 mt-1">
+          <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
             Списки желаний и секретное бронирование
           </p>
         </div>
 
         {/* Segmented Mode Switcher */}
-        <div className="flex bg-stone-100 p-1 rounded-xl mb-5">
+        <div className="flex bg-stone-100 dark:bg-stone-800/80 p-1 rounded-xl mb-5">
           <button
             type="button"
             onClick={() => {
@@ -158,8 +208,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
             }}
             className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all cursor-pointer ${
               mode === 'code'
-                ? 'bg-white text-stone-900 shadow-2xs font-semibold'
-                : 'text-stone-500 hover:text-stone-900'
+                ? 'bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 shadow-2xs font-semibold'
+                : 'text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
             }`}
           >
             По коду семьи
@@ -172,8 +222,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
             }}
             className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all cursor-pointer ${
               mode === 'admin'
-                ? 'bg-white text-stone-900 shadow-2xs font-semibold'
-                : 'text-stone-500 hover:text-stone-900'
+                ? 'bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 shadow-2xs font-semibold'
+                : 'text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
             }`}
           >
             Email / Пароль
@@ -181,7 +231,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
         </div>
 
         {error && (
-          <div className="mb-4 p-2.5 rounded-xl bg-stone-100 border border-stone-200 text-stone-800 text-xs text-center font-medium">
+          <div className="mb-4 p-2.5 rounded-xl bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-200 text-xs text-center font-medium">
             {error}
           </div>
         )}
@@ -191,7 +241,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
           <div>
             <form onSubmit={handleCodeSubmit} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1.5">
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">
                   Код приглашения
                 </label>
                 <div className="relative">
@@ -209,37 +259,37 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
 
               {/* Found family hint */}
               {foundFamily && (
-                <div className="p-3 bg-stone-50 border border-stone-200 rounded-xl">
-                  <div className="flex items-center gap-1.5 text-xs text-stone-900 font-medium">
-                    <Check className="w-3.5 h-3.5 text-stone-900 stroke-[2.5]" />
+                <div className="p-3 bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 rounded-xl">
+                  <div className="flex items-center gap-1.5 text-xs text-stone-900 dark:text-stone-100 font-medium">
+                    <Check className="w-3.5 h-3.5 text-stone-900 dark:text-stone-100 stroke-[2.5]" />
                     <span>Семья: «{foundFamily.name}»</span>
                   </div>
 
                   {familyMembers.length > 0 && (
-                    <div className="mt-2.5 pt-2 border-t border-stone-200/60">
-                      <p className="text-[10px] font-mono uppercase tracking-wider text-stone-400 mb-2">
-                        Нажмите на своё имя для входа:
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {familyMembers.map((m) => {
-                          const avatarStyle = getAvatarStyle(m.name);
-                          return (
-                            <button
-                              key={m.id}
-                              type="button"
-                              disabled={loading}
-                              onClick={() => handleQuickMemberLogin(m.name)}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-stone-200 hover:border-stone-900 text-stone-800 text-xs font-medium transition-all cursor-pointer active:scale-95"
+                    <div className="mt-2.5 pt-2 border-t border-stone-200/60 dark:border-stone-700/60">
+                      <div className="text-[10px] font-mono text-stone-400 uppercase tracking-wider mb-1.5">
+                        Или выберите свой профиль:
+                      </div>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {familyMembers.map((m) => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => handleSelectExistingMember(m)}
+                            className="w-full text-left p-1.5 rounded-lg hover:bg-stone-200/60 dark:hover:bg-stone-700/60 flex items-center gap-2 transition-colors cursor-pointer"
+                          >
+                            <div
+                              className={`w-5 h-5 rounded-full border ${getAvatarStyle(
+                                m.name
+                              )} flex items-center justify-center text-[9px] font-mono font-bold`}
                             >
-                              <div
-                                className={`w-4 h-4 rounded-full border ${avatarStyle} flex items-center justify-center text-[8px] font-mono font-bold`}
-                              >
-                                {getInitials(m.name)}
-                              </div>
-                              <span>{m.name}</span>
-                            </button>
-                          );
-                        })}
+                              {getInitials(m.name)}
+                            </div>
+                            <span className="text-xs text-stone-800 dark:text-stone-200">
+                              Это я ({m.name})
+                            </span>
+                          </button>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -247,10 +297,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
               )}
 
               <div>
-                <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1.5">
-                  {foundFamily && familyMembers.length > 0
-                    ? 'Или укажите новое имя'
-                    : 'Ваше имя'}
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">
+                  Ваше имя в семье
                 </label>
                 <div className="relative">
                   <UserIcon className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -259,7 +307,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                     required
                     value={relativeName}
                     onChange={(e) => setRelativeName(e.target.value)}
-                    placeholder="Например: Мама или Степан"
+                    placeholder="Мама, Папа, Катя..."
                     className={`${inputClass} pl-9`}
                   />
                 </div>
@@ -268,7 +316,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white font-medium text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
+                className="w-full py-3 rounded-xl bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white text-white dark:text-stone-900 font-medium text-xs transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
               >
                 {loading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -282,13 +330,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
             </form>
           </div>
         ) : (
-          /* Mode: Email / Password */
+          /* Mode: Admin Email */
           <div>
-            <form onSubmit={handleAdminSubmit} className="space-y-3.5">
+            <form onSubmit={handleEmailSubmit} className="space-y-4">
               {isRegister && (
                 <div>
-                  <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1">
-                    Имя
+                  <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">
+                    Ваше имя
                   </label>
                   <div className="relative">
                     <UserIcon className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -297,7 +345,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="Степан"
+                      placeholder="Александр"
                       className={`${inputClass} pl-9`}
                     />
                   </div>
@@ -305,7 +353,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
               )}
 
               <div>
-                <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1">
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">
                   Email
                 </label>
                 <div className="relative">
@@ -315,14 +363,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@example.com"
+                    placeholder="alex@family.ru"
                     className={`${inputClass} pl-9`}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1">
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">
                   Пароль
                 </label>
                 <div className="relative">
@@ -341,20 +389,26 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-2 py-3 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white font-medium text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
+                className="w-full py-3 rounded-xl bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white text-white dark:text-stone-900 font-medium text-xs transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
               >
                 {loading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <span>{isRegister ? 'Зарегистрироваться' : 'Войти'}</span>
+                  <>
+                    <span>{isRegister ? 'Зарегистрироваться' : 'Войти'}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </>
                 )}
               </button>
 
-              <div className="text-center pt-2">
+              <div className="text-center pt-1">
                 <button
                   type="button"
-                  onClick={() => setIsRegister(!isRegister)}
-                  className="text-xs text-stone-600 hover:text-stone-900 font-medium cursor-pointer p-1"
+                  onClick={() => {
+                    setIsRegister(!isRegister);
+                    setError(null);
+                  }}
+                  className="text-xs text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors cursor-pointer"
                 >
                   {isRegister
                     ? 'Уже есть аккаунт? Войти'

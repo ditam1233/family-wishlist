@@ -68,75 +68,93 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
     setLoading(true);
     setError(null);
 
-    const res = await dataStore.createGroup(newGroupName.trim(), currentUser.id);
-    setLoading(false);
-    if (res.success && res.group) {
-      setNewGroupName('');
-      setTab('list');
-      await loadGroups();
-      onUpdate();
-    } else {
-      setError(res.error || 'Не удалось создать группу');
+    try {
+      const res = await dataStore.createGroup(
+        newGroupName.trim(),
+        currentUser.id
+      );
+      if (res.success && res.group) {
+        setNewGroupName('');
+        await loadGroups();
+        if (onSelectGroup) onSelectGroup(res.group.id);
+        onUpdate();
+        setTab('list');
+      } else {
+        setError(res.error || 'Не удалось создать группу');
+      }
+    } catch {
+      setError('Ошибка при создании группы');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     if (!inviteCode.trim()) return;
     setLoading(true);
+    setError(null);
 
-    const res = await dataStore.joinGroup(inviteCode.trim(), currentUser.id);
-    setLoading(false);
-    if (res.success) {
-      setInviteCode('');
-      setTab('list');
-      await loadGroups();
-      onUpdate();
-    } else {
-      setError(res.error || 'Не удалось присоединиться');
+    try {
+      const res = await dataStore.joinGroup(
+        inviteCode.trim(),
+        currentUser.id
+      );
+      if (res.success && res.group) {
+        setInviteCode('');
+        await loadGroups();
+        if (onSelectGroup) onSelectGroup(res.group.id);
+        onUpdate();
+        setTab('list');
+      } else {
+        setError(res.error || 'Неверный код приглашения');
+      }
+    } catch {
+      setError('Не удалось вступить в группу');
+    } finally {
+      setLoading(false);
     }
   };
 
   const inputClass =
-    'w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-stone-900 focus:bg-white focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-all placeholder:text-stone-400';
+    'w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-900 focus:border-stone-900 dark:focus:border-stone-100 focus:ring-1 focus:ring-stone-900 dark:focus:ring-stone-100 transition-all placeholder:text-stone-400 dark:placeholder:text-stone-500';
 
   const tabBtnClass = (active: boolean) =>
-    `flex-1 py-2 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+    `flex-1 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
       active
-        ? 'bg-white text-stone-900 shadow-2xs font-semibold'
-        : 'text-stone-500 hover:text-stone-900'
+        ? 'bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 shadow-2xs'
+        : 'text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
     }`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-950/40 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full border-t sm:border border-stone-200/90 shadow-2xl p-5 sm:p-6 relative max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-stone-900 rounded-t-3xl sm:rounded-2xl max-w-md w-full border-t sm:border border-stone-200/90 dark:border-stone-800 shadow-2xl p-5 sm:p-6 relative max-h-[90vh] overflow-y-auto">
         {/* Mobile handle indicator */}
-        <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto -mt-1 mb-4 sm:hidden" />
+        <div className="w-10 h-1 bg-stone-300 dark:bg-stone-700 rounded-full mx-auto -mt-1 mb-4 sm:hidden" />
 
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer"
+          className="absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors cursor-pointer"
         >
           <X className="w-4 h-4" />
         </button>
 
         <div className="flex items-center gap-2.5 mb-5">
-          <div className="w-8 h-8 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 flex items-center justify-center">
             <Users className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-stone-900 tracking-tight">
+            <h2 className="text-sm font-semibold text-stone-900 dark:text-stone-100 tracking-tight">
               Семейные круги
             </h2>
-            <p className="text-[11px] text-stone-500 font-mono">
+            <p className="text-[11px] text-stone-500 dark:text-stone-400 font-mono">
               / группы и коды приглашений
             </p>
           </div>
         </div>
 
         {/* Minimalist Tabs */}
-        <div className="flex bg-stone-100 p-1 rounded-xl mb-4">
+        <div className="flex bg-stone-100 dark:bg-stone-800/80 p-1 rounded-xl mb-4">
           <button
             onClick={() => {
               setTab('list');
@@ -167,7 +185,7 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
         </div>
 
         {error && (
-          <div className="mb-4 p-2.5 rounded-xl bg-stone-100 border border-stone-200 text-stone-800 text-xs text-center font-medium">
+          <div className="mb-4 p-2.5 rounded-xl bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-200 text-xs text-center font-medium">
             {error}
           </div>
         )}
@@ -182,8 +200,8 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
                     key={group.id}
                     className={`p-3.5 rounded-xl border transition-all ${
                       isActive
-                        ? 'bg-stone-50 border-stone-900'
-                        : 'bg-white border-stone-200 hover:border-stone-300'
+                        ? 'bg-stone-50 dark:bg-stone-800/60 border-stone-900 dark:border-stone-100'
+                        : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'
                     } flex items-center justify-between gap-3`}
                   >
                     <div
@@ -196,18 +214,18 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
                       }}
                     >
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-xs text-stone-900 truncate">
+                        <span className="font-medium text-xs text-stone-900 dark:text-stone-100 truncate">
                           {group.name}
                         </span>
                         {isActive && (
-                          <span className="text-[9px] bg-stone-900 text-white font-mono uppercase px-1.5 py-0.2 rounded shrink-0">
+                          <span className="text-[9px] bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 font-mono uppercase px-1.5 py-0.2 rounded shrink-0">
                             Активен
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-1.5 mt-1 text-[11px] text-stone-500 font-mono">
+                      <div className="flex items-center gap-1.5 mt-1 text-[11px] text-stone-500 dark:text-stone-400 font-mono">
                         <Hash className="w-3 h-3 text-stone-400" />
-                        <code className="text-stone-900 font-semibold">
+                        <code className="text-stone-900 dark:text-stone-100 font-semibold">
                           {group.invite_code}
                         </code>
                       </div>
@@ -220,39 +238,33 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
                             onSelectGroup(group.id);
                             onClose();
                           }}
-                          className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium transition-all cursor-pointer"
+                          className="px-2.5 py-1 text-xs text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors cursor-pointer"
                         >
                           Выбрать
                         </button>
                       )}
 
                       <button
-                        onClick={() => handleShareLink(group.invite_code)}
-                        className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium flex items-center gap-1 transition-all cursor-pointer"
-                        title="Скопировать ссылку для отправки близким"
+                        onClick={() => handleCopyCode(group.invite_code)}
+                        title="Скопировать код"
+                        className="p-1.5 text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors cursor-pointer"
                       >
-                        {copiedLink === group.invite_code ? (
-                          <>
-                            <Check className="w-3 h-3 text-stone-900 stroke-[2.5]" />
-                            <span className="hidden sm:inline">Готово</span>
-                          </>
+                        {copiedCode === group.invite_code ? (
+                          <Check className="w-3.5 h-3.5 text-stone-900 dark:text-stone-100" />
                         ) : (
-                          <>
-                            <Share2 className="w-3 h-3 text-stone-500" />
-                            <span className="hidden sm:inline">Ссылка</span>
-                          </>
+                          <Copy className="w-3.5 h-3.5" />
                         )}
                       </button>
 
                       <button
-                        onClick={() => handleCopyCode(group.invite_code)}
-                        className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-500 hover:text-stone-900 transition-all cursor-pointer"
-                        title="Скопировать только код"
+                        onClick={() => handleShareLink(group.invite_code)}
+                        title="Скопировать ссылку для родственников"
+                        className="p-1.5 text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors cursor-pointer"
                       >
-                        {copiedCode === group.invite_code ? (
-                          <Check className="w-3.5 h-3.5 text-stone-900 stroke-[2.5]" />
+                        {copiedLink === group.invite_code ? (
+                          <Check className="w-3.5 h-3.5 text-stone-900 dark:text-stone-100" />
                         ) : (
-                          <Copy className="w-3.5 h-3.5" />
+                          <Share2 className="w-3.5 h-3.5" />
                         )}
                       </button>
                     </div>
@@ -261,18 +273,16 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
               })
             ) : (
               <div className="text-center py-8 text-stone-400 text-xs">
-                У вас пока нет семейных групп.
-                <br />
-                Создайте первую семью, чтобы получить код.
+                У вас пока нет групп
               </div>
             )}
           </div>
         )}
 
         {tab === 'create' && (
-          <form onSubmit={handleCreate} className="space-y-3.5">
+          <form onSubmit={handleCreate} className="space-y-4">
             <div>
-              <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1.5">
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">
                 Название круга
               </label>
               <input
@@ -280,14 +290,15 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
                 required
                 value={newGroupName}
                 onChange={(e) => setNewGroupName(e.target.value)}
-                placeholder="Например: Семья Ивановых"
+                placeholder="Семья Ивановых"
                 className={inputClass}
               />
             </div>
+
             <button
               type="submit"
-              disabled={loading}
-              className="w-full py-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-all cursor-pointer flex items-center justify-center gap-2"
+              disabled={loading || !newGroupName.trim()}
+              className="w-full py-2.5 rounded-xl bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white disabled:opacity-40 text-white dark:text-stone-900 font-medium text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
             >
               {loading ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -299,29 +310,30 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
         )}
 
         {tab === 'join' && (
-          <form onSubmit={handleJoin} className="space-y-3.5">
+          <form onSubmit={handleJoin} className="space-y-4">
             <div>
-              <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1.5">
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">
                 Код приглашения
               </label>
               <input
                 type="text"
                 required
                 value={inviteCode}
-                onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                placeholder="СТЕ-4821"
+                onChange={(e) => setInviteCode(e.target.value)}
+                placeholder="Например: СТЕМ-1234"
                 className={`${inputClass} uppercase font-mono tracking-wider`}
               />
             </div>
+
             <button
               type="submit"
-              disabled={loading}
-              className="w-full py-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-all cursor-pointer flex items-center justify-center gap-2"
+              disabled={loading || !inviteCode.trim()}
+              className="w-full py-2.5 rounded-xl bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white disabled:opacity-40 text-white dark:text-stone-900 font-medium text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
             >
               {loading ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                'Вступить в круг'
+                'Присоединиться'
               )}
             </button>
           </form>
