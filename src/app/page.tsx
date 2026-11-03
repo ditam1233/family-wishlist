@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Wish, FamilyGroup } from '@/types';
 import { dataStore } from '@/lib/data';
 import { Navbar } from '@/components/Navbar';
@@ -9,7 +9,7 @@ import { WishCard } from '@/components/WishCard';
 import { AddWishModal } from '@/components/AddWishModal';
 import { FamilyGroupModal } from '@/components/FamilyGroupModal';
 import { AuthScreen } from '@/components/AuthScreen';
-import { Gift, PlusCircle, Users, Share2, Check } from 'lucide-react';
+import { Gift, Plus, Users, Share2, Check, Lock } from 'lucide-react';
 
 export default function HomePage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -27,9 +27,8 @@ export default function HomePage() {
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-  // Инициализация при монтировании
+  // Initialize on mount
   useEffect(() => {
-    // 1. Мгновенная инициализация из кэша (0мс)
     const cachedUser = dataStore.getCachedUser();
     const cachedGroups = dataStore.getCachedGroups();
     const cachedMembers = dataStore.getCachedMembers();
@@ -48,7 +47,6 @@ export default function HomePage() {
       setIsAppLoading(false);
     }
 
-    // 2. Фоновая проверка и актуализация с Supabase
     const init = async () => {
       try {
         const user = await dataStore.getCurrentUser();
@@ -177,12 +175,13 @@ export default function HomePage() {
 
   if (isAppLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-rose-500 text-white shadow-xl shadow-indigo-500/25 flex items-center justify-center mb-4 animate-bounce">
-          <Gift className="w-7 h-7" strokeWidth={1.8} />
+      <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center p-6">
+        <div className="w-9 h-9 rounded-lg bg-stone-900 text-stone-100 flex items-center justify-center mb-3">
+          <Gift className="w-5 h-5 stroke-[1.75]" />
         </div>
-        <div className="text-base font-bold text-slate-900 tracking-tight">Family Wishlist</div>
-        <div className="text-xs text-slate-400 mt-1">Загрузка данных...</div>
+        <div className="text-xs font-mono tracking-wider uppercase text-stone-400">
+          Загрузка...
+        </div>
       </div>
     );
   }
@@ -197,11 +196,10 @@ export default function HomePage() {
     (w) => selectedEvent === 'Все' || w.event_tag === selectedEvent
   );
 
-  const totalWishes = wishes.length;
   const reservedWishes = wishes.filter((w) => w.is_reserved).length;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-stone-50 flex flex-col">
       <Navbar
         currentUser={currentUser}
         onOpenAddWish={() => setIsAddOpen(true)}
@@ -209,40 +207,40 @@ export default function HomePage() {
         onLogout={handleLogout}
       />
 
-      <main className="max-w-6xl w-full mx-auto px-4 sm:px-8 py-8 flex-1 space-y-6">
-        {/* Onboarding — только если данные загружены и групп реально 0 */}
+      <main className="max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 space-y-6">
+        {/* Onboarding - when 0 groups */}
         {isDataLoaded && userGroups.length === 0 ? (
-          <div className="bg-white border border-slate-200/80 rounded-3xl p-10 sm:p-14 text-center max-w-lg mx-auto shadow-xl shadow-slate-200/50">
-            <div className="w-16 h-16 rounded-3xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-5 border border-indigo-100">
-              <Users className="w-8 h-8" strokeWidth={1.8} />
+          <div className="bg-white border border-stone-200/90 rounded-2xl p-8 sm:p-12 text-center max-w-md mx-auto shadow-sm">
+            <div className="w-12 h-12 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center mx-auto mb-4">
+              <Users className="w-6 h-6 stroke-[1.75]" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">
-              Привет, {currentUser.name}!
+            <h2 className="text-lg font-semibold text-stone-900 mb-1.5 tracking-tight">
+              Добро пожаловать, {currentUser.name}!
             </h2>
-            <p className="text-sm text-slate-500 mb-8 leading-relaxed max-w-sm mx-auto">
-              Создайте первый семейный круг и поделитесь кодом с близкими — каждый сможет вести свой вишлист и тайно бронировать подарки.
+            <p className="text-xs text-stone-500 mb-6 leading-relaxed">
+              Создайте первый семейный круг и поделитесь кодом с близкими, чтобы делиться желаниями и бронировать подарки без спойлеров.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <div className="flex flex-col sm:flex-row gap-2.5 justify-center">
               <button
                 onClick={() => setIsGroupsOpen(true)}
-                className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-semibold text-sm shadow-md shadow-indigo-500/25 transition-all cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-all cursor-pointer"
               >
                 Создать семью
               </button>
               <button
                 onClick={() => setIsGroupsOpen(true)}
-                className="px-6 py-3.5 rounded-2xl bg-white border border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50 transition-all cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-white border border-stone-200 text-stone-700 font-medium text-xs hover:bg-stone-50 transition-all cursor-pointer"
               >
-                У меня есть код
+                Войти по коду
               </button>
             </div>
           </div>
         ) : (
           <>
-            {/* Переключатель семейных кругов */}
-            <div className="bg-white rounded-3xl p-3 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-              <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2 shrink-0 hidden md:inline">
+            {/* Minimalist Top Control Bar */}
+            <div className="bg-white rounded-2xl p-3 sm:p-3.5 border border-stone-200/90 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-stone-400 px-1.5 shrink-0 hidden md:inline">
                   Круг:
                 </span>
 
@@ -252,19 +250,18 @@ export default function HomePage() {
                     <button
                       key={group.id}
                       onClick={() => handleSwitchGroup(group.id)}
-                      className={`flex items-center gap-2.5 px-4 py-2 rounded-2xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 cursor-pointer ${
                         isActive
-                          ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/25 scale-[1.02]'
-                          : 'bg-slate-100/80 hover:bg-slate-200/80 text-slate-700'
+                          ? 'bg-stone-900 text-white shadow-2xs'
+                          : 'bg-stone-100/80 hover:bg-stone-200 text-stone-700'
                       }`}
                     >
-                      <Users className={`w-3.5 h-3.5 ${isActive ? 'text-indigo-200' : 'text-slate-400'}`} />
                       <span>{group.name}</span>
                       <span
-                        className={`text-[10px] px-2 py-0.5 rounded-md font-mono font-bold ${
+                        className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${
                           isActive
-                            ? 'bg-white/20 text-white'
-                            : 'bg-white text-slate-600 border border-slate-200'
+                            ? 'bg-stone-800 text-stone-300'
+                            : 'bg-white text-stone-500 border border-stone-200'
                         }`}
                       >
                         {group.invite_code}
@@ -276,43 +273,43 @@ export default function HomePage() {
                 {userGroups.length > 1 && (
                   <button
                     onClick={() => handleSwitchGroup('all')}
-                    className={`px-3.5 py-2 rounded-2xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 cursor-pointer ${
                       selectedGroupId === 'all'
-                        ? 'bg-slate-900 text-white shadow-xs scale-[1.02]'
-                        : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                        ? 'bg-stone-900 text-white shadow-2xs'
+                        : 'bg-stone-100 hover:bg-stone-200 text-stone-600'
                     }`}
                   >
-                    Все родственники
+                    Все круги
                   </button>
                 )}
 
                 <button
                   onClick={() => setIsGroupsOpen(true)}
                   title="Создать или войти в другую семью"
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-semibold text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 border border-dashed border-slate-300 transition-all cursor-pointer shrink-0"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium text-stone-500 hover:text-stone-900 hover:bg-stone-100 border border-dashed border-stone-300 transition-all cursor-pointer shrink-0"
                 >
-                  <PlusCircle className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Новый круг</span>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Круг</span>
                 </button>
               </div>
 
-              {/* Кнопка приглашения в активную семью */}
+              {/* Share invite button */}
               {activeGroup && (
                 <div className="flex items-center gap-2 shrink-0 self-start md:self-auto pl-1 md:pl-0">
                   <button
                     onClick={() => handleShareGroup(activeGroup.invite_code)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/60 shadow-xs transition-all cursor-pointer"
-                    title="Скопировать готовую ссылку с кодом для родственников"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-stone-100 hover:bg-stone-200 text-stone-700 transition-all cursor-pointer"
+                    title="Скопировать ссылку с кодом для родственников"
                   >
                     {copiedGroupLink ? (
                       <>
-                        <Check className="w-4 h-4 text-emerald-600" />
-                        <span>Ссылка скопирована!</span>
+                        <Check className="w-3.5 h-3.5 text-stone-900 stroke-[2.5]" />
+                        <span>Ссылка скопирована</span>
                       </>
                     ) : (
                       <>
-                        <Share2 className="w-4 h-4 text-indigo-600" />
-                        <span>Пригласить в «{activeGroup.name}»</span>
+                        <Share2 className="w-3.5 h-3.5 text-stone-500" />
+                        <span>Пригласить родных</span>
                       </>
                     )}
                   </button>
@@ -321,18 +318,16 @@ export default function HomePage() {
             </div>
 
             {/* Member selector strip */}
-            <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/80 shadow-xs">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  {selectedGroupId === 'all'
-                    ? 'Все члены кругов'
-                    : `Участники «${activeGroup?.name || 'Семья'}»`}
-                </p>
+            <div className="bg-white rounded-2xl p-4 sm:p-4.5 border border-stone-200/90 shadow-2xs space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-stone-400">
+                  / Участники
+                </span>
                 <button
                   onClick={() => setIsGroupsOpen(true)}
-                  className="text-xs text-indigo-600 hover:text-indigo-700 font-semibold cursor-pointer transition-colors"
+                  className="text-xs text-stone-500 hover:text-stone-900 font-medium cursor-pointer transition-colors"
                 >
-                  Управление семьями →
+                  Управление →
                 </button>
               </div>
               <FamilyBar
@@ -343,48 +338,49 @@ export default function HomePage() {
               />
             </div>
 
-            {/* Wishlist Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+            {/* Wishlist Header Section */}
+            <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 pt-2">
               <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                <div className="flex items-center gap-2.5">
+                  <h1 className="text-xl sm:text-2xl font-semibold text-stone-900 tracking-tight">
                     {isOwner ? 'Мой вишлист' : `Вишлист: ${selectedMember.name}`}
                   </h1>
                   {!isOwner && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200/60">
-                      🔒 Анти-спойлер активен
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-stone-100 text-stone-600 border border-stone-200">
+                      <Lock className="w-2.5 h-2.5 stroke-[2]" />
+                      Анти-спойлер
                     </span>
                   )}
                 </div>
-                <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                <p className="text-xs text-stone-500 mt-1">
                   {isOwner
-                    ? 'Добавляйте желания — близкие увидят их и смогут тайно забронировать'
-                    : `Забронируйте подарок, чтобы никто не купил дубликат. ${selectedMember.name} не узнает!`}
+                    ? 'Ваши желания. Близкие видят их и могут тайно бронировать подарки.'
+                    : `Забронируйте подарок для ${selectedMember.name}, чтобы избежать повторов. Виновник торжества не увидит бронь.`}
                 </p>
               </div>
 
               {isOwner && (
                 <button
                   onClick={() => setIsAddOpen(true)}
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-semibold text-xs shadow-md shadow-indigo-500/25 active:scale-95 transition-all cursor-pointer shrink-0"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-all cursor-pointer shrink-0 self-start sm:self-auto"
                 >
-                  <PlusCircle className="w-4 h-4" />
+                  <Plus className="w-3.5 h-3.5 stroke-[2.25]" />
                   <span>Добавить подарок</span>
                 </button>
               )}
             </div>
 
-            {/* Event Filter & Stats */}
+            {/* Filter pills & counts */}
             <div className="flex items-center justify-between gap-3 overflow-x-auto scrollbar-none pb-1">
               <div className="flex items-center gap-1.5 shrink-0">
                 {events.map((tag) => (
                   <button
                     key={tag}
                     onClick={() => setSelectedEvent(tag)}
-                    className={`px-4 py-2 rounded-2xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
                       selectedEvent === tag
-                        ? 'bg-slate-900 text-white shadow-xs'
-                        : 'bg-white border border-slate-200/80 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                        ? 'bg-stone-900 text-white shadow-2xs'
+                        : 'bg-white border border-stone-200/90 text-stone-600 hover:text-stone-900'
                     }`}
                   >
                     {tag}
@@ -392,15 +388,15 @@ export default function HomePage() {
                 ))}
               </div>
 
-              <div className="text-xs text-slate-500 font-medium shrink-0 pl-3">
+              <div className="text-xs font-mono text-stone-400 shrink-0 pl-3">
                 {filteredWishes.length} {filteredWishes.length === 1 ? 'желание' : 'желаний'}
-                {!isOwner && reservedWishes > 0 && ` • 🎁 ${reservedWishes} забронировано`}
+                {!isOwner && reservedWishes > 0 && ` • ${reservedWishes} забронировано`}
               </div>
             </div>
 
             {/* Wishes Grid */}
             {filteredWishes.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {filteredWishes.map((wish) => (
                   <WishCard
                     key={wish.id}
@@ -412,20 +408,22 @@ export default function HomePage() {
                 ))}
               </div>
             ) : (
-              <div className="bg-white border border-slate-200/80 rounded-3xl p-14 text-center shadow-xs">
-                <div className="w-16 h-16 rounded-3xl bg-indigo-50 text-indigo-500 flex items-center justify-center mx-auto mb-4 border border-indigo-100">
-                  <Gift className="w-8 h-8" strokeWidth={1.5} />
+              <div className="bg-white border border-stone-200/90 rounded-2xl p-10 sm:p-14 text-center">
+                <div className="w-10 h-10 rounded-xl bg-stone-100 text-stone-400 flex items-center justify-center mx-auto mb-3">
+                  <Gift className="w-5 h-5 stroke-[1.5]" />
                 </div>
-                <h3 className="font-bold text-slate-900 text-lg mb-1">Пока пусто</h3>
-                <p className="text-xs text-slate-500 max-w-xs mx-auto mb-6">
+                <h3 className="font-medium text-stone-900 text-sm mb-1">
+                  Список желаний пуст
+                </h3>
+                <p className="text-xs text-stone-500 max-w-xs mx-auto mb-5 leading-relaxed">
                   {isOwner
-                    ? 'Добавьте первое желание — просто вставьте ссылку на Ozon или WB, и карточка заполнится сама'
-                    : `${selectedMember.name} пока не добавил(а) ни одного подарка`}
+                    ? 'Добавьте первое желание — просто вставьте ссылку на товар, и карточка заполнится автоматически.'
+                    : `${selectedMember.name} пока не добавил(а) ни одного подарка.`}
                 </p>
                 {isOwner && (
                   <button
                     onClick={() => setIsAddOpen(true)}
-                    className="px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-semibold text-xs shadow-md shadow-indigo-500/25 transition-all cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-all cursor-pointer"
                   >
                     + Добавить первое желание
                   </button>

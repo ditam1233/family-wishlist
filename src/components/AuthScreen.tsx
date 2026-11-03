@@ -3,24 +3,23 @@
 import React, { useState, useEffect } from 'react';
 import { dataStore } from '@/lib/data';
 import { User } from '@/types';
-import { getAvatarGradient, getInitials } from '@/lib/avatar';
-import { Gift, ArrowRight, Loader2, KeyRound, Lock, Mail, User as UserIcon, Check, Sparkles } from 'lucide-react';
+import { getAvatarStyle, getInitials } from '@/lib/avatar';
+import { Gift, ArrowRight, Loader2, KeyRound, Lock, Mail, User as UserIcon, Check } from 'lucide-react';
 
 interface AuthScreenProps {
   onSuccess: (user: User) => void;
 }
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
-  // Режим: 'code' (для родственников) или 'admin' (для создателей с email/паролем)
   const [mode, setMode] = useState<'code' | 'admin'>('code');
 
-  // Поля для входа по коду
+  // Fields for family invite code
   const [inviteCode, setInviteCode] = useState('');
   const [relativeName, setRelativeName] = useState('');
   const [foundFamily, setFoundFamily] = useState<{ name: string; id: string } | null>(null);
   const [familyMembers, setFamilyMembers] = useState<User[]>([]);
 
-  // Поля для создателей (Email / Пароль)
+  // Fields for email/password
   const [isRegister, setIsRegister] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -29,7 +28,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Автозаполнение кода из ссылки: ?code=СТЕ-1234
+  // Auto-fill code from URL: ?code=STE-1234
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -41,7 +40,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
     }
   }, []);
 
-  // Проверка семьи и загрузка участников при вводе кода
+  // Check family by code
   useEffect(() => {
     const checkFamily = async () => {
       const clean = inviteCode.trim();
@@ -67,7 +66,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
     checkFamily();
   }, [inviteCode]);
 
-  // Быстрый вход по нажатию на своё имя
   const handleQuickMemberLogin = async (memberName: string) => {
     setRelativeName(memberName);
     setError(null);
@@ -88,7 +86,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
     }
   };
 
-  // Вход по коду приглашения (для родных)
   const handleCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -109,7 +106,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
     }
   };
 
-  // Вход / Регистрация по Email (для создателей)
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -134,40 +130,36 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
-      {/* Background ambient decorative shapes */}
-      <div className="absolute top-0 -left-20 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 -right-20 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200/80 shadow-2xl shadow-slate-200/60 p-6 sm:p-8 relative z-10">
-        {/* App Brand Header */}
+    <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4 sm:p-6">
+      <div className="w-full max-w-sm bg-white rounded-2xl border border-stone-200/90 shadow-xl p-6 sm:p-8">
+        {/* Brand header */}
         <div className="text-center mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-rose-500 text-white flex items-center justify-center mx-auto mb-3 shadow-lg shadow-indigo-500/25">
-            <Gift className="w-7 h-7" strokeWidth={1.8} />
+          <div className="w-10 h-10 rounded-xl bg-stone-900 text-stone-100 flex items-center justify-center mx-auto mb-3">
+            <Gift className="w-5 h-5 stroke-[1.75]" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-lg font-semibold text-stone-900 tracking-tight font-mono uppercase">
             Family Wishlist
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Секретные бронирования подарков без дубликатов
+          <p className="text-xs text-stone-500 mt-1">
+            Списки желаний и секретное бронирование
           </p>
         </div>
 
-        {/* Tab switcher */}
-        <div className="flex bg-slate-100 p-1 rounded-2xl mb-6">
+        {/* Segmented Mode Switcher */}
+        <div className="flex bg-stone-100 p-1 rounded-xl mb-5">
           <button
             type="button"
             onClick={() => {
               setMode('code');
               setError(null);
             }}
-            className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${
+            className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
               mode === 'code'
-                ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-500 hover:text-slate-900'
+                ? 'bg-white text-stone-900 shadow-2xs font-semibold'
+                : 'text-stone-500 hover:text-stone-900'
             }`}
           >
-            Вход по коду семьи
+            По коду семьи
           </button>
           <button
             type="button"
@@ -175,75 +167,76 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
               setMode('admin');
               setError(null);
             }}
-            className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${
+            className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
               mode === 'admin'
-                ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-500 hover:text-slate-900'
+                ? 'bg-white text-stone-900 shadow-2xs font-semibold'
+                : 'text-stone-500 hover:text-stone-900'
             }`}
           >
-            Организатор
+            Email / Пароль
           </button>
         </div>
 
         {error && (
-          <div className="mb-5 p-3.5 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 text-xs font-medium text-center">
+          <div className="mb-4 p-2.5 rounded-xl bg-stone-100 border border-stone-200 text-stone-800 text-xs text-center font-medium">
             {error}
           </div>
         )}
 
-        {/* Mode 1: Code Login */}
+        {/* Mode: Code */}
         {mode === 'code' ? (
           <div>
             <form onSubmit={handleCodeSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5 ml-0.5">
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1.5">
                   Код приглашения
                 </label>
                 <div className="relative">
-                  <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <KeyRound className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     required
                     value={inviteCode}
                     onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                    placeholder="Например: ФЭМ-3031"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3.5 text-base font-mono font-bold tracking-wider text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all uppercase placeholder:font-sans placeholder:text-sm placeholder:font-normal placeholder:text-slate-400"
+                    placeholder="СТЕ-4821"
+                    className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-9 pr-3.5 py-2.5 text-sm font-mono font-bold tracking-wider text-stone-900 focus:bg-white focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-all uppercase placeholder:font-sans placeholder:text-xs placeholder:font-normal placeholder:text-stone-400"
                   />
                 </div>
               </div>
 
-              {/* Family info & members */}
+              {/* Found family hint */}
               {foundFamily && (
-                <div className="p-4 bg-indigo-50/70 border border-indigo-100 rounded-2xl animate-in fade-in duration-300">
-                  <div className="flex items-center gap-2 text-xs text-indigo-900 font-bold">
-                    <Check className="w-4 h-4 text-emerald-600" />
-                    <span>Семья найдена: «{foundFamily.name}»</span>
+                <div className="p-3 bg-stone-50 border border-stone-200 rounded-xl">
+                  <div className="flex items-center gap-1.5 text-xs text-stone-900 font-medium">
+                    <Check className="w-3.5 h-3.5 text-stone-900 stroke-[2.5]" />
+                    <span>Семья: «{foundFamily.name}»</span>
                   </div>
 
                   {familyMembers.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-indigo-200/50">
-                      <p className="text-[11px] text-slate-600 mb-2 font-medium">
-                        Уже есть в этой семье? Нажмите на имя:
+                    <div className="mt-2.5 pt-2 border-t border-stone-200/60">
+                      <p className="text-[10px] font-mono uppercase tracking-wider text-stone-400 mb-1.5">
+                        Нажмите на своё имя для входа:
                       </p>
                       <div className="flex flex-wrap gap-1.5">
-                        {familyMembers.map((m) => (
-                          <button
-                            key={m.id}
-                            type="button"
-                            disabled={loading}
-                            onClick={() => handleQuickMemberLogin(m.name)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-indigo-200 hover:border-indigo-500 hover:text-indigo-600 text-slate-800 text-xs font-semibold transition-all shadow-xs cursor-pointer active:scale-95"
-                          >
-                            <div
-                              className={`w-5 h-5 rounded-full bg-gradient-to-br ${getAvatarGradient(
-                                m.name
-                              )} flex items-center justify-center text-white text-[9px] font-bold`}
+                        {familyMembers.map((m) => {
+                          const avatarStyle = getAvatarStyle(m.name);
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              disabled={loading}
+                              onClick={() => handleQuickMemberLogin(m.name)}
+                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-stone-200 hover:border-stone-900 text-stone-800 text-xs font-medium transition-all cursor-pointer"
                             >
-                              {getInitials(m.name)}
-                            </div>
-                            <span>{m.name}</span>
-                          </button>
-                        ))}
+                              <div
+                                className={`w-4 h-4 rounded-full border ${avatarStyle} flex items-center justify-center text-[8px] font-mono font-bold`}
+                              >
+                                {getInitials(m.name)}
+                              </div>
+                              <span>{m.name}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -251,20 +244,20 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5 ml-0.5">
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1.5">
                   {foundFamily && familyMembers.length > 0
-                    ? 'Или введите своё имя:'
-                    : 'Как вас зовут?'}
+                    ? 'Или укажите новое имя'
+                    : 'Ваше имя'}
                 </label>
                 <div className="relative">
-                  <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <UserIcon className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     required
                     value={relativeName}
                     onChange={(e) => setRelativeName(e.target.value)}
-                    placeholder="Например: Мама, Папа Саша, Бабушка..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3.5 text-sm font-medium text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400"
+                    placeholder="Например: Мама или Степан"
+                    className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-stone-900 focus:bg-white focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-all placeholder:text-stone-400"
                   />
                 </div>
               </div>
@@ -272,72 +265,72 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-2 py-3.5 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:opacity-50 text-white font-semibold text-sm shadow-md shadow-indigo-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white font-medium text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
               >
                 {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <>
                     <span>Войти в семью</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </>
                 )}
               </button>
             </form>
           </div>
         ) : (
-          /* Mode 2: Organizer (Email / Password) */
+          /* Mode: Email / Password */
           <div>
             <form onSubmit={handleAdminSubmit} className="space-y-3.5">
               {isRegister && (
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1 ml-0.5">
-                    Ваше имя
+                  <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1">
+                    Имя
                   </label>
                   <div className="relative">
-                    <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <UserIcon className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Степан"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                      className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-9 pr-3.5 py-2 text-xs text-stone-900 focus:bg-white focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-all"
                     />
                   </div>
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1 ml-0.5">
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1">
                   Email
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@example.com"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                    className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-9 pr-3.5 py-2 text-xs text-stone-900 focus:bg-white focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1 ml-0.5">
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1">
                   Пароль
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                    className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-9 pr-3.5 py-2 text-xs text-stone-900 focus:bg-white focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-all"
                   />
                 </div>
               </div>
@@ -345,10 +338,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-3 py-3.5 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:opacity-50 text-white font-semibold text-sm shadow-md shadow-indigo-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full mt-2 py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white font-medium text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
               >
                 {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <span>{isRegister ? 'Зарегистрироваться' : 'Войти'}</span>
                 )}
@@ -358,7 +351,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                 <button
                   type="button"
                   onClick={() => setIsRegister(!isRegister)}
-                  className="text-xs text-indigo-600 hover:underline font-semibold cursor-pointer"
+                  className="text-xs text-stone-600 hover:text-stone-900 font-medium cursor-pointer"
                 >
                   {isRegister
                     ? 'Уже есть аккаунт? Войти'

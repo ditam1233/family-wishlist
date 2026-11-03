@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Wish, Priority } from '@/types';
-import { X, Sparkles, Loader2, Check, Image as ImageIcon } from 'lucide-react';
+import { X, Sparkles, Loader2, Check } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface AddWishModalProps {
@@ -47,7 +47,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
       if (data.price) setPrice(String(data.price));
       if (data.description && !description) setDescription(data.description);
     } catch {
-      setScrapeError('Не удалось подгрузить данные с сайта. Заполните вручную.');
+      setScrapeError('Не удалось извлечь данные с сайта. Заполните поля вручную.');
     } finally {
       setIsLoading(false);
     }
@@ -68,7 +68,12 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
       event_tag: eventTag,
     });
     try {
-      confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+      confetti({
+        particleCount: 35,
+        spread: 55,
+        origin: { y: 0.6 },
+        colors: ['#171717', '#78716c', '#d6d3d1'],
+      });
     } catch {
       /* noop */
     }
@@ -83,29 +88,33 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
   };
 
   const inputClass =
-    'w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400';
+    'w-full bg-stone-50/80 border border-stone-200 rounded-xl px-3.5 py-2.5 text-sm text-stone-900 focus:bg-white focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-all placeholder:text-stone-400';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl shadow-slate-900/10 border border-slate-200 relative max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/40 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="bg-white rounded-2xl max-w-lg w-full border border-stone-200/90 shadow-2xl relative max-h-[92vh] overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-white/95 backdrop-blur-md p-6 pb-4 border-b border-slate-100 rounded-t-3xl flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-white/95 backdrop-blur-md p-5 border-b border-stone-100 rounded-t-2xl flex items-center justify-between z-10">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Новое желание</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Вставьте ссылку на товар или заполните вручную</p>
+            <h2 className="text-base font-semibold text-stone-900 tracking-tight">
+              Новое желание
+            </h2>
+            <p className="text-xs text-stone-500 mt-0.5">
+              Вставьте ссылку на товар или введите данные
+            </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+            className="p-1.5 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-6 pt-5 space-y-5">
+        <div className="p-5 sm:p-6 space-y-5">
           {/* URL + Scrape */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5 ml-0.5">
+            <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1.5">
               Ссылка на товар (Ozon, WB, Маркет...)
             </label>
             <div className="flex gap-2">
@@ -116,25 +125,25 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
                   setUrl(e.target.value);
                   setScrapeError(null);
                 }}
-                placeholder="https://ozon.ru/product/..."
-                className={`${inputClass} flex-1`}
+                placeholder="https://..."
+                className={`${inputClass} flex-1 text-xs`}
               />
               <button
                 type="button"
                 onClick={handleScrape}
                 disabled={isLoading || !url}
-                className="h-[46px] px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 disabled:bg-slate-100 disabled:text-slate-400 text-white font-semibold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs"
+                className="h-[38px] px-3.5 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:bg-stone-100 disabled:text-stone-400 text-white font-medium text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
               >
                 {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
-                  <Sparkles className="w-4 h-4 text-indigo-400" />
+                  <Sparkles className="w-3.5 h-3.5" />
                 )}
-                <span className="hidden sm:inline">{isLoading ? 'Загрузка...' : 'Авто-заполнение'}</span>
+                <span>{isLoading ? 'Загрузка...' : 'Заполнить'}</span>
               </button>
             </div>
             {scrapeError && (
-              <p className="text-[11px] text-amber-700 bg-amber-50 p-2.5 rounded-xl mt-2 border border-amber-200">
+              <p className="text-xs text-stone-500 bg-stone-100 p-2.5 rounded-lg mt-2 border border-stone-200">
                 {scrapeError}
               </p>
             )}
@@ -142,34 +151,34 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5 ml-0.5">
-                Название подарка <span className="text-rose-500">*</span>
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1.5">
+                Название <span className="text-stone-900">*</span>
               </label>
               <input
                 type="text"
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Умная колонка, духи, книга..."
+                placeholder="Что вы хотите получить в подарок?"
                 className={inputClass}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5 ml-0.5">
-                  Примерная цена (₽)
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1.5">
+                  Цена (₽)
                 </label>
                 <input
                   type="number"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  placeholder="5 000"
+                  placeholder="5000"
                   className={inputClass}
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5 ml-0.5">
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1.5">
                   Повод
                 </label>
                 <select
@@ -188,26 +197,26 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
 
             {/* Priority pills */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5 ml-0.5">
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1.5">
                 Приоритет
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { key: 'must_have' as Priority, label: 'Очень хочу', icon: '🔥', activeBg: 'bg-rose-50 border-rose-300 text-rose-700' },
-                  { key: 'nice_to_have' as Priority, label: 'Было бы ок', icon: '⭐', activeBg: 'bg-amber-50 border-amber-300 text-amber-700' },
-                  { key: 'dream' as Priority, label: 'Мечта', icon: '✨', activeBg: 'bg-violet-50 border-violet-300 text-violet-700' },
+                  { key: 'must_have' as Priority, label: 'Очень хочу', symbol: '●' },
+                  { key: 'nice_to_have' as Priority, label: 'Хочется', symbol: '○' },
+                  { key: 'dream' as Priority, label: 'Мечта', symbol: '◇' },
                 ].map((p) => (
                   <button
                     key={p.key}
                     type="button"
                     onClick={() => setPriority(p.key)}
-                    className={`py-2.5 px-2 rounded-2xl border text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    className={`py-2 px-2 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                       priority === p.key
-                        ? `${p.activeBg} shadow-xs scale-[1.02]`
-                        : 'bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-800'
+                        ? 'bg-stone-900 text-white shadow-xs'
+                        : 'bg-stone-50 border border-stone-200 text-stone-600 hover:text-stone-900'
                     }`}
                   >
-                    <span>{p.icon}</span>
+                    <span className="text-[10px]">{p.symbol}</span>
                     <span>{p.label}</span>
                   </button>
                 ))}
@@ -215,8 +224,8 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5 ml-0.5">
-                Ссылка на картинку
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1.5">
+                Ссылка на изображение
               </label>
               <div className="flex gap-2 items-center">
                 <input
@@ -231,30 +240,30 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
                   <img
                     src={imageUrl}
                     alt=""
-                    className="w-11 h-11 rounded-xl object-cover border border-slate-200 shrink-0"
+                    className="w-10 h-10 rounded-lg object-cover border border-stone-200 shrink-0"
                   />
                 )}
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5 ml-0.5">
-                Комментарий или детали
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 mb-1.5">
+                Примечание / детали
               </label>
               <textarea
                 rows={2}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Размер, цвет, где лучше купить..."
+                placeholder="Размер, цвет, где лучше приобрести..."
                 className={`${inputClass} text-xs`}
               />
             </div>
 
             <button
               type="submit"
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-semibold text-sm shadow-md shadow-indigo-500/25 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2"
+              className="w-full py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.99]"
             >
-              <Check className="w-4 h-4" />
+              <Check className="w-3.5 h-3.5 stroke-[2.5]" />
               <span>Сохранить в вишлист</span>
             </button>
           </form>

@@ -23,6 +23,7 @@
 # misc
 .DS_Store
 *.pem
+github_token.txt
 
 # debug
 npm-debug.log*
