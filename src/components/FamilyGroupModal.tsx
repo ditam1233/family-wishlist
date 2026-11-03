@@ -52,7 +52,10 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
 
   const handleShareLink = (code: string) => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const pathname = typeof window !== 'undefined' ? window.location.pathname.replace(/\/$/, '') : '';
+    const pathname =
+      typeof window !== 'undefined'
+        ? window.location.pathname.replace(/\/$/, '')
+        : '';
     const shareUrl = `${origin}${pathname}/?code=${encodeURIComponent(code)}`;
     navigator.clipboard.writeText(shareUrl);
     setCopiedLink(code);
@@ -96,21 +99,24 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
   };
 
   const inputClass =
-    'w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 text-sm text-stone-900 focus:bg-white focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-all placeholder:text-stone-400';
+    'w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-stone-900 focus:bg-white focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-all placeholder:text-stone-400';
 
   const tabBtnClass = (active: boolean) =>
-    `flex-1 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+    `flex-1 py-2 text-xs font-medium rounded-lg transition-all cursor-pointer ${
       active
         ? 'bg-white text-stone-900 shadow-2xs font-semibold'
         : 'text-stone-500 hover:text-stone-900'
     }`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/40 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl max-w-md w-full border border-stone-200/90 shadow-2xl p-5 sm:p-6 relative">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-950/40 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full border-t sm:border border-stone-200/90 shadow-2xl p-5 sm:p-6 relative max-h-[90vh] overflow-y-auto">
+        {/* Mobile handle indicator */}
+        <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto -mt-1 mb-4 sm:hidden" />
+
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer"
+          className="absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer"
         >
           <X className="w-4 h-4" />
         </button>
@@ -181,7 +187,7 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
                     } flex items-center justify-between gap-3`}
                   >
                     <div
-                      className="cursor-pointer flex-1"
+                      className="cursor-pointer flex-1 min-w-0"
                       onClick={() => {
                         if (onSelectGroup) {
                           onSelectGroup(group.id);
@@ -190,11 +196,11 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
                       }}
                     >
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-xs text-stone-900">
+                        <span className="font-medium text-xs text-stone-900 truncate">
                           {group.name}
                         </span>
                         {isActive && (
-                          <span className="text-[9px] bg-stone-900 text-white font-mono uppercase px-1.5 py-0.2 rounded">
+                          <span className="text-[9px] bg-stone-900 text-white font-mono uppercase px-1.5 py-0.2 rounded shrink-0">
                             Активен
                           </span>
                         )}
@@ -214,7 +220,7 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
                             onSelectGroup(group.id);
                             onClose();
                           }}
-                          className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium transition-all cursor-pointer"
+                          className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium transition-all cursor-pointer"
                         >
                           Выбрать
                         </button>
@@ -222,18 +228,18 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
 
                       <button
                         onClick={() => handleShareLink(group.invite_code)}
-                        className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium flex items-center gap-1 transition-all cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium flex items-center gap-1 transition-all cursor-pointer"
                         title="Скопировать ссылку для отправки близким"
                       >
                         {copiedLink === group.invite_code ? (
                           <>
                             <Check className="w-3 h-3 text-stone-900 stroke-[2.5]" />
-                            <span>Готово</span>
+                            <span className="hidden sm:inline">Готово</span>
                           </>
                         ) : (
                           <>
                             <Share2 className="w-3 h-3 text-stone-500" />
-                            <span>Ссылка</span>
+                            <span className="hidden sm:inline">Ссылка</span>
                           </>
                         )}
                       </button>
@@ -281,7 +287,7 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-all cursor-pointer flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-all cursor-pointer flex items-center justify-center gap-2"
             >
               {loading ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -310,7 +316,7 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-all cursor-pointer flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-all cursor-pointer flex items-center justify-center gap-2"
             >
               {loading ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Wish, Priority } from '@/types';
+import { Wish } from '@/types';
 import { Plus, Sparkles, Loader2, SlidersHorizontal } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -19,12 +19,17 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
   const [inputVal, setInputVal] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const isUrl = (text: string) => {
+  const normalizeUrl = (text: string): string | null => {
+    let clean = text.trim();
+    if (!clean) return null;
+    if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(clean) && !clean.startsWith('http://') && !clean.startsWith('https://')) {
+      clean = 'https://' + clean;
+    }
     try {
-      const u = new URL(text.trim());
-      return u.protocol === 'http:' || u.protocol === 'https:';
+      const u = new URL(clean);
+      return u.protocol === 'http:' || u.protocol === 'https:' ? clean : null;
     } catch {
-      return false;
+      return null;
     }
   };
 
@@ -33,20 +38,22 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
     const clean = inputVal.trim();
     if (!clean) return;
 
-    if (isUrl(clean)) {
+    const detectedUrl = normalizeUrl(clean);
+
+    if (detectedUrl) {
       setLoading(true);
       try {
         const res = await fetch('/api/scrape-link', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: clean }),
+          body: JSON.stringify({ url: detectedUrl }),
         });
         const data = await res.json();
         onAddWish({
           user_id: currentUserId,
           title: data.title || clean,
           description: data.description || undefined,
-          link_url: clean,
+          link_url: detectedUrl,
           image_url: data.image || undefined,
           price: data.price ? parseFloat(data.price) : undefined,
           currency: '₽',
@@ -57,7 +64,7 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
         onAddWish({
           user_id: currentUserId,
           title: clean,
-          link_url: clean,
+          link_url: detectedUrl,
           currency: '₽',
           priority: 'nice_to_have',
           event_tag: 'Без повода',
@@ -89,12 +96,14 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
     setInputVal('');
   };
 
+  const isCurrentUrl = Boolean(normalizeUrl(inputVal));
+
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white rounded-xl border border-stone-200/90 hover:border-stone-400/80 transition-colors p-1.5 flex items-center gap-1.5 shadow-2xs"
+      className="bg-white rounded-2xl border border-stone-200/90 hover:border-stone-400/80 transition-colors p-2 flex items-center gap-1.5 shadow-2xs"
     >
-      <div className="pl-2.5 text-stone-400">
+      <div className="pl-2 text-stone-400">
         <Plus className="w-4 h-4 stroke-[2]" />
       </div>
 
@@ -103,7 +112,7 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
         value={inputVal}
         onChange={(e) => setInputVal(e.target.value)}
         placeholder="Быстро добавить: вставьте ссылку на товар или напишите название..."
-        className="w-full bg-transparent px-2 py-1 text-xs sm:text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none"
+        className="w-full bg-transparent px-2 py-1 text-base sm:text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none"
       />
 
       <div className="flex items-center gap-1 shrink-0 pr-0.5">
@@ -111,22 +120,22 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
           type="button"
           onClick={onOpenFullModal}
           title="Подробная форма"
-          className="p-1.5 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer"
+          className="p-2 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-xl transition-colors cursor-pointer"
         >
-          <SlidersHorizontal className="w-3.5 h-3.5" />
+          <SlidersHorizontal className="w-4 h-4" />
         </button>
 
         <button
           type="submit"
           disabled={loading || !inputVal.trim()}
-          className="h-8 px-3 rounded-lg bg-stone-900 hover:bg-stone-800 disabled:opacity-30 text-white font-medium text-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+          className="h-9 px-3.5 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-30 text-white font-medium text-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
         >
           {loading ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : isUrl(inputVal) ? (
+          ) : isCurrentUrl ? (
             <>
-              <Sparkles className="w-3 h-3" />
-              <span>Распознать</span>
+              <Sparkles className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Распознать</span>
             </>
           ) : (
             <span>Добавить</span>

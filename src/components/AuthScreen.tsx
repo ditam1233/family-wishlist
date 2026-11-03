@@ -129,8 +129,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
     }
   };
 
+  const inputClass =
+    'w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 text-base sm:text-xs text-stone-900 focus:bg-white focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-all placeholder:text-stone-400';
+
   return (
-    <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4 sm:p-6">
+    <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4 sm:p-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="w-full max-w-sm bg-white rounded-2xl border border-stone-200/90 shadow-xl p-6 sm:p-8">
         {/* Brand header */}
         <div className="text-center mb-6">
@@ -153,7 +156,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
               setMode('code');
               setError(null);
             }}
-            className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+            className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all cursor-pointer ${
               mode === 'code'
                 ? 'bg-white text-stone-900 shadow-2xs font-semibold'
                 : 'text-stone-500 hover:text-stone-900'
@@ -167,7 +170,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
               setMode('admin');
               setError(null);
             }}
-            className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+            className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all cursor-pointer ${
               mode === 'admin'
                 ? 'bg-white text-stone-900 shadow-2xs font-semibold'
                 : 'text-stone-500 hover:text-stone-900'
@@ -199,7 +202,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                     value={inviteCode}
                     onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
                     placeholder="СТЕ-4821"
-                    className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-9 pr-3.5 py-2.5 text-sm font-mono font-bold tracking-wider text-stone-900 focus:bg-white focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-all uppercase placeholder:font-sans placeholder:text-xs placeholder:font-normal placeholder:text-stone-400"
+                    className={`${inputClass} pl-9 font-mono font-bold tracking-wider uppercase placeholder:font-sans placeholder:font-normal`}
                   />
                 </div>
               </div>
@@ -214,7 +217,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
 
                   {familyMembers.length > 0 && (
                     <div className="mt-2.5 pt-2 border-t border-stone-200/60">
-                      <p className="text-[10px] font-mono uppercase tracking-wider text-stone-400 mb-1.5">
+                      <p className="text-[10px] font-mono uppercase tracking-wider text-stone-400 mb-2">
                         Нажмите на своё имя для входа:
                       </p>
                       <div className="flex flex-wrap gap-1.5">
@@ -226,7 +229,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                               type="button"
                               disabled={loading}
                               onClick={() => handleQuickMemberLogin(m.name)}
-                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-stone-200 hover:border-stone-900 text-stone-800 text-xs font-medium transition-all cursor-pointer"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-stone-200 hover:border-stone-900 text-stone-800 text-xs font-medium transition-all cursor-pointer active:scale-95"
                             >
                               <div
                                 className={`w-4 h-4 rounded-full border ${avatarStyle} flex items-center justify-center text-[8px] font-mono font-bold`}
@@ -257,7 +260,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                     value={relativeName}
                     onChange={(e) => setRelativeName(e.target.value)}
                     placeholder="Например: Мама или Степан"
-                    className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-stone-900 focus:bg-white focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-all placeholder:text-stone-400"
+                    className={`${inputClass} pl-9`}
                   />
                 </div>
               </div>
@@ -265,7 +268,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white font-medium text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
+                className="w-full py-3 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white font-medium text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
               >
                 {loading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -295,7 +298,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Степан"
-                      className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-9 pr-3.5 py-2 text-xs text-stone-900 focus:bg-white focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-all"
+                      className={`${inputClass} pl-9`}
                     />
                   </div>
                 </div>
@@ -313,7 +316,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@example.com"
-                    className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-9 pr-3.5 py-2 text-xs text-stone-900 focus:bg-white focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-all"
+                    className={`${inputClass} pl-9`}
                   />
                 </div>
               </div>
@@ -330,7 +333,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-9 pr-3.5 py-2 text-xs text-stone-900 focus:bg-white focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-all"
+                    className={`${inputClass} pl-9`}
                   />
                 </div>
               </div>
@@ -338,7 +341,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-2 py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white font-medium text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
+                className="w-full mt-2 py-3 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white font-medium text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
               >
                 {loading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -351,7 +354,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                 <button
                   type="button"
                   onClick={() => setIsRegister(!isRegister)}
-                  className="text-xs text-stone-600 hover:text-stone-900 font-medium cursor-pointer"
+                  className="text-xs text-stone-600 hover:text-stone-900 font-medium cursor-pointer p-1"
                 >
                   {isRegister
                     ? 'Уже есть аккаунт? Войти'

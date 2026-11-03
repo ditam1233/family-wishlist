@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Wish, FamilyGroup } from '@/types';
 import { dataStore } from '@/lib/data';
 import { Sidebar } from '@/components/Sidebar';
+import { MobileNav } from '@/components/MobileNav';
 import { WishCard } from '@/components/WishCard';
 import { WishRow } from '@/components/WishRow';
 import { InlineAddWish } from '@/components/InlineAddWish';
@@ -11,6 +12,7 @@ import { AddWishModal } from '@/components/AddWishModal';
 import { FamilyGroupModal } from '@/components/FamilyGroupModal';
 import { AuthScreen } from '@/components/AuthScreen';
 import { formatPrice } from '@/lib/utils';
+import { getAvatarStyle, getInitials } from '@/lib/avatar';
 import {
   Gift,
   Plus,
@@ -20,7 +22,7 @@ import {
   Lock,
   Search,
   BookmarkCheck,
-  Sparkles,
+  X,
 } from 'lucide-react';
 
 export default function HomePage() {
@@ -35,6 +37,7 @@ export default function HomePage() {
   const [selectedEvent, setSelectedEvent] = useState('Все');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   type DisplayWish = Wish & {
@@ -204,8 +207,8 @@ export default function HomePage() {
   if (isAppLoading) {
     return (
       <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center p-6">
-        <div className="w-8 h-8 rounded-lg bg-stone-900 text-stone-100 flex items-center justify-center mb-3">
-          <Gift className="w-4 h-4 stroke-[1.75]" />
+        <div className="w-9 h-9 rounded-xl bg-stone-900 text-stone-100 flex items-center justify-center mb-3">
+          <Gift className="w-5 h-5 stroke-[1.75]" />
         </div>
         <div className="text-xs font-mono tracking-wider uppercase text-stone-400">
           Загрузка...
@@ -225,21 +228,17 @@ export default function HomePage() {
   const visibleWishes = (
     selectedView === 'wishes' ? wishes : myReservations
   ).filter((w) => {
+    const matchSearch =
+      !searchQuery.trim() ||
+      w.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      w.description?.toLowerCase().includes(searchQuery.toLowerCase());
+
     if (selectedView === 'wishes') {
       const matchEvent =
         selectedEvent === 'Все' || w.event_tag === selectedEvent;
-      const matchSearch =
-        !searchQuery.trim() ||
-        w.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        w.description?.toLowerCase().includes(searchQuery.toLowerCase());
       return matchEvent && matchSearch;
-    } else {
-      const matchSearch =
-        !searchQuery.trim() ||
-        w.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        w.description?.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchSearch;
     }
+    return matchSearch;
   });
 
   const totalReservedBudget = myReservations.reduce(
@@ -249,7 +248,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-stone-50 flex text-stone-900 antialiased">
-      {/* Permanent Left Sidebar (desktop) + Drawer (mobile) */}
+      {/* Permanent Left Sidebar (desktop) + Slide-over Drawer (mobile) */}
       <Sidebar
         currentUser={currentUser}
         userGroups={userGroups}
@@ -272,19 +271,22 @@ export default function HomePage() {
       {/* Main Focus Canvas */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
         {/* Sticky Minimalist Top Bar */}
-        <header className="sticky top-0 z-20 bg-stone-50/90 backdrop-blur-md border-b border-stone-200/80 px-4 sm:px-8 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+        <header className="sticky top-0 z-20 bg-stone-50/95 backdrop-blur-md border-b border-stone-200/80 px-3.5 sm:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
             <button
               onClick={() => setIsMobileSidebarOpen(true)}
-              className="p-1.5 text-stone-600 hover:text-stone-900 md:hidden rounded-lg hover:bg-stone-200/60"
+              className="p-2 text-stone-600 hover:text-stone-900 md:hidden rounded-xl hover:bg-stone-200/60 active:scale-95 transition-transform cursor-pointer"
+              title="Открыть меню"
             >
               <Menu className="w-4 h-4" />
             </button>
 
             {/* Breadcrumb path */}
             <div className="flex items-center gap-1.5 text-xs text-stone-500 min-w-0 truncate font-mono">
-              <span className="truncate">{activeGroup?.name || 'Круг'}</span>
-              <span>/</span>
+              <span className="truncate hidden sm:inline">
+                {activeGroup?.name || 'Круг'}
+              </span>
+              <span className="hidden sm:inline">/</span>
               <span className="font-semibold text-stone-900 truncate">
                 {selectedView === 'wishes'
                   ? isOwner
@@ -296,8 +298,20 @@ export default function HomePage() {
           </div>
 
           {/* Right Top Controls */}
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Search */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Mobile search toggle */}
+            <button
+              onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+              className="p-2 text-stone-500 hover:text-stone-900 rounded-xl hover:bg-stone-200/60 sm:hidden cursor-pointer"
+            >
+              {isMobileSearchOpen ? (
+                <X className="w-4 h-4" />
+              ) : (
+                <Search className="w-4 h-4" />
+              )}
+            </button>
+
+            {/* Desktop Search */}
             <div className="relative hidden sm:block">
               <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input
@@ -305,16 +319,16 @@ export default function HomePage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Поиск..."
-                className="bg-white border border-stone-200 rounded-lg pl-8 pr-2.5 py-1 text-xs text-stone-900 focus:outline-none focus:border-stone-900 w-32 md:w-44 transition-all"
+                className="bg-white border border-stone-200 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-stone-900 focus:outline-none focus:border-stone-900 w-32 md:w-44 transition-all"
               />
             </div>
 
             {/* View Mode Switcher: Grid vs List */}
-            <div className="flex items-center bg-white border border-stone-200 rounded-lg p-0.5">
+            <div className="flex items-center bg-white border border-stone-200 rounded-xl p-0.5 shadow-2xs">
               <button
                 onClick={() => setViewMode('grid')}
                 title="Сетка"
-                className={`p-1 rounded transition-colors ${
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   viewMode === 'grid'
                     ? 'bg-stone-900 text-white'
                     : 'text-stone-400 hover:text-stone-800'
@@ -325,7 +339,7 @@ export default function HomePage() {
               <button
                 onClick={() => setViewMode('list')}
                 title="Компактный список"
-                className={`p-1 rounded transition-colors ${
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   viewMode === 'list'
                     ? 'bg-stone-900 text-white'
                     : 'text-stone-400 hover:text-stone-800'
@@ -335,21 +349,72 @@ export default function HomePage() {
               </button>
             </div>
 
-            {/* Direct Add Wish button */}
+            {/* Direct Add Wish button (Desktop) */}
             {isOwner && (
               <button
                 onClick={() => setIsAddOpen(true)}
-                className="px-3 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                className="hidden sm:inline-flex px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-medium items-center gap-1.5 transition-all cursor-pointer active:scale-95"
               >
                 <Plus className="w-3.5 h-3.5 stroke-[2.25]" />
-                <span className="hidden sm:inline">Желание</span>
+                <span>Желание</span>
               </button>
             )}
           </div>
         </header>
 
-        {/* Canvas Body */}
-        <main className="max-w-5xl w-full mx-auto p-4 sm:p-8 space-y-6">
+        {/* Mobile Search input dropdown */}
+        {isMobileSearchOpen && (
+          <div className="p-3 bg-white border-b border-stone-200 sm:hidden">
+            <div className="relative">
+              <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Поиск по желаниям..."
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-9 pr-3.5 py-2 text-base text-stone-900 focus:outline-none focus:border-stone-900"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Mobile Horizontal Relatives Carousel (Quick switch between members on phone) */}
+        {selectedView === 'wishes' && familyMembers.length > 1 && (
+          <div className="md:hidden bg-white/70 border-b border-stone-200/80 px-3 py-2 overflow-x-auto scrollbar-none flex items-center gap-1.5">
+            {familyMembers.map((member) => {
+              const isSelected = member.id === selectedUserId;
+              const isMe = member.id === currentUser.id;
+              const avatarStyle = getAvatarStyle(member.name);
+              const initials = getInitials(member.name);
+
+              return (
+                <button
+                  key={member.id}
+                  onClick={() => handleSelectUser(member.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-all cursor-pointer active:scale-95 ${
+                    isSelected
+                      ? 'bg-stone-900 text-white shadow-2xs'
+                      : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                  }`}
+                >
+                  <div
+                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-mono font-bold ${
+                      isSelected
+                        ? 'bg-stone-800 text-stone-200'
+                        : `border ${avatarStyle}`
+                    }`}
+                  >
+                    {initials}
+                  </div>
+                  <span>{isMe ? 'Вы' : member.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Canvas Body - padded at bottom for Mobile Bottom Nav */}
+        <main className="max-w-5xl w-full mx-auto p-4 sm:p-8 pb-28 md:pb-8 space-y-6">
           {selectedView === 'wishes' ? (
             <>
               {/* Member Title & Status Banner */}
@@ -398,7 +463,7 @@ export default function HomePage() {
               {/* Wishes presentation (Grid or List) */}
               {visibleWishes.length > 0 ? (
                 viewMode === 'grid' ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                     {visibleWishes.map((wish) => (
                       <WishCard
                         key={wish.id}
@@ -423,7 +488,7 @@ export default function HomePage() {
                   </div>
                 )
               ) : (
-                <div className="bg-white border border-stone-200/90 rounded-2xl p-10 sm:p-14 text-center">
+                <div className="bg-white border border-stone-200/90 rounded-2xl p-8 sm:p-14 text-center">
                   <div className="w-10 h-10 rounded-xl bg-stone-100 text-stone-400 flex items-center justify-center mx-auto mb-3">
                     <Gift className="w-5 h-5 stroke-[1.5]" />
                   </div>
@@ -438,7 +503,7 @@ export default function HomePage() {
                   {isOwner && (
                     <button
                       onClick={() => setIsAddOpen(true)}
-                      className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-all cursor-pointer"
+                      className="px-4 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-all cursor-pointer"
                     >
                       + Добавить первое желание
                     </button>
@@ -462,7 +527,7 @@ export default function HomePage() {
                 </div>
 
                 {myReservations.length > 0 && totalReservedBudget > 0 && (
-                  <div className="p-2.5 rounded-xl bg-white border border-stone-200 text-right shrink-0">
+                  <div className="p-2.5 rounded-xl bg-white border border-stone-200 text-left sm:text-right shrink-0">
                     <div className="text-[10px] font-mono uppercase tracking-wider text-stone-400">
                       Примерный бюджет
                     </div>
@@ -475,7 +540,7 @@ export default function HomePage() {
 
               {visibleWishes.length > 0 ? (
                 viewMode === 'grid' ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                     {visibleWishes.map((wish) => (
                       <div key={wish.id} className="flex flex-col gap-1.5">
                         <div className="text-[11px] font-mono text-stone-500 px-1">
@@ -511,7 +576,7 @@ export default function HomePage() {
                   </div>
                 )
               ) : (
-                <div className="bg-white border border-stone-200/90 rounded-2xl p-10 sm:p-14 text-center">
+                <div className="bg-white border border-stone-200/90 rounded-2xl p-8 sm:p-14 text-center">
                   <div className="w-10 h-10 rounded-xl bg-stone-100 text-stone-400 flex items-center justify-center mx-auto mb-3">
                     <BookmarkCheck className="w-5 h-5 stroke-[1.5]" />
                   </div>
@@ -519,12 +584,12 @@ export default function HomePage() {
                     Вы пока ничего не забронировали
                   </h3>
                   <p className="text-xs text-stone-500 max-w-xs mx-auto mb-4">
-                    Перейдите в вишлист любого родственника в боковом меню и
-                    нажмите «Подарю я», чтобы забронировать подарок.
+                    Перейдите в вишлист любого родственника и нажмите «Подарю
+                    я», чтобы забронировать подарок.
                   </p>
                   <button
                     onClick={() => setSelectedView('wishes')}
-                    className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-all cursor-pointer"
+                    className="px-4 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-all cursor-pointer"
                   >
                     Перейти к желаниям семьи
                   </button>
@@ -534,6 +599,15 @@ export default function HomePage() {
           )}
         </main>
       </div>
+
+      {/* Floating Bottom Navigation Bar for Mobile */}
+      <MobileNav
+        selectedView={selectedView}
+        onSelectView={setSelectedView}
+        myReservationsCount={myReservations.length}
+        onOpenSidebar={() => setIsMobileSidebarOpen(true)}
+        onOpenAddWish={() => setIsAddOpen(true)}
+      />
 
       <AddWishModal
         isOpen={isAddOpen}
