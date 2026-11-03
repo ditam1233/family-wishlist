@@ -48,7 +48,8 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
 
   const handleShareLink = (code: string) => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const shareUrl = `${origin}/?code=${encodeURIComponent(code)}`;
+    const pathname = typeof window !== 'undefined' ? window.location.pathname.replace(/\/$/, '') : '';
+    const shareUrl = `${origin}${pathname}/?code=${encodeURIComponent(code)}`;
     navigator.clipboard.writeText(shareUrl);
     setCopiedLink(code);
     setTimeout(() => setCopiedLink(null), 2000);
