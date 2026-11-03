@@ -1,3 +1,8 @@
+export const isUUID = (str?: string): boolean => {
+  if (!str) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+};
+
 import { User, FamilyGroup, Wish, Reservation } from '@/types';
 import { supabase, isSupabaseConfigured } from './supabase';
 
@@ -678,52 +683,55 @@ class WishlistDataStore {
 
   public async getWishesForUser(targetUserId: string, viewerId: string) {
     const isOwner = targetUserId === viewerId;
+    let remoteWishes: (Wish & { is_reserved?: boolean; reserved_by_me?: boolean })[] = [];
+    let remoteFetched = false;
 
-    if (isSupabaseConfigured() && supabase) {
+    if (isSupabaseConfigured() && supabase && isUUID(targetUserId)) {
       try {
-        const { data: wishes } = await supabase
+        const { data: wishes, error } = await supabase
           .from('wishes')
           .select('*')
           .eq('user_id', targetUserId)
           .order('created_at', { ascending: false });
 
-        if (!wishes) return [];
+        if (!error && wishes) {
+          remoteFetched = true;
+          if (isOwner) {
+            remoteWishes = wishes.map((w) => ({
+              ...w,
+              is_reserved: false,
+              reserved_by_me: false,
+            }));
+          } else {
+            const wishIds = wishes.map((w) => w.id);
+            const { data: reservations } = await supabase
+              .from('reservations')
+              .select('*')
+              .in('wish_id', wishIds);
 
-        if (isOwner) {
-          return wishes.map((w) => ({
-            ...w,
-            is_reserved: false,
-            reserved_by_me: false,
-          }));
+            remoteWishes = wishes.map((w) => {
+              const res = (reservations || []).find((r) => r.wish_id === w.id);
+              return {
+                ...w,
+                is_reserved: Boolean(res),
+                reserved_by_me: res?.reserved_by === viewerId,
+              };
+            });
+          }
         }
-
-        const wishIds = wishes.map((w) => w.id);
-        const { data: reservations } = await supabase
-          .from('reservations')
-          .select('*')
-          .in('wish_id', wishIds);
-
-        return wishes.map((w) => {
-          const res = (reservations || []).find((r) => r.wish_id === w.id);
-          return {
-            ...w,
-            is_reserved: Boolean(res),
-            reserved_by_me: res?.reserved_by === viewerId,
-          };
-        });
       } catch (err) {
-        console.error('Error fetching wishes from Supabase:', err);
+        console.warn('Error fetching wishes from Supabase:', err);
       }
     }
 
-    // Local fallback
-    const wishes = this.getLocal<Wish[]>(STORAGE_WISHES, []).filter(
+    // Local fallback / cached wishes
+    const localWishes = this.getLocal<Wish[]>(STORAGE_WISHES, []).filter(
       (w) => w.user_id === targetUserId
     );
-    const reservations = this.getLocal<Reservation[]>(STORAGE_RESERVATIONS, []);
+    const localReservations = this.getLocal<Reservation[]>(STORAGE_RESERVATIONS, []);
 
-    return wishes.map((wish) => {
-      const reservation = reservations.find((r) => r.wish_id === wish.id);
+    const formattedLocal = localWishes.map((wish) => {
+      const reservation = localReservations.find((r) => r.wish_id === wish.id);
       if (isOwner) {
         return { ...wish, is_reserved: false, reserved_by_me: false };
       }
@@ -733,40 +741,57 @@ class WishlistDataStore {
         reserved_by_me: reservation?.reserved_by === viewerId,
       };
     });
+
+    if (!remoteFetched) {
+      return formattedLocal;
+    }
+
+    // Merge: remoteWishes + any local wishes that are not yet synced to remote
+    const merged = [...remoteWishes];
+    for (const lw of formattedLocal) {
+      const exists = merged.some(
+        (rw) =>
+          rw.id === lw.id ||
+          (rw.title === lw.title &&
+            Math.abs(new Date(rw.created_at).getTime() - new Date(lw.created_at).getTime()) < 60000)
+      );
+      if (!exists) {
+        merged.unshift(lw);
+      }
+    }
+    return merged;
   }
 
   public async toggleReservation(wishId: string, viewerId: string): Promise<boolean> {
-    if (isSupabaseConfigured() && supabase) {
+    if (isSupabaseConfigured() && supabase && isUUID(wishId)) {
       try {
         const { data: authData } = await supabase.auth.getUser();
-        const activeUserId = authData.user?.id || viewerId;
+        const activeUserId = authData.user?.id || (isUUID(viewerId) ? viewerId : null);
 
-        const { data: existing } = await supabase
-          .from('reservations')
-          .select('*')
-          .eq('wish_id', wishId)
-          .maybeSingle();
+        if (activeUserId) {
+          const { data: existing } = await supabase
+            .from('reservations')
+            .select('*')
+            .eq('wish_id', wishId)
+            .maybeSingle();
 
-        if (existing) {
-          if (existing.reserved_by === activeUserId) {
-            await supabase.from('reservations').delete().eq('wish_id', wishId);
-            return true;
+          if (existing) {
+            if (existing.reserved_by === activeUserId) {
+              await supabase.from('reservations').delete().eq('wish_id', wishId);
+            }
+          } else {
+            await supabase.from('reservations').insert({
+              wish_id: wishId,
+              reserved_by: activeUserId,
+            });
           }
-          return false;
         }
-
-        await supabase.from('reservations').insert({
-          wish_id: wishId,
-          reserved_by: activeUserId,
-        });
-        return true;
       } catch (err) {
-        console.error('Error toggling reservation in Supabase:', err);
-        return false;
+        console.warn('Error toggling reservation in Supabase:', err);
       }
     }
 
-    // Local fallback
+    // Always update local reservations
     const reservations = this.getLocal<Reservation[]>(STORAGE_RESERVATIONS, []);
     const idx = reservations.findIndex((r) => r.wish_id === wishId);
     if (idx >= 0) {
@@ -778,7 +803,7 @@ class WishlistDataStore {
       return false;
     }
     reservations.push({
-      id: `res-${Date.now()}`,
+      id: "res-" + Date.now(),
       wish_id: wishId,
       reserved_by: viewerId,
       created_at: new Date().toISOString(),
@@ -787,66 +812,105 @@ class WishlistDataStore {
     return true;
   }
 
-  public async addWish(wishData: Omit<Wish, 'id' | 'created_at'>): Promise<Wish | null> {
+  public async addWish(wishData: Omit<Wish, 'id' | 'created_at'>): Promise<Wish> {
+    const cleanWishData = {
+      title: wishData.title.trim(),
+      description: wishData.description?.trim() || null,
+      link_url: wishData.link_url?.trim() || null,
+      image_url: wishData.image_url?.trim() || null,
+      price:
+        typeof wishData.price === 'number' && !isNaN(wishData.price) && wishData.price > 0
+          ? wishData.price
+          : null,
+      currency: wishData.currency || '₽',
+      priority: wishData.priority || 'nice_to_have',
+      event_tag: wishData.event_tag || 'Без повода',
+    };
+
+    let remoteWish: Wish | null = null;
+
     if (isSupabaseConfigured() && supabase) {
       try {
-        const { data: authData } = await supabase.auth.getUser();
-        const activeUserId = authData.user?.id || wishData.user_id;
-
-        const { data, error } = await supabase
-          .from('wishes')
-          .insert({
-            ...wishData,
-            user_id: activeUserId,
-          })
-          .select()
-          .single();
-
-        if (error) {
-          console.error('Error inserting wish into Supabase:', error);
-          return null;
+        let activeUserId: string | null = null;
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData?.session?.user) {
+          activeUserId = sessionData.session.user.id;
+        } else {
+          const { data: authData } = await supabase.auth.getUser();
+          if (authData.user) {
+            activeUserId = authData.user.id;
+          }
         }
-        return data;
+
+        if (!activeUserId && isUUID(wishData.user_id)) {
+          activeUserId = wishData.user_id;
+        }
+
+        if (activeUserId && isUUID(activeUserId)) {
+          const { data, error } = await supabase
+            .from('wishes')
+            .insert({
+              ...cleanWishData,
+              user_id: activeUserId,
+            })
+            .select()
+            .single();
+
+          if (!error && data) {
+            remoteWish = data;
+          } else {
+            console.warn('Supabase insert wish warning:', error);
+          }
+        }
       } catch (err) {
-        console.error('Error adding wish in Supabase:', err);
-        return null;
+        console.warn('Supabase addWish exception:', err);
       }
     }
 
-    // Local fallback
+    // Resilient offline-first store
     const wishes = this.getLocal<Wish[]>(STORAGE_WISHES, []);
-    const newWish: Wish = {
-      ...wishData,
-      id: `wish-${Date.now()}`,
+    const localWish: Wish = remoteWish || {
+      ...cleanWishData,
+      id: "wish-" + Date.now(),
+      user_id: wishData.user_id,
       created_at: new Date().toISOString(),
+      price: cleanWishData.price ?? undefined,
+      description: cleanWishData.description ?? undefined,
+      link_url: cleanWishData.link_url ?? undefined,
+      image_url: cleanWishData.image_url ?? undefined,
     };
-    wishes.unshift(newWish);
+
+    const idx = wishes.findIndex((w) => w.id === localWish.id);
+    if (idx >= 0) {
+      wishes[idx] = localWish;
+    } else {
+      wishes.unshift(localWish);
+    }
     this.setLocal(STORAGE_WISHES, wishes);
-    return newWish;
+
+    return localWish;
   }
 
   public async deleteWish(wishId: string, userId: string): Promise<boolean> {
-    if (isSupabaseConfigured() && supabase) {
+    if (isSupabaseConfigured() && supabase && isUUID(wishId)) {
       try {
-        const { data: authData } = await supabase.auth.getUser();
-        const activeUserId = authData.user?.id || userId;
+        const { data: sessionData } = await supabase.auth.getSession();
+        const activeUserId = sessionData?.session?.user?.id || (isUUID(userId) ? userId : null);
 
-        const { error } = await supabase
-          .from('wishes')
-          .delete()
-          .eq('id', wishId)
-          .eq('user_id', activeUserId);
-        return !error;
-      } catch {
-        return false;
+        if (activeUserId) {
+          await supabase
+            .from('wishes')
+            .delete()
+            .eq('id', wishId)
+            .eq('user_id', activeUserId);
+        }
+      } catch (err) {
+        console.warn('Supabase deleteWish error:', err);
       }
     }
 
     // Local fallback
     const wishes = this.getLocal<Wish[]>(STORAGE_WISHES, []);
-    const wish = wishes.find((w) => w.id === wishId);
-    if (!wish || wish.user_id !== userId) return false;
-
     this.setLocal(
       STORAGE_WISHES,
       wishes.filter((w) => w.id !== wishId)
@@ -859,8 +923,12 @@ class WishlistDataStore {
     );
     return true;
   }
-public async getMyReservations(viewerId: string): Promise<(Wish & { owner_name?: string })[]> {
-    if (isSupabaseConfigured() && supabase) {
+
+  public async getMyReservations(viewerId: string): Promise<(Wish & { owner_name?: string })[]> {
+    let remoteReservations: (Wish & { owner_name?: string })[] = [];
+    let remoteSuccess = false;
+
+    if (isSupabaseConfigured() && supabase && isUUID(viewerId)) {
       try {
         const { data: reservations } = await supabase
           .from('reservations')
@@ -868,31 +936,34 @@ public async getMyReservations(viewerId: string): Promise<(Wish & { owner_name?:
           .eq('reserved_by', viewerId);
 
         const wishIds = (reservations || []).map((r) => r.wish_id);
-        if (wishIds.length === 0) return [];
+        if (wishIds.length > 0) {
+          const { data: wishes } = await supabase
+            .from('wishes')
+            .select('*')
+            .in('id', wishIds);
 
-        const { data: wishes } = await supabase
-          .from('wishes')
-          .select('*')
-          .in('id', wishIds);
+          if (wishes && wishes.length > 0) {
+            const userIds = Array.from(new Set(wishes.map((w) => w.user_id)));
+            const { data: profiles } = await supabase
+              .from('profiles')
+              .select('id, name')
+              .in('id', userIds);
 
-        if (!wishes || wishes.length === 0) return [];
+            const profileMap = new Map((profiles || []).map((p) => [p.id, p.name]));
 
-        const userIds = Array.from(new Set(wishes.map((w) => w.user_id)));
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, name')
-          .in('id', userIds);
-
-        const profileMap = new Map((profiles || []).map((p) => [p.id, p.name]));
-
-        return wishes.map((w) => ({
-          ...w,
-          is_reserved: true,
-          reserved_by_me: true,
-          owner_name: profileMap.get(w.user_id) || 'Родственник',
-        }));
+            remoteReservations = wishes.map((w) => ({
+              ...w,
+              is_reserved: true,
+              reserved_by_me: true,
+              owner_name: profileMap.get(w.user_id) || 'Родственник',
+            }));
+            remoteSuccess = true;
+          }
+        } else {
+          remoteSuccess = true;
+        }
       } catch (err) {
-        console.error('Error fetching my reservations:', err);
+        console.warn('Error fetching my reservations from Supabase:', err);
       }
     }
 
@@ -905,7 +976,7 @@ public async getMyReservations(viewerId: string): Promise<(Wish & { owner_name?:
     const users = this.getLocal<User[]>(STORAGE_USERS, []);
     const userMap = new Map(users.map((u) => [u.id, u.name]));
 
-    return allWishes
+    const localList = allWishes
       .filter((w) => wishIds.has(w.id))
       .map((w) => ({
         ...w,
@@ -913,6 +984,16 @@ public async getMyReservations(viewerId: string): Promise<(Wish & { owner_name?:
         reserved_by_me: true,
         owner_name: userMap.get(w.user_id) || 'Родственник',
       }));
+
+    if (!remoteSuccess) return localList;
+
+    const merged = [...remoteReservations];
+    for (const item of localList) {
+      if (!merged.some((r) => r.id === item.id)) {
+        merged.push(item);
+      }
+    }
+    return merged;
   }
 }
 

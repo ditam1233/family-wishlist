@@ -96,7 +96,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
 
     setCompressing(true);
     try {
-      const compressedDataUrl = await compressImage(file, 1080, 0.82);
+      const compressedDataUrl = await compressImage(file, 960, 0.78);
       setImageUrl(compressedDataUrl);
       setImgError(false);
     } catch (err) {

@@ -295,12 +295,9 @@ export default function HomePage() {
         setWishes((prev) =>
           prev.map((w) => (w.id === tempId ? { ...created, is_reserved: false } : w))
         );
-      } else {
-        await loadWishes(selectedUserId, currentUser.id);
       }
     } catch (err) {
       console.error('Add wish error:', err);
-      await loadWishes(selectedUserId, currentUser.id);
     }
   };
 
