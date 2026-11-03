@@ -52,41 +52,72 @@ class WishlistDataStore {
     }
   }
 
+  // --- Cache helpers for instant 0ms restoration ---
+  public getCachedUser(): User | null {
+    return this.getLocal<User | null>('fw_cached_user', null);
+  }
+
+  public setCachedUser(user: User | null): void {
+    if (user) this.setLocal('fw_cached_user', user);
+    else if (this.isClient) localStorage.removeItem('fw_cached_user');
+  }
+
+  public getCachedGroups(): FamilyGroup[] {
+    return this.getLocal<FamilyGroup[]>('fw_cached_groups', []);
+  }
+
+  public setCachedGroups(groups: FamilyGroup[]): void {
+    this.setLocal('fw_cached_groups', groups);
+  }
+
+  public getCachedMembers(): User[] {
+    return this.getLocal<User[]>('fw_cached_members', []);
+  }
+
+  public setCachedMembers(members: User[]): void {
+    this.setLocal('fw_cached_members', members);
+  }
+
   // --- Auth / Users ---
 
   public async getCurrentUser(): Promise<User | null> {
     if (isSupabaseConfigured() && supabase) {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
+        // Fast path: getSession() reads session token synchronously from local storage
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData?.session?.user) {
+          this.setCachedUser(null);
           return null;
         }
+
+        const authUser = sessionData.session.user;
 
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', user.id)
+          .eq('id', authUser.id)
           .maybeSingle();
 
-        if (profile) {
-          return {
-            id: profile.id,
-            name: profile.name,
-            email: profile.email,
-            birthday: profile.birthday,
-            created_at: profile.created_at,
-          };
-        }
+        const userObj: User = profile
+          ? {
+              id: profile.id,
+              name: profile.name,
+              email: profile.email,
+              birthday: profile.birthday,
+              created_at: profile.created_at,
+            }
+          : {
+              id: authUser.id,
+              name: (authUser.user_metadata?.name as string) || authUser.email?.split('@')[0] || 'Пользователь',
+              email: authUser.email || '',
+              created_at: authUser.created_at,
+            };
 
-        return {
-          id: user.id,
-          name: (user.user_metadata?.name as string) || user.email?.split('@')[0] || 'Пользователь',
-          email: user.email || '',
-          created_at: user.created_at,
-        };
+        this.setCachedUser(userObj);
+        return userObj;
       } catch (err) {
         console.error('Error fetching Supabase user:', err);
-        return null;
+        return this.getCachedUser();
       }
     }
 
@@ -325,8 +356,11 @@ class WishlistDataStore {
         // ignore
       }
     }
+    this.setCachedUser(null);
     if (this.isClient) {
       localStorage.removeItem(STORAGE_SESSION);
+      localStorage.removeItem('fw_cached_groups');
+      localStorage.removeItem('fw_cached_members');
     }
   }
 
@@ -341,16 +375,22 @@ class WishlistDataStore {
           .eq('user_id', userId);
 
         const groupIds = (memberships || []).map((m) => m.group_id);
-        if (groupIds.length === 0) return [];
+        if (groupIds.length === 0) {
+          this.setCachedGroups([]);
+          return [];
+        }
 
         const { data: groups } = await supabase
           .from('family_groups')
           .select('*')
           .in('id', groupIds);
 
-        return groups || [];
+        const list = groups || [];
+        this.setCachedGroups(list);
+        return list;
       } catch (err) {
         console.error('Error fetching groups from Supabase:', err);
+        return this.getCachedGroups();
       }
     }
 
