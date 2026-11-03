@@ -111,7 +111,7 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
         type="text"
         value={inputVal}
         onChange={(e) => setInputVal(e.target.value)}
-        placeholder="Быстро добавить: вставьте ссылку на товар или напишите название..."
+        placeholder="Ссылка на товар или название..."
         className="w-full bg-transparent px-2 py-1 text-base sm:text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none"
       />
 

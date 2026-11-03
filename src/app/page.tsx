@@ -23,6 +23,7 @@ import {
   Search,
   BookmarkCheck,
   X,
+  ChevronDown,
 } from 'lucide-react';
 
 export default function HomePage() {
@@ -35,7 +36,7 @@ export default function HomePage() {
     'wishes'
   );
   const [selectedEvent, setSelectedEvent] = useState('Все');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -270,23 +271,24 @@ export default function HomePage() {
 
       {/* Main Focus Canvas */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-        {/* Sticky Minimalist Top Bar */}
-        <header className="sticky top-0 z-20 bg-stone-50/95 backdrop-blur-md border-b border-stone-200/80 px-3.5 sm:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2.5 min-w-0">
+        {/* iOS-Style Minimalist Top Bar */}
+        <header className="sticky top-0 z-20 bg-stone-50/85 backdrop-blur-xl border-b border-stone-200/60 px-4 sm:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2 min-w-0">
+            {/* Mobile Circle Trigger */}
             <button
-              onClick={() => setIsMobileSidebarOpen(true)}
-              className="p-2 text-stone-600 hover:text-stone-900 md:hidden rounded-xl hover:bg-stone-200/60 active:scale-95 transition-transform cursor-pointer"
-              title="Открыть меню"
+              onClick={() => setIsGroupsOpen(true)}
+              className="md:hidden flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-stone-200 text-xs font-semibold text-stone-900 shadow-2xs active:scale-95 transition-transform cursor-pointer"
             >
-              <Menu className="w-4 h-4" />
+              <span className="truncate max-w-[130px]">
+                {activeGroup?.name || 'Моя семья'}
+              </span>
+              <ChevronDown className="w-3 h-3 text-stone-400 shrink-0" />
             </button>
 
-            {/* Breadcrumb path */}
-            <div className="flex items-center gap-1.5 text-xs text-stone-500 min-w-0 truncate font-mono">
-              <span className="truncate hidden sm:inline">
-                {activeGroup?.name || 'Круг'}
-              </span>
-              <span className="hidden sm:inline">/</span>
+            {/* Desktop breadcrumb */}
+            <div className="hidden md:flex items-center gap-1.5 text-xs text-stone-500 min-w-0 truncate font-mono">
+              <span className="truncate">{activeGroup?.name || 'Круг'}</span>
+              <span>/</span>
               <span className="font-semibold text-stone-900 truncate">
                 {selectedView === 'wishes'
                   ? isOwner
@@ -303,6 +305,7 @@ export default function HomePage() {
             <button
               onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
               className="p-2 text-stone-500 hover:text-stone-900 rounded-xl hover:bg-stone-200/60 sm:hidden cursor-pointer"
+              title="Поиск"
             >
               {isMobileSearchOpen ? (
                 <X className="w-4 h-4" />
@@ -323,8 +326,8 @@ export default function HomePage() {
               />
             </div>
 
-            {/* View Mode Switcher: Grid vs List */}
-            <div className="flex items-center bg-white border border-stone-200 rounded-xl p-0.5 shadow-2xs">
+            {/* View Mode Switcher: Desktop only */}
+            <div className="hidden sm:flex items-center bg-white border border-stone-200 rounded-xl p-0.5 shadow-2xs">
               <button
                 onClick={() => setViewMode('grid')}
                 title="Сетка"
@@ -364,11 +367,12 @@ export default function HomePage() {
 
         {/* Mobile Search input dropdown */}
         {isMobileSearchOpen && (
-          <div className="p-3 bg-white border-b border-stone-200 sm:hidden">
+          <div className="p-3 bg-white border-b border-stone-200 sm:hidden animate-in fade-in duration-100">
             <div className="relative">
               <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
+                autoFocus
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Поиск по желаниям..."
@@ -378,74 +382,64 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Mobile Horizontal Relatives Carousel (Quick switch between members on phone) */}
-        {selectedView === 'wishes' && familyMembers.length > 1 && (
-          <div className="md:hidden bg-white/70 border-b border-stone-200/80 px-3 py-2 overflow-x-auto scrollbar-none flex items-center gap-1.5">
-            {familyMembers.map((member) => {
-              const isSelected = member.id === selectedUserId;
-              const isMe = member.id === currentUser.id;
-              const avatarStyle = getAvatarStyle(member.name);
-              const initials = getInitials(member.name);
-
-              return (
-                <button
-                  key={member.id}
-                  onClick={() => handleSelectUser(member.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-all cursor-pointer active:scale-95 ${
-                    isSelected
-                      ? 'bg-stone-900 text-white shadow-2xs'
-                      : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                  }`}
-                >
-                  <div
-                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-mono font-bold ${
-                      isSelected
-                        ? 'bg-stone-800 text-stone-200'
-                        : `border ${avatarStyle}`
-                    }`}
-                  >
-                    {initials}
-                  </div>
-                  <span>{isMe ? 'Вы' : member.name}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Canvas Body - padded at bottom for Mobile Bottom Nav */}
-        <main className="max-w-5xl w-full mx-auto p-4 sm:p-8 pb-28 md:pb-8 space-y-6">
+        {/* Canvas Body - padded at bottom for Mobile Dock */}
+        <main className="max-w-4xl w-full mx-auto p-4 sm:p-8 pb-28 md:pb-8 space-y-4 sm:space-y-6">
           {selectedView === 'wishes' ? (
             <>
-              {/* Member Title & Status Banner */}
-              <div className="space-y-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-3">
-                    <h1 className="text-xl sm:text-2xl font-semibold text-stone-900 tracking-tight">
-                      {isOwner ? 'Мой список желаний' : selectedMember.name}
-                    </h1>
+              {/* Native iOS-Style Large Header */}
+              <div className="space-y-3">
+                <div className="flex items-baseline justify-between pt-1">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-stone-950 tracking-tight">
+                    {isOwner ? 'Мой вишлист' : selectedMember.name}
+                  </h1>
 
-                    {!isOwner && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-stone-100 text-stone-700 border border-stone-200">
-                        <Lock className="w-2.5 h-2.5 stroke-[2]" />
-                        Анти-спойлер
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="text-xs font-mono text-stone-400">
+                  <span className="text-xs font-mono text-stone-400">
                     {visibleWishes.length}{' '}
                     {visibleWishes.length === 1 ? 'желание' : 'желаний'}
-                  </div>
+                  </span>
                 </div>
 
+                {/* Mobile Relatives Pill Selector */}
+                {familyMembers.length > 1 && (
+                  <div className="md:hidden flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1 -mx-4 px-4">
+                    {familyMembers.map((member) => {
+                      const isSelected = member.id === selectedUserId;
+                      const isMe = member.id === currentUser.id;
+                      const avatarStyle = getAvatarStyle(member.name);
+                      const initials = getInitials(member.name);
+
+                      return (
+                        <button
+                          key={member.id}
+                          onClick={() => handleSelectUser(member.id)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-all cursor-pointer active:scale-95 ${
+                            isSelected
+                              ? 'bg-stone-950 text-white shadow-xs'
+                              : 'bg-white border border-stone-200 text-stone-700 active:bg-stone-100'
+                          }`}
+                        >
+                          <div
+                            className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-mono font-bold ${
+                              isSelected
+                                ? 'bg-stone-800 text-stone-200'
+                                : `border ${avatarStyle}`
+                            }`}
+                          >
+                            {initials}
+                          </div>
+                          <span>{isMe ? 'Вы' : member.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Subtle Anti-spoiler Note */}
                 {!isOwner && (
-                  <div className="p-3 rounded-xl bg-stone-100/70 border border-stone-200/80 text-xs text-stone-600 flex items-center gap-2">
-                    <Lock className="w-4 h-4 text-stone-500 shrink-0" />
+                  <div className="flex items-center gap-1.5 text-xs text-stone-500 bg-stone-100/80 rounded-xl px-3 py-2 border border-stone-200/60">
+                    <Lock className="w-3.5 h-3.5 text-stone-600 shrink-0" />
                     <span>
-                      Бронируйте подарки для {selectedMember.name}. Именинник
-                      не увидит бронь, а другие родственники поймут, что подарок
-                      уже занят.
+                      Анти-спойлер: {selectedMember.name} не видит ваши брони
                     </span>
                   </div>
                 )}
@@ -460,22 +454,11 @@ export default function HomePage() {
                 />
               )}
 
-              {/* Wishes presentation (Grid or List) */}
+              {/* Wishes presentation: On mobile, always show clean native Inset Grouped Table! */}
               {visibleWishes.length > 0 ? (
-                viewMode === 'grid' ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                    {visibleWishes.map((wish) => (
-                      <WishCard
-                        key={wish.id}
-                        wish={wish}
-                        isOwner={isOwner}
-                        onToggleReserve={handleToggleReserve}
-                        onDeleteWish={handleDeleteWish}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="bg-white rounded-2xl border border-stone-200/90 divide-y divide-stone-100 overflow-hidden shadow-2xs">
+                <>
+                  {/* Mobile: Inset Grouped List View */}
+                  <div className="sm:hidden bg-white rounded-2xl border border-stone-200/80 divide-y divide-stone-100 overflow-hidden shadow-xs">
                     {visibleWishes.map((wish) => (
                       <WishRow
                         key={wish.id}
@@ -486,24 +469,53 @@ export default function HomePage() {
                       />
                     ))}
                   </div>
-                )
+
+                  {/* Desktop: Grid or List depending on user choice */}
+                  <div className="hidden sm:block">
+                    {viewMode === 'grid' ? (
+                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
+                        {visibleWishes.map((wish) => (
+                          <WishCard
+                            key={wish.id}
+                            wish={wish}
+                            isOwner={isOwner}
+                            onToggleReserve={handleToggleReserve}
+                            onDeleteWish={handleDeleteWish}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="bg-white rounded-2xl border border-stone-200/80 divide-y divide-stone-100 overflow-hidden shadow-2xs">
+                        {visibleWishes.map((wish) => (
+                          <WishRow
+                            key={wish.id}
+                            wish={wish}
+                            isOwner={isOwner}
+                            onToggleReserve={handleToggleReserve}
+                            onDeleteWish={handleDeleteWish}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
               ) : (
-                <div className="bg-white border border-stone-200/90 rounded-2xl p-8 sm:p-14 text-center">
-                  <div className="w-10 h-10 rounded-xl bg-stone-100 text-stone-400 flex items-center justify-center mx-auto mb-3">
+                <div className="bg-white border border-stone-200/80 rounded-2xl p-8 sm:p-12 text-center shadow-xs">
+                  <div className="w-10 h-10 rounded-xl bg-stone-100 text-stone-400 flex items-center justify-center mx-auto mb-2.5">
                     <Gift className="w-5 h-5 stroke-[1.5]" />
                   </div>
-                  <h3 className="font-medium text-stone-900 text-sm mb-1">
+                  <h3 className="font-semibold text-stone-900 text-sm mb-1">
                     Желания не найдены
                   </h3>
                   <p className="text-xs text-stone-500 max-w-xs mx-auto mb-4">
                     {isOwner
-                      ? 'Вставьте ссылку на товар в поле выше или нажмите кнопку, чтобы добавить подарок.'
-                      : `${selectedMember.name} пока не добавил(а) подарков в эту категорию.`}
+                      ? 'Вставьте ссылку на товар или нажмите кнопку ниже.'
+                      : `${selectedMember.name} пока не добавил(а) подарков.`}
                   </p>
                   {isOwner && (
                     <button
                       onClick={() => setIsAddOpen(true)}
-                      className="px-4 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-all cursor-pointer"
+                      className="px-4 py-2.5 rounded-full bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-all cursor-pointer shadow-xs active:scale-95"
                     >
                       + Добавить первое желание
                     </button>
@@ -513,25 +525,24 @@ export default function HomePage() {
             </>
           ) : (
             /* Dedicated "Я подарю" (My Reservations) View */
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-4 sm:space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
                 <div>
-                  <h1 className="text-xl sm:text-2xl font-semibold text-stone-900 tracking-tight flex items-center gap-2">
-                    <BookmarkCheck className="w-6 h-6 stroke-[1.75]" />
-                    <span>Я подарю (Мои брони)</span>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-stone-950 tracking-tight flex items-center gap-2">
+                    <BookmarkCheck className="w-6 h-6 stroke-[2]" />
+                    <span>Я подарю</span>
                   </h1>
-                  <p className="text-xs text-stone-500 mt-1">
-                    Секретный список подарков, которые вы пообещали подарить
-                    членам семьи.
+                  <p className="text-xs text-stone-500 mt-0.5">
+                    Секретный список подарков, которые вы пообещали подарить.
                   </p>
                 </div>
 
                 {myReservations.length > 0 && totalReservedBudget > 0 && (
-                  <div className="p-2.5 rounded-xl bg-white border border-stone-200 text-left sm:text-right shrink-0">
+                  <div className="p-3 rounded-2xl bg-white border border-stone-200 text-left sm:text-right shrink-0 shadow-xs">
                     <div className="text-[10px] font-mono uppercase tracking-wider text-stone-400">
-                      Примерный бюджет
+                      Сумма подарков
                     </div>
-                    <div className="text-sm font-bold font-mono text-stone-900">
+                    <div className="text-base font-bold font-mono text-stone-900">
                       {formatPrice(totalReservedBudget, '₽')}
                     </div>
                   </div>
@@ -539,30 +550,12 @@ export default function HomePage() {
               </div>
 
               {visibleWishes.length > 0 ? (
-                viewMode === 'grid' ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                    {visibleWishes.map((wish) => (
-                      <div key={wish.id} className="flex flex-col gap-1.5">
-                        <div className="text-[11px] font-mono text-stone-500 px-1">
-                          Для:{' '}
-                          <span className="font-semibold text-stone-900">
-                            {wish.owner_name}
-                          </span>
-                        </div>
-                        <WishCard
-                          wish={wish}
-                          isOwner={false}
-                          onToggleReserve={handleToggleReserve}
-                          onDeleteWish={() => {}}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="bg-white rounded-2xl border border-stone-200/90 divide-y divide-stone-100 overflow-hidden shadow-2xs">
+                <>
+                  {/* Mobile Grouped Inset List */}
+                  <div className="sm:hidden bg-white rounded-2xl border border-stone-200/80 divide-y divide-stone-100 overflow-hidden shadow-xs">
                     {visibleWishes.map((wish) => (
                       <div key={wish.id} className="relative">
-                        <div className="px-4 pt-2 text-[10px] font-mono text-stone-400">
+                        <div className="px-3.5 pt-2 text-[10px] font-mono text-stone-400">
                           Для кого: {wish.owner_name}
                         </div>
                         <WishRow
@@ -574,22 +567,61 @@ export default function HomePage() {
                       </div>
                     ))}
                   </div>
-                )
+
+                  {/* Desktop view */}
+                  <div className="hidden sm:block">
+                    {viewMode === 'grid' ? (
+                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
+                        {visibleWishes.map((wish) => (
+                          <div key={wish.id} className="flex flex-col gap-1.5">
+                            <div className="text-[11px] font-mono text-stone-500 px-1">
+                              Для:{' '}
+                              <span className="font-semibold text-stone-900">
+                                {wish.owner_name}
+                              </span>
+                            </div>
+                            <WishCard
+                              wish={wish}
+                              isOwner={false}
+                              onToggleReserve={handleToggleReserve}
+                              onDeleteWish={() => {}}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="bg-white rounded-2xl border border-stone-200/80 divide-y divide-stone-100 overflow-hidden shadow-2xs">
+                        {visibleWishes.map((wish) => (
+                          <div key={wish.id} className="relative">
+                            <div className="px-4 pt-2 text-[10px] font-mono text-stone-400">
+                              Для кого: {wish.owner_name}
+                            </div>
+                            <WishRow
+                              wish={wish}
+                              isOwner={false}
+                              onToggleReserve={handleToggleReserve}
+                              onDeleteWish={() => {}}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
               ) : (
-                <div className="bg-white border border-stone-200/90 rounded-2xl p-8 sm:p-14 text-center">
-                  <div className="w-10 h-10 rounded-xl bg-stone-100 text-stone-400 flex items-center justify-center mx-auto mb-3">
+                <div className="bg-white border border-stone-200/80 rounded-2xl p-8 sm:p-12 text-center shadow-xs">
+                  <div className="w-10 h-10 rounded-xl bg-stone-100 text-stone-400 flex items-center justify-center mx-auto mb-2.5">
                     <BookmarkCheck className="w-5 h-5 stroke-[1.5]" />
                   </div>
-                  <h3 className="font-medium text-stone-900 text-sm mb-1">
+                  <h3 className="font-semibold text-stone-900 text-sm mb-1">
                     Вы пока ничего не забронировали
                   </h3>
                   <p className="text-xs text-stone-500 max-w-xs mx-auto mb-4">
-                    Перейдите в вишлист любого родственника и нажмите «Подарю
-                    я», чтобы забронировать подарок.
+                    Перейдите в вишлист родственника и нажмите «Подарю я».
                   </p>
                   <button
                     onClick={() => setSelectedView('wishes')}
-                    className="px-4 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-all cursor-pointer"
+                    className="px-4 py-2.5 rounded-full bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-all cursor-pointer shadow-xs active:scale-95"
                   >
                     Перейти к желаниям семьи
                   </button>
