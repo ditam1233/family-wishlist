@@ -256,11 +256,20 @@ class WishlistDataStore {
           userCreatedAt = signUpData.user.created_at;
         }
 
-        // 4. Гарантируем привязку к семье
-        await supabase.from('group_members').insert({
-          group_id: group.id,
-          user_id: userId,
-        });
+        // 4. Гарантируем привязку к семье (только если ещё не привязан)
+        const { data: existingMember } = await supabase
+          .from('group_members')
+          .select('user_id')
+          .eq('group_id', group.id)
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (!existingMember) {
+          await supabase.from('group_members').insert({
+            group_id: group.id,
+            user_id: userId,
+          });
+        }
 
         const userObj: User = {
           id: userId,
