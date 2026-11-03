@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, FamilyGroup } from '@/types';
 import { dataStore } from '@/lib/data';
-import { X, Users, Copy, Check, Plus, Hash, Loader2 } from 'lucide-react';
+import { X, Users, Copy, Check, Plus, Hash, Share2, Loader2 } from 'lucide-react';
 
 interface FamilyGroupModalProps {
   isOpen: boolean;
@@ -23,6 +23,7 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
   const [newGroupName, setNewGroupName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,10 +40,18 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleCopy = (code: string) => {
+  const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
     setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const handleShareLink = (code: string) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const shareUrl = `${origin}/?code=${encodeURIComponent(code)}`;
+    navigator.clipboard.writeText(shareUrl);
+    setCopiedLink(code);
+    setTimeout(() => setCopiedLink(null), 2000);
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -51,15 +60,15 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
     setLoading(true);
     setError(null);
 
-    const created = await dataStore.createGroup(newGroupName.trim(), currentUser.id);
+    const res = await dataStore.createGroup(newGroupName.trim(), currentUser.id);
     setLoading(false);
-    if (created) {
+    if (res.success && res.group) {
       setNewGroupName('');
       setTab('list');
       await loadGroups();
       onUpdate();
     } else {
-      setError('Не удалось создать группу');
+      setError(res.error || 'Не удалось создать группу');
     }
   };
 
@@ -107,7 +116,7 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
           </div>
           <div>
             <h2 className="text-base font-semibold text-warm-900">Семейные круги</h2>
-            <p className="text-[11px] text-warm-400">Создавайте группы и приглашайте близких</p>
+            <p className="text-[11px] text-warm-400">Управляйте группами и делитесь ссылками</p>
           </div>
         </div>
 
@@ -140,28 +149,49 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
                 >
                   <div>
                     <h3 className="font-semibold text-sm text-warm-800">{group.name}</h3>
-                    <div className="flex items-center gap-1.5 mt-1 text-[11px] text-warm-400">
-                      <Hash className="w-3 h-3" />
+                    <div className="flex items-center gap-1.5 mt-1 text-[11px] text-warm-500">
+                      <Hash className="w-3 h-3 text-warm-400" />
                       <span>Код:</span>
                       <code className="font-mono text-accent font-semibold">{group.invite_code}</code>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleCopy(group.invite_code)}
-                    className="p-2.5 rounded-xl bg-white border border-warm-200/80 text-warm-400 hover:text-accent hover:border-accent/30 shadow-xs transition-all cursor-pointer"
-                    title="Скопировать код"
-                  >
-                    {copiedCode === group.invite_code ? (
-                      <Check className="w-4 h-4 text-emerald-500" />
-                    ) : (
-                      <Copy className="w-4 h-4" />
-                    )}
-                  </button>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => handleShareLink(group.invite_code)}
+                      className="px-2.5 py-2 rounded-xl bg-accent/10 hover:bg-accent/20 text-accent text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                      title="Скопировать готовую ссылку с кодом для WhatsApp"
+                    >
+                      {copiedLink === group.invite_code ? (
+                        <>
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Ссылка скопирована!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Share2 className="w-3.5 h-3.5" />
+                          <span>Ссылка</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => handleCopyCode(group.invite_code)}
+                      className="p-2 rounded-xl bg-white border border-warm-200/80 text-warm-400 hover:text-warm-700 shadow-xs transition-all cursor-pointer"
+                      title="Скопировать только код"
+                    >
+                      {copiedCode === group.invite_code ? (
+                        <Check className="w-4 h-4 text-emerald-500" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
               ))
             ) : (
               <div className="text-center py-8 text-warm-400 text-xs">
-                У вас пока нет семейных групп.<br />Создайте или войдите по коду.
+                У вас пока нет семейных групп.<br />Создайте семью, чтобы получить код.
               </div>
             )}
           </div>
@@ -188,7 +218,7 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
               className="w-full py-3 rounded-2xl bg-accent hover:bg-accent-hover disabled:bg-warm-300 text-white font-semibold text-xs shadow-sm shadow-accent/15 transition-all cursor-pointer flex items-center justify-center gap-2"
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-              <span>Создать семью</span>
+              <span>Создать семью и получить код</span>
             </button>
           </form>
         )}

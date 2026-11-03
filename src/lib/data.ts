@@ -36,7 +36,9 @@ class WishlistDataStore {
     if (isSupabaseConfigured() && supabase) {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return null;
+        if (!user) {
+          return null;
+        }
 
         const { data: profile } = await supabase
           .from('profiles')
@@ -62,6 +64,7 @@ class WishlistDataStore {
         };
       } catch (err) {
         console.error('Error fetching Supabase user:', err);
+        return null;
       }
     }
 
@@ -71,6 +74,109 @@ class WishlistDataStore {
     if (!userId) return null;
     const users = this.getLocal<User[]>(STORAGE_USERS, []);
     return users.find((u) => u.id === userId) || null;
+  }
+
+  /**
+   * Быстрый вход для родственников: только Код приглашения + Имя
+   */
+  public async joinByCode(
+    inviteCode: string,
+    name: string
+  ): Promise<{ success: boolean; user?: User; error?: string }> {
+    const cleanCode = inviteCode.trim().toUpperCase();
+    const cleanName = name.trim();
+
+    if (!cleanCode || !cleanName) {
+      return { success: false, error: 'Укажите код семьи и ваше имя' };
+    }
+
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        // 1. Проверяем существование группы
+        const { data: group, error: grpErr } = await supabase
+          .from('family_groups')
+          .select('*')
+          .eq('invite_code', cleanCode)
+          .maybeSingle();
+
+        if (grpErr || !group) {
+          return { success: false, error: 'Семья с таким кодом не найдена. Проверьте код.' };
+        }
+
+        // 2. Создаем аккаунт родственника под капотом без паролей
+        const safeCode = cleanCode.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'fam';
+        const randomSuffix = Math.random().toString(36).slice(2, 8);
+        const generatedEmail = `${safeCode}_${randomSuffix}@family.local`;
+        const generatedPassword = `pwd_${safeCode}_${Date.now()}`;
+
+        const { data: authData, error: authErr } = await supabase.auth.signUp({
+          email: generatedEmail,
+          password: generatedPassword,
+          options: {
+            data: { name: cleanName },
+          },
+        });
+
+        if (authErr || !authData.user) {
+          return { success: false, error: authErr?.message || 'Ошибка создания профиля' };
+        }
+
+        const newUserId = authData.user.id;
+
+        // 3. Создаем запись в profiles
+        await supabase.from('profiles').upsert({
+          id: newUserId,
+          name: cleanName,
+          email: generatedEmail,
+        });
+
+        // 4. Присоединяем к группе
+        await supabase.from('group_members').insert({
+          group_id: group.id,
+          user_id: newUserId,
+        });
+
+        const userObj: User = {
+          id: newUserId,
+          name: cleanName,
+          email: generatedEmail,
+          created_at: authData.user.created_at,
+        };
+
+        return { success: true, user: userObj };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Ошибка при входе в семью';
+        return { success: false, error: msg };
+      }
+    }
+
+    // Local fallback
+    const groups = this.getLocal<FamilyGroup[]>(STORAGE_GROUPS, []);
+    const group = groups.find((g) => g.invite_code === cleanCode);
+    if (!group) {
+      return { success: false, error: 'Семья с таким кодом не найдена' };
+    }
+
+    const newUser: User = {
+      id: `user-${Date.now()}`,
+      name: cleanName,
+      email: `${cleanName.toLowerCase()}@local.family`,
+      created_at: new Date().toISOString(),
+    };
+
+    const users = this.getLocal<User[]>(STORAGE_USERS, []);
+    users.push(newUser);
+    this.setLocal(STORAGE_USERS, users);
+
+    const memberships = this.getLocal<{ group_id: string; user_id: string }[]>(
+      STORAGE_MEMBERSHIPS,
+      []
+    );
+    memberships.push({ group_id: group.id, user_id: newUser.id });
+    this.setLocal(STORAGE_MEMBERSHIPS, memberships);
+
+    if (this.isClient) localStorage.setItem(STORAGE_SESSION, newUser.id);
+    return { success: true, user: newUser };
   }
 
   public async register(
@@ -100,7 +206,6 @@ class WishlistDataStore {
         }
 
         if (data.user) {
-          // Убеждаемся, что запись в profiles есть
           await supabase.from('profiles').upsert({
             id: data.user.id,
             name: cleanName,
@@ -236,36 +341,42 @@ class WishlistDataStore {
     return groups.filter((g) => memberships.some((m) => m.group_id === g.id));
   }
 
-  public async createGroup(name: string, creatorId: string): Promise<FamilyGroup | null> {
+  public async createGroup(
+    name: string,
+    creatorId: string
+  ): Promise<{ success: boolean; group?: FamilyGroup; error?: string }> {
     const cleanName = name.trim();
     const code = cleanName.slice(0, 3).toUpperCase() + '-' + Math.floor(1000 + Math.random() * 9000);
 
     if (isSupabaseConfigured() && supabase) {
       try {
+        const { data: authData } = await supabase.auth.getUser();
+        const activeUserId = authData.user?.id || creatorId;
+
         const { data: group, error: groupErr } = await supabase
           .from('family_groups')
           .insert({
             name: cleanName,
             invite_code: code,
-            created_by: creatorId,
+            created_by: activeUserId,
           })
           .select()
           .single();
 
         if (groupErr || !group) {
           console.error('Group insert error:', groupErr);
-          return null;
+          return { success: false, error: groupErr?.message || 'Ошибка создания группы в базе' };
         }
 
         await supabase.from('group_members').insert({
           group_id: group.id,
-          user_id: creatorId,
+          user_id: activeUserId,
         });
 
-        return group;
-      } catch (err) {
-        console.error('Error creating group in Supabase:', err);
-        return null;
+        return { success: true, group };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Ошибка создания группы';
+        return { success: false, error: msg };
       }
     }
 
@@ -288,7 +399,7 @@ class WishlistDataStore {
     memberships.push({ group_id: newGroup.id, user_id: creatorId });
     this.setLocal(STORAGE_MEMBERSHIPS, memberships);
 
-    return newGroup;
+    return { success: true, group: newGroup };
   }
 
   public async joinGroup(
@@ -299,6 +410,9 @@ class WishlistDataStore {
 
     if (isSupabaseConfigured() && supabase) {
       try {
+        const { data: authData } = await supabase.auth.getUser();
+        const activeUserId = authData.user?.id || userId;
+
         const { data: group, error } = await supabase
           .from('family_groups')
           .select('*')
@@ -311,7 +425,7 @@ class WishlistDataStore {
 
         const { error: joinErr } = await supabase.from('group_members').insert({
           group_id: group.id,
-          user_id: userId,
+          user_id: activeUserId,
         });
 
         if (joinErr) {
@@ -346,7 +460,6 @@ class WishlistDataStore {
   public async getFamilyMembers(userId: string): Promise<User[]> {
     if (isSupabaseConfigured() && supabase) {
       try {
-        // Находим группы пользователя
         const { data: myMemberships } = await supabase
           .from('group_members')
           .select('group_id')
@@ -354,7 +467,6 @@ class WishlistDataStore {
 
         const groupIds = (myMemberships || []).map((m) => m.group_id);
         if (groupIds.length === 0) {
-          // Если пока нет групп, возвращаем только самого пользователя
           const { data: me } = await supabase
             .from('profiles')
             .select('*')
@@ -363,7 +475,6 @@ class WishlistDataStore {
           return me ? [me] : [];
         }
 
-        // Находим всех пользователей в этих группах
         const { data: allGroupMembers } = await supabase
           .from('group_members')
           .select('user_id')
@@ -415,7 +526,6 @@ class WishlistDataStore {
         if (!wishes) return [];
 
         if (isOwner) {
-          // АНТИ-СПОЙЛЕР: именинник никогда не видит бронь
           return wishes.map((w) => ({
             ...w,
             is_reserved: false,
@@ -464,6 +574,9 @@ class WishlistDataStore {
   public async toggleReservation(wishId: string, viewerId: string): Promise<boolean> {
     if (isSupabaseConfigured() && supabase) {
       try {
+        const { data: authData } = await supabase.auth.getUser();
+        const activeUserId = authData.user?.id || viewerId;
+
         const { data: existing } = await supabase
           .from('reservations')
           .select('*')
@@ -471,7 +584,7 @@ class WishlistDataStore {
           .maybeSingle();
 
         if (existing) {
-          if (existing.reserved_by === viewerId) {
+          if (existing.reserved_by === activeUserId) {
             await supabase.from('reservations').delete().eq('wish_id', wishId);
             return true;
           }
@@ -480,7 +593,7 @@ class WishlistDataStore {
 
         await supabase.from('reservations').insert({
           wish_id: wishId,
-          reserved_by: viewerId,
+          reserved_by: activeUserId,
         });
         return true;
       } catch (err) {
@@ -513,9 +626,15 @@ class WishlistDataStore {
   public async addWish(wishData: Omit<Wish, 'id' | 'created_at'>): Promise<Wish | null> {
     if (isSupabaseConfigured() && supabase) {
       try {
+        const { data: authData } = await supabase.auth.getUser();
+        const activeUserId = authData.user?.id || wishData.user_id;
+
         const { data, error } = await supabase
           .from('wishes')
-          .insert(wishData)
+          .insert({
+            ...wishData,
+            user_id: activeUserId,
+          })
           .select()
           .single();
 
@@ -545,11 +664,14 @@ class WishlistDataStore {
   public async deleteWish(wishId: string, userId: string): Promise<boolean> {
     if (isSupabaseConfigured() && supabase) {
       try {
+        const { data: authData } = await supabase.auth.getUser();
+        const activeUserId = authData.user?.id || userId;
+
         const { error } = await supabase
           .from('wishes')
           .delete()
           .eq('id', wishId)
-          .eq('user_id', userId);
+          .eq('user_id', activeUserId);
         return !error;
       } catch {
         return false;
