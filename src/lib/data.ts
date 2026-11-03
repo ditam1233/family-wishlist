@@ -30,6 +30,20 @@ export function normalizeInviteCode(raw: string): string {
   return parts.join('-');
 }
 
+function simpleHash(str: string): string {
+  let h1 = 0xdeadbeef, h2 = 0x41c64e6d;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+
 class WishlistDataStore {
   private isClient = typeof window !== 'undefined';
 
@@ -130,7 +144,59 @@ class WishlistDataStore {
   }
 
   /**
+   * Получение информации о семье по коду (для экрана входа)
+   */
+  public async getFamilyInfoByCode(
+    inviteCode: string
+  ): Promise<{ group: FamilyGroup | null; members: User[] }> {
+    const cleanCode = normalizeInviteCode(inviteCode);
+    if (!cleanCode) return { group: null, members: [] };
+
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        const { data: group } = await supabase
+          .from('family_groups')
+          .select('*')
+          .ilike('invite_code', cleanCode)
+          .maybeSingle();
+
+        if (!group) return { group: null, members: [] };
+
+        const { data: memberRows } = await supabase
+          .from('group_members')
+          .select('user_id')
+          .eq('group_id', group.id);
+
+        const userIds = (memberRows || []).map((m) => m.user_id);
+        if (userIds.length === 0) return { group, members: [] };
+
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', userIds);
+
+        return { group, members: profiles || [] };
+      } catch (err) {
+        console.error('Error fetching family info by code:', err);
+        return { group: null, members: [] };
+      }
+    }
+
+    const groups = this.getLocal<FamilyGroup[]>(STORAGE_GROUPS, []);
+    const group = groups.find((g) => g.invite_code === cleanCode) || null;
+    if (!group) return { group: null, members: [] };
+
+    const memberships = this.getLocal<{ group_id: string; user_id: string }[]>(STORAGE_MEMBERSHIPS, []);
+    const users = this.getLocal<User[]>(STORAGE_USERS, []);
+    const memberIds = memberships.filter((m) => m.group_id === group.id).map((m) => m.user_id);
+    const members = users.filter((u) => memberIds.includes(u.id));
+
+    return { group, members };
+  }
+
+  /**
    * Быстрый вход для родственников: только Код приглашения + Имя
+   * Автоматически входит в СУЩЕСТВУЮЩИЙ аккаунт или создает его один раз
    */
   public async joinByCode(
     inviteCode: string,
@@ -156,46 +222,54 @@ class WishlistDataStore {
           return { success: false, error: 'Семья с таким кодом не найдена. Проверьте код.' };
         }
 
-        // 2. Создаем аккаунт родственника под капотом без паролей
-        const safeCode = cleanCode.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'fam';
-        const randomSuffix = Math.random().toString(36).slice(2, 8);
-        const generatedEmail = `${safeCode}_${randomSuffix}@family.local`;
-        const generatedPassword = `pwd_${safeCode}_${Date.now()}`;
+        // 2. Детерминированные учетные данные: одно и то же имя в семье ВСЕГДА получает один и тот же аккаунт!
+        const hash = simpleHash(`${group.id}_${cleanName.toLowerCase()}`);
+        const deterministicEmail = `rel_${hash}@family.local`;
+        const deterministicPassword = `pwd_rel_${hash}_wishlist2026`;
 
-        const { data: authData, error: authErr } = await supabase.auth.signUp({
-          email: generatedEmail,
-          password: generatedPassword,
-          options: {
-            data: { name: cleanName },
-          },
+        let userId = '';
+        let userCreatedAt = new Date().toISOString();
+
+        // 3. Сначала пробуем ВОЙТИ в уже существующий профиль родственника
+        const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+          email: deterministicEmail,
+          password: deterministicPassword,
         });
 
-        if (authErr || !authData.user) {
-          return { success: false, error: authErr?.message || 'Ошибка создания профиля' };
+        if (!signInErr && signInData.user) {
+          userId = signInData.user.id;
+          userCreatedAt = signInData.user.created_at;
+        } else {
+          // Если аккаунт ещё не создан — регистрируем его первый раз
+          const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+            email: deterministicEmail,
+            password: deterministicPassword,
+            options: {
+              data: { name: cleanName },
+            },
+          });
+
+          if (signUpErr || !signUpData.user) {
+            return { success: false, error: signUpErr?.message || 'Ошибка входа' };
+          }
+          userId = signUpData.user.id;
+          userCreatedAt = signUpData.user.created_at;
         }
 
-        const newUserId = authData.user.id;
-
-        // 3. Создаем запись в profiles
-        await supabase.from('profiles').upsert({
-          id: newUserId,
-          name: cleanName,
-          email: generatedEmail,
-        });
-
-        // 4. Присоединяем к группе
+        // 4. Гарантируем привязку к семье
         await supabase.from('group_members').insert({
           group_id: group.id,
-          user_id: newUserId,
+          user_id: userId,
         });
 
         const userObj: User = {
-          id: newUserId,
+          id: userId,
           name: cleanName,
-          email: generatedEmail,
-          created_at: authData.user.created_at,
+          email: deterministicEmail,
+          created_at: userCreatedAt,
         };
 
+        this.setCachedUser(userObj);
         return { success: true, user: userObj };
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Ошибка при входе в семью';
@@ -210,25 +284,34 @@ class WishlistDataStore {
       return { success: false, error: 'Семья с таким кодом не найдена' };
     }
 
+    const memberships = this.getLocal<{ group_id: string; user_id: string }[]>(STORAGE_MEMBERSHIPS, []);
+    const users = this.getLocal<User[]>(STORAGE_USERS, []);
+
+    // Проверяем, существует ли уже этот родственник в этой семье
+    const memberIds = memberships.filter((m) => m.group_id === group.id).map((m) => m.user_id);
+    let existingUser = users.find(
+      (u) => memberIds.includes(u.id) && u.name.trim().toLowerCase() === cleanName.toLowerCase()
+    );
+
+    if (existingUser) {
+      if (this.isClient) localStorage.setItem(STORAGE_SESSION, existingUser.id);
+      this.setCachedUser(existingUser);
+      return { success: true, user: existingUser };
+    }
+
     const newUser: User = {
       id: `user-${Date.now()}`,
       name: cleanName,
-      email: `${cleanName.toLowerCase()}@local.family`,
+      email: `${cleanName.toLowerCase()}@family.local`,
       created_at: new Date().toISOString(),
     };
-
-    const users = this.getLocal<User[]>(STORAGE_USERS, []);
     users.push(newUser);
     this.setLocal(STORAGE_USERS, users);
-
-    const memberships = this.getLocal<{ group_id: string; user_id: string }[]>(
-      STORAGE_MEMBERSHIPS,
-      []
-    );
     memberships.push({ group_id: group.id, user_id: newUser.id });
     this.setLocal(STORAGE_MEMBERSHIPS, memberships);
-
     if (this.isClient) localStorage.setItem(STORAGE_SESSION, newUser.id);
+    this.setCachedUser(newUser);
+
     return { success: true, user: newUser };
   }
 
