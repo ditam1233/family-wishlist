@@ -9,12 +9,14 @@ import { WishCard } from '@/components/WishCard';
 import { AddWishModal } from '@/components/AddWishModal';
 import { FamilyGroupModal } from '@/components/FamilyGroupModal';
 import { AuthScreen } from '@/components/AuthScreen';
-import { Gift, PlusCircle, Users } from 'lucide-react';
+import { Gift, PlusCircle, Users, Share2, Check } from 'lucide-react';
 
 export default function HomePage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [familyMembers, setFamilyMembers] = useState<User[]>([]);
   const [userGroups, setUserGroups] = useState<FamilyGroup[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
+  const [copiedGroupLink, setCopiedGroupLink] = useState(false);
   const [wishes, setWishes] = useState<
     (Wish & { is_reserved?: boolean; reserved_by_me?: boolean })[]
   >([]);
@@ -38,13 +40,21 @@ export default function HomePage() {
     }
   };
 
-  const loadUserData = async (userId: string) => {
-    const [groups, members] = await Promise.all([
-      dataStore.getUserGroups(userId),
-      dataStore.getFamilyMembers(userId),
-    ]);
-
+  const loadUserData = async (userId: string, preferredGroupId?: string) => {
+    const groups = await dataStore.getUserGroups(userId);
     setUserGroups(groups);
+
+    let activeGroupId = preferredGroupId;
+    if (!activeGroupId) {
+      if (selectedGroupId && (groups.some((g) => g.id === selectedGroupId) || selectedGroupId === 'all')) {
+        activeGroupId = selectedGroupId;
+      } else {
+        activeGroupId = groups[0]?.id || 'all';
+      }
+    }
+    setSelectedGroupId(activeGroupId);
+
+    const members = await dataStore.getFamilyMembers(userId, activeGroupId);
     setFamilyMembers(members);
 
     const activeTargetId = selectedUserId && members.some((m) => m.id === selectedUserId)
@@ -53,6 +63,32 @@ export default function HomePage() {
 
     setSelectedUserId(activeTargetId);
     await loadWishes(activeTargetId, userId);
+  };
+
+  const handleSwitchGroup = async (groupId: string) => {
+    setSelectedGroupId(groupId);
+    if (!currentUser) return;
+
+    const members = await dataStore.getFamilyMembers(currentUser.id, groupId);
+    setFamilyMembers(members);
+
+    const targetId = members.some((m) => m.id === selectedUserId)
+      ? selectedUserId
+      : currentUser.id;
+
+    setSelectedUserId(targetId);
+    await loadWishes(targetId, currentUser.id);
+  };
+
+  const handleShareGroup = (code: string) => {
+    if (typeof window !== 'undefined') {
+      const origin = window.location.origin;
+      const pathname = window.location.pathname.replace(/\/$/, '');
+      const shareUrl = `${origin}${pathname}/?code=${encodeURIComponent(code)}`;
+      navigator.clipboard.writeText(shareUrl);
+      setCopiedGroupLink(true);
+      setTimeout(() => setCopiedGroupLink(false), 2000);
+    }
   };
 
   const loadWishes = async (targetId: string, viewerId: string) => {
@@ -117,6 +153,7 @@ export default function HomePage() {
 
   if (!currentUser) return <AuthScreen onSuccess={handleAuth} />;
 
+  const activeGroup = userGroups.find((g) => g.id === selectedGroupId);
   const selectedMember = familyMembers.find((m) => m.id === selectedUserId) || currentUser;
   const isOwner = currentUser.id === selectedMember.id;
   const events = ['Все', 'День рождения', 'Новый год', 'Без повода'];
@@ -163,11 +200,94 @@ export default function HomePage() {
           </div>
         ) : (
           <>
+            {/* Переключатель семейных кругов */}
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-2 sm:p-2.5 border border-warm-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
+                <span className="text-[11px] font-semibold text-warm-400 uppercase tracking-wider px-2 shrink-0 hidden md:inline">
+                  Круг:
+                </span>
+
+                {userGroups.map((group) => {
+                  const isActive = selectedGroupId === group.id;
+                  return (
+                    <button
+                      key={group.id}
+                      onClick={() => handleSwitchGroup(group.id)}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+                        isActive
+                          ? 'bg-warm-900 text-white shadow-sm shadow-warm-900/15'
+                          : 'bg-warm-100/70 hover:bg-warm-100 text-warm-700'
+                      }`}
+                    >
+                      <Users className={`w-3.5 h-3.5 ${isActive ? 'text-warm-300' : 'text-warm-400'}`} />
+                      <span>{group.name}</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${
+                          isActive
+                            ? 'bg-white/20 text-white'
+                            : 'bg-white text-warm-500 border border-warm-200/60'
+                        }`}
+                      >
+                        {group.invite_code}
+                      </span>
+                    </button>
+                  );
+                })}
+
+                {userGroups.length > 1 && (
+                  <button
+                    onClick={() => handleSwitchGroup('all')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+                      selectedGroupId === 'all'
+                        ? 'bg-warm-900 text-white shadow-sm'
+                        : 'bg-warm-100/70 hover:bg-warm-100 text-warm-600'
+                    }`}
+                  >
+                    Все родные
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setIsGroupsOpen(true)}
+                  title="Создать или войти в другую семью"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium text-warm-500 hover:text-warm-800 hover:bg-warm-100 border border-dashed border-warm-300 transition-all cursor-pointer shrink-0"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Еще семья</span>
+                </button>
+              </div>
+
+              {/* Быстрая ссылка для приглашения в активную семью */}
+              {activeGroup && (
+                <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto pl-1 sm:pl-0">
+                  <button
+                    onClick={() => handleShareGroup(activeGroup.invite_code)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-accent/10 hover:bg-accent/20 text-accent transition-all cursor-pointer"
+                    title="Скопировать ссылку для родственников этой семьи"
+                  >
+                    {copiedGroupLink ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Ссылка скопирована!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Share2 className="w-3.5 h-3.5" />
+                        <span>Пригласить в {activeGroup.name}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Family bar */}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-[11px] font-semibold text-warm-400 uppercase tracking-wider">
-                  Семья
+                  {selectedGroupId === 'all'
+                    ? 'Все родственники'
+                    : `Участники «${activeGroup?.name || 'Семья'}»`}
                 </p>
                 <button
                   onClick={() => setIsGroupsOpen(true)}
@@ -274,6 +394,8 @@ export default function HomePage() {
       <FamilyGroupModal
         isOpen={isGroupsOpen}
         currentUser={currentUser}
+        selectedGroupId={selectedGroupId}
+        onSelectGroup={handleSwitchGroup}
         onClose={() => setIsGroupsOpen(false)}
         onUpdate={handleGroupsUpdated}
       />
