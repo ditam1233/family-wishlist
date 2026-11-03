@@ -3,7 +3,7 @@
 import React from 'react';
 import { User } from '@/types';
 import { getInitials, getAvatarGradient } from '@/lib/avatar';
-import { Gift, Plus, Users, LogOut, ChevronDown } from 'lucide-react';
+import { Gift, Plus, Users, LogOut, Sparkles } from 'lucide-react';
 
 interface NavbarProps {
   currentUser: User;
@@ -22,52 +22,67 @@ export const Navbar: React.FC<NavbarProps> = ({
   const initials = getInitials(currentUser.name);
 
   return (
-    <header className="sticky top-0 z-30 bg-cream/80 backdrop-blur-xl border-b border-warm-200/60">
-      <div className="max-w-5xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
-        {/* Logo */}
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-white shadow-sm shadow-warm-300/30 flex items-center justify-center">
-            <Gift className="w-5 h-5 text-accent" strokeWidth={1.5} />
+    <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/80 transition-all">
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
+        {/* Modern Logo */}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-rose-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+            <Gift className="w-5 h-5" strokeWidth={2} />
           </div>
-          <span className="font-semibold text-warm-800 text-base tracking-tight hidden sm:block">
-            Вишлист
-          </span>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-slate-900 text-base tracking-tight">
+                Family Wishlist
+              </span>
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-200/60">
+                <Sparkles className="w-2.5 h-2.5" />
+                Live
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 font-medium hidden sm:block">
+              Тайные подарки для всей семьи
+            </p>
+          </div>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={onOpenAddWish}
-            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full text-xs font-semibold bg-accent hover:bg-accent-hover text-white shadow-sm shadow-accent/15 transition-all active:scale-95 cursor-pointer"
+            className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl text-xs font-semibold bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-md shadow-indigo-500/25 hover:shadow-indigo-500/35 active:scale-95 transition-all cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-            <span className="hidden sm:inline">Добавить</span>
+            <Plus className="w-4 h-4" strokeWidth={2.5} />
+            <span>Добавить желание</span>
           </button>
 
           <button
             onClick={onOpenGroups}
-            className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full text-xs font-medium bg-white border border-warm-200/80 text-warm-700 hover:border-warm-300 hover:bg-warm-50 shadow-xs transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-xl text-xs font-medium bg-slate-100/80 hover:bg-slate-200/80 text-slate-700 transition-all cursor-pointer"
+            title="Управление семьями"
           >
-            <Users className="w-3.5 h-3.5 text-warm-500" />
+            <Users className="w-4 h-4 text-slate-500" />
             <span className="hidden sm:inline">Семьи</span>
           </button>
 
-          {/* User avatar + menu */}
-          <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-warm-200/60">
+          {/* User profile */}
+          <div className="flex items-center gap-2 ml-1 pl-2.5 border-l border-slate-200">
             <div
-              className={`w-8 h-8 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-[11px] font-bold shadow-sm`}
+              className={`w-9 h-9 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-xs font-bold shadow-sm ring-2 ring-white`}
             >
               {initials}
             </div>
-            <span className="text-xs font-medium text-warm-700 hidden md:block max-w-[100px] truncate">
-              {currentUser.name}
-            </span>
+            <div className="hidden md:block text-left">
+              <div className="text-xs font-semibold text-slate-800 leading-tight truncate max-w-[110px]">
+                {currentUser.name}
+              </div>
+              <span className="text-[10px] text-slate-400">Онлайн</span>
+            </div>
             <button
               onClick={onLogout}
               title="Выйти"
-              className="p-1.5 text-warm-400 hover:text-accent rounded-lg transition-colors cursor-pointer"
+              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
             >
-              <LogOut className="w-3.5 h-3.5" />
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>
