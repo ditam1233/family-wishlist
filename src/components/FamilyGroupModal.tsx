@@ -8,6 +8,8 @@ import { X, Users, Copy, Check, Plus, Hash, Share2, Loader2 } from 'lucide-react
 interface FamilyGroupModalProps {
   isOpen: boolean;
   currentUser: User;
+  selectedGroupId?: string;
+  onSelectGroup?: (id: string) => void;
   onClose: () => void;
   onUpdate: () => void;
 }
@@ -15,6 +17,8 @@ interface FamilyGroupModalProps {
 export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
   isOpen,
   currentUser,
+  selectedGroupId,
+  onSelectGroup,
   onClose,
   onUpdate,
 }) => {
@@ -143,21 +147,53 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
         {tab === 'list' && (
           <div className="space-y-3 max-h-[50vh] overflow-y-auto">
             {userGroups.length > 0 ? (
-              userGroups.map((group) => (
-                <div
-                  key={group.id}
-                  className="p-4 rounded-2xl bg-cream border border-warm-200/60 flex items-center justify-between gap-3"
-                >
-                  <div>
-                    <h3 className="font-semibold text-sm text-warm-800">{group.name}</h3>
-                    <div className="flex items-center gap-1.5 mt-1 text-[11px] text-warm-500">
-                      <Hash className="w-3 h-3 text-warm-400" />
-                      <span>Код:</span>
-                      <code className="font-mono text-accent font-semibold">{group.invite_code}</code>
+              userGroups.map((group) => {
+                const isActive = selectedGroupId === group.id;
+                return (
+                  <div
+                    key={group.id}
+                    className={`p-4 rounded-2xl border transition-all ${
+                      isActive
+                        ? 'bg-warm-100/70 border-warm-300 shadow-xs'
+                        : 'bg-cream border-warm-200/60 hover:border-warm-300'
+                    } flex items-center justify-between gap-3`}
+                  >
+                    <div
+                      className="cursor-pointer flex-1"
+                      onClick={() => {
+                        if (onSelectGroup) {
+                          onSelectGroup(group.id);
+                          onClose();
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-sm text-warm-800">{group.name}</h3>
+                        {isActive && (
+                          <span className="text-[10px] bg-warm-900 text-white font-semibold px-2 py-0.5 rounded-full">
+                            Активна
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1 text-[11px] text-warm-500">
+                        <Hash className="w-3 h-3 text-warm-400" />
+                        <span>Код:</span>
+                        <code className="font-mono text-accent font-semibold">{group.invite_code}</code>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {onSelectGroup && !isActive && (
+                        <button
+                          onClick={() => {
+                            onSelectGroup(group.id);
+                            onClose();
+                          }}
+                          className="px-2.5 py-2 rounded-xl bg-warm-200/60 hover:bg-warm-200 text-warm-700 text-xs font-semibold transition-all cursor-pointer"
+                        >
+                          Выбрать
+                        </button>
+                      )}
                     <button
                       onClick={() => handleShareLink(group.invite_code)}
                       className="px-2.5 py-2 rounded-xl bg-accent/10 hover:bg-accent/20 text-accent text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
@@ -189,7 +225,8 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
                     </button>
                   </div>
                 </div>
-              ))
+              );
+            })
             ) : (
               <div className="text-center py-8 text-warm-400 text-xs">
                 У вас пока нет семейных групп.<br />Создайте семью, чтобы получить код.
