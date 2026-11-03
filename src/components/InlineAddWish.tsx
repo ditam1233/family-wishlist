@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Wish } from '@/types';
+import { scrapeLink, normalizeUrl } from '@/lib/scraper';
 import { Plus, Sparkles, Loader2, SlidersHorizontal } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -19,47 +20,25 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
   const [inputVal, setInputVal] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const normalizeUrl = (text: string): string | null => {
-    let clean = text.trim();
-    if (!clean) return null;
-    if (
-      /^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(clean) &&
-      !clean.startsWith('http://') &&
-      !clean.startsWith('https://')
-    ) {
-      clean = 'https://' + clean;
-    }
-    try {
-      const u = new URL(clean);
-      return u.protocol === 'http:' || u.protocol === 'https:' ? clean : null;
-    } catch {
-      return null;
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const clean = inputVal.trim();
     if (!clean) return;
 
     const detectedUrl = normalizeUrl(clean);
+    const isUrl = detectedUrl.startsWith('http://') || detectedUrl.startsWith('https://');
 
-    if (detectedUrl) {
+    if (isUrl) {
       setLoading(true);
       try {
-        const res = await fetch('/api/scrape-link', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: detectedUrl }),
-        });
-        const data = await res.json();
+        const data = await scrapeLink(detectedUrl);
         onAddWish({
           user_id: currentUserId,
           title: data.title || clean,
           description: data.description || undefined,
           link_url: detectedUrl,
           image_url: data.image || undefined,
-          price: data.price ? parseFloat(data.price) : undefined,
+          price: data.price ? Number(data.price) : undefined,
           currency: '₽',
           priority: 'nice_to_have',
         });
@@ -97,12 +76,14 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
     setInputVal('');
   };
 
-  const isCurrentUrl = Boolean(normalizeUrl(inputVal));
+  const isCurrentUrl = Boolean(
+    inputVal.trim() && (normalizeUrl(inputVal).startsWith('http://') || normalizeUrl(inputVal).startsWith('https://'))
+  );
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 dark:border-stone-800 hover:border-stone-400/80 dark:hover:border-stone-600 transition-colors p-2 flex items-center gap-1.5 shadow-2xs"
+      className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 dark:border-stone-800 hover:border-stone-400/80 dark:hover:border-stone-600 transition-all p-2 flex items-center gap-1.5 shadow-2xs focus-within:ring-2 focus-within:ring-stone-400/30"
     >
       <div className="pl-2 text-stone-400 dark:text-stone-500">
         <Plus className="w-4 h-4 stroke-[2]" />
@@ -121,7 +102,7 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
           type="button"
           onClick={onOpenFullModal}
           title="Подробная форма"
-          className="p-2 text-stone-400 dark:text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition-colors cursor-pointer"
+          className="p-2 text-stone-400 dark:text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition-all cursor-pointer active:scale-90"
         >
           <SlidersHorizontal className="w-4 h-4" />
         </button>
@@ -129,7 +110,7 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
         <button
           type="submit"
           disabled={loading || !inputVal.trim()}
-          className="h-9 px-3.5 rounded-xl bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white disabled:opacity-30 text-white dark:text-stone-950 font-medium text-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+          className="h-9 px-3.5 rounded-xl bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white disabled:opacity-30 text-white dark:text-stone-950 font-semibold text-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
         >
           {loading ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />

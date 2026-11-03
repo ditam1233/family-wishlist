@@ -54,7 +54,7 @@ export const WishCard: React.FC<WishCardProps> = ({
   };
 
   return (
-    <div className="group bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 dark:border-stone-800 hover:border-stone-400/80 dark:hover:border-stone-700 transition-all flex flex-col justify-between overflow-hidden shadow-2xs">
+    <div className="group bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 dark:border-stone-800 hover:border-stone-400/80 dark:hover:border-stone-700 transition-all duration-200 flex flex-col justify-between overflow-hidden shadow-2xs hover:shadow-sm animate-in fade-in duration-200">
       <div>
         {/* Top Image or Pattern */}
         <div className="relative aspect-[4/3] bg-stone-100 dark:bg-stone-800 overflow-hidden border-b border-stone-100 dark:border-stone-800 flex items-center justify-center">
@@ -85,7 +85,7 @@ export const WishCard: React.FC<WishCardProps> = ({
             <button
               onClick={() => onDeleteWish(wish.id)}
               title="Удалить желание"
-              className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-white/90 dark:bg-stone-900/90 hover:bg-white dark:hover:bg-stone-800 text-stone-400 dark:text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 shadow-2xs transition-colors cursor-pointer"
+              className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-white/90 dark:bg-stone-900/90 hover:bg-white dark:hover:bg-stone-800 text-stone-400 dark:text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 shadow-2xs transition-all cursor-pointer active:scale-90"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
@@ -95,11 +95,11 @@ export const WishCard: React.FC<WishCardProps> = ({
         {/* Content body */}
         <div className="p-4 space-y-2">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-medium text-stone-900 dark:text-stone-100 text-sm leading-snug line-clamp-2">
+            <h3 className="font-semibold text-stone-900 dark:text-stone-100 text-sm leading-snug line-clamp-2">
               {wish.title}
             </h3>
             {wish.price !== undefined && wish.price > 0 && (
-              <span className="font-mono font-semibold text-xs text-stone-900 dark:text-stone-100 shrink-0 mt-0.5">
+              <span className="font-mono font-bold text-xs text-stone-900 dark:text-stone-100 shrink-0 mt-0.5">
                 {formatPrice(wish.price, wish.currency)}
               </span>
             )}
@@ -121,7 +121,7 @@ export const WishCard: React.FC<WishCardProps> = ({
               href={wish.link_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-[11px] font-mono text-stone-400 dark:text-stone-500 hover:text-stone-900 dark:hover:text-stone-200 transition-colors truncate max-w-[150px]"
+              className="inline-flex items-center gap-1 text-[11px] font-mono text-stone-400 dark:text-stone-500 hover:text-stone-900 dark:hover:text-stone-200 transition-colors truncate max-w-[150px] active:opacity-70"
             >
               <ExternalLink className="w-3 h-3 shrink-0" />
               <span className="truncate">{hostname(wish.link_url)}</span>
@@ -138,7 +138,7 @@ export const WishCard: React.FC<WishCardProps> = ({
               {wish.reserved_by_me ? (
                 <button
                   onClick={handleReserve}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-medium transition-all cursor-pointer active:scale-95"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-semibold transition-all cursor-pointer active:scale-95 shadow-2xs"
                 >
                   <Check className="w-3.5 h-3.5 text-stone-300 dark:text-stone-700 stroke-[2.5]" />
                   <span>Вы дарите</span>
@@ -151,7 +151,7 @@ export const WishCard: React.FC<WishCardProps> = ({
               ) : (
                 <button
                   onClick={handleReserve}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white text-white dark:text-stone-900 text-xs font-medium transition-all cursor-pointer active:scale-95 shadow-2xs"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white text-white dark:text-stone-900 text-xs font-semibold transition-all cursor-pointer active:scale-95 shadow-2xs"
                 >
                   <Lock className="w-3 h-3" />
                   <span>Подарю я</span>

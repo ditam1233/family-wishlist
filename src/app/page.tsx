@@ -209,19 +209,43 @@ export default function HomePage() {
     }
   };
 
+  // Optimistic toggle reservation for instant 0ms feedback
   const handleToggleReserve = async (wishId: string) => {
     if (!currentUser) return;
-    await dataStore.toggleReservation(wishId, currentUser.id);
-    await Promise.all([
-      loadWishes(selectedUserId, currentUser.id),
-      loadMyReservations(currentUser.id),
-    ]);
-  };
 
-  const handleDeleteWish = async (wishId: string) => {
-    if (!currentUser) return;
-    if (confirm('Удалить это желание?')) {
-      await dataStore.deleteWish(wishId, currentUser.id);
+    // Optimistically update wishes state
+    setWishes((prev) =>
+      prev.map((w) => {
+        if (w.id === wishId) {
+          const nextReserved = !w.is_reserved;
+          return {
+            ...w,
+            is_reserved: nextReserved,
+            reserved_by_me: nextReserved,
+          };
+        }
+        return w;
+      })
+    );
+
+    // Optimistically update myReservations state
+    setMyReservations((prev) => {
+      const exists = prev.some((w) => w.id === wishId);
+      if (exists) {
+        return prev.filter((w) => w.id !== wishId);
+      }
+      const item = wishes.find((w) => w.id === wishId);
+      if (item) {
+        return [{ ...item, is_reserved: true, reserved_by_me: true }, ...prev];
+      }
+      return prev;
+    });
+
+    try {
+      await dataStore.toggleReservation(wishId, currentUser.id);
+    } catch (err) {
+      console.error('Reservation error:', err);
+      // Revert if error
       await Promise.all([
         loadWishes(selectedUserId, currentUser.id),
         loadMyReservations(currentUser.id),
@@ -229,16 +253,61 @@ export default function HomePage() {
     }
   };
 
+  // Optimistic delete wish for instant 0ms removal
+  const handleDeleteWish = async (wishId: string) => {
+    if (!currentUser) return;
+    if (!confirm('Удалить это желание?')) return;
+
+    // Optimistic UI update
+    setWishes((prev) => prev.filter((w) => w.id !== wishId));
+    setMyReservations((prev) => prev.filter((w) => w.id !== wishId));
+
+    try {
+      await dataStore.deleteWish(wishId, currentUser.id);
+    } catch (err) {
+      console.error('Delete wish error:', err);
+      await Promise.all([
+        loadWishes(selectedUserId, currentUser.id),
+        loadMyReservations(currentUser.id),
+      ]);
+    }
+  };
+
+  // Optimistic instant add wish (0ms appearance even with photo!)
   const handleAddWish = async (wishData: Omit<Wish, 'id' | 'created_at'>) => {
     if (!currentUser) return;
-    await dataStore.addWish(wishData);
-    await loadWishes(selectedUserId, currentUser.id);
+
+    const tempId = `temp-${Date.now()}`;
+    const optimisticWish: DisplayWish = {
+      ...wishData,
+      id: tempId,
+      created_at: new Date().toISOString(),
+    };
+
+    // INSTANT UI ADDITION (Zero delay)
+    if (selectedUserId === currentUser.id) {
+      setWishes((prev) => [optimisticWish, ...prev]);
+    }
+
+    try {
+      const created = await dataStore.addWish(wishData);
+      if (created) {
+        setWishes((prev) =>
+          prev.map((w) => (w.id === tempId ? { ...created, is_reserved: false } : w))
+        );
+      } else {
+        await loadWishes(selectedUserId, currentUser.id);
+      }
+    } catch (err) {
+      console.error('Add wish error:', err);
+      await loadWishes(selectedUserId, currentUser.id);
+    }
   };
 
   if (isAppLoading) {
     return (
       <div className="min-h-screen bg-stone-50 dark:bg-stone-950 flex flex-col items-center justify-center p-6">
-        <div className="w-9 h-9 rounded-xl bg-stone-900 dark:bg-stone-100 text-stone-100 dark:text-stone-900 flex items-center justify-center mb-3">
+        <div className="w-10 h-10 rounded-2xl bg-stone-900 dark:bg-stone-100 text-stone-100 dark:text-stone-900 flex items-center justify-center mb-3 animate-pulse">
           <Gift className="w-5 h-5 stroke-[1.75]" />
         </div>
         <div className="text-xs font-mono tracking-wider uppercase text-stone-400">
@@ -273,7 +342,7 @@ export default function HomePage() {
   );
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 flex text-stone-900 dark:text-stone-100 antialiased">
+    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 flex text-stone-900 dark:text-stone-100 antialiased transition-colors duration-200">
       {/* Permanent Left Sidebar (desktop) + Slide-over Drawer (mobile) */}
       <Sidebar
         currentUser={currentUser}
@@ -298,12 +367,12 @@ export default function HomePage() {
       {/* Main Focus Canvas */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
         {/* iOS-Style Minimalist Top Bar */}
-        <header className="sticky top-0 z-20 bg-stone-50/85 dark:bg-stone-950/85 backdrop-blur-xl border-b border-stone-200/60 dark:border-stone-800/80 px-4 sm:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-2.5">
+        <header className="sticky top-0 z-20 bg-stone-50/85 dark:bg-stone-950/85 backdrop-blur-xl border-b border-stone-200/60 dark:border-stone-800/80 px-4 sm:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-2.5 transition-colors">
           <div className="flex items-center gap-2 min-w-0">
             {/* Mobile Circle Trigger */}
             <button
               onClick={() => setIsMobileSidebarOpen(true)}
-              className="md:hidden flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-xs font-semibold text-stone-900 dark:text-stone-100 shadow-2xs active:scale-95 transition-transform cursor-pointer"
+              className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-xs font-semibold text-stone-900 dark:text-stone-100 shadow-2xs active:scale-95 transition-all cursor-pointer"
             >
               <span className="truncate max-w-[130px]">
                 {activeGroup?.name || 'Моя семья'}
@@ -331,12 +400,12 @@ export default function HomePage() {
             <button
               onClick={handleToggleTheme}
               title={currentTheme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
-              className="p-2 text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 rounded-xl hover:bg-stone-200/60 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+              className="p-2 text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 rounded-xl hover:bg-stone-200/60 dark:hover:bg-stone-800 transition-all cursor-pointer active:scale-90"
             >
               {currentTheme === 'dark' ? (
-                <Sun className="w-4 h-4 text-amber-400" />
+                <Sun className="w-4 h-4 text-amber-400 transition-transform rotate-0 hover:rotate-45" />
               ) : (
-                <Moon className="w-4 h-4 text-stone-600 dark:text-stone-300" />
+                <Moon className="w-4 h-4 text-stone-600 dark:text-stone-300 transition-transform -rotate-12 hover:rotate-0" />
               )}
             </button>
 
@@ -344,7 +413,7 @@ export default function HomePage() {
             <button
               onClick={() => setIsOnboardingOpen(true)}
               title="Обучение"
-              className="p-2 text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 rounded-xl hover:bg-stone-200/60 dark:hover:bg-stone-800 transition-colors cursor-pointer hidden sm:inline-flex"
+              className="p-2 text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 rounded-xl hover:bg-stone-200/60 dark:hover:bg-stone-800 transition-all cursor-pointer active:scale-90 hidden sm:inline-flex"
             >
               <HelpCircle className="w-4 h-4" />
             </button>
@@ -352,7 +421,7 @@ export default function HomePage() {
             {/* Mobile search toggle */}
             <button
               onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
-              className="p-2 text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 rounded-xl hover:bg-stone-200/60 dark:hover:bg-stone-800 sm:hidden cursor-pointer"
+              className="p-2 text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 rounded-xl hover:bg-stone-200/60 dark:hover:bg-stone-800 sm:hidden cursor-pointer active:scale-90 transition-all"
               title="Поиск"
             >
               {isMobileSearchOpen ? (
@@ -379,9 +448,9 @@ export default function HomePage() {
               <button
                 onClick={() => setViewMode('grid')}
                 title="Сетка"
-                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                className={`p-1.5 rounded-lg transition-all cursor-pointer active:scale-90 ${
                   viewMode === 'grid'
-                    ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-950'
+                    ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-950 shadow-2xs'
                     : 'text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
                 }`}
               >
@@ -390,9 +459,9 @@ export default function HomePage() {
               <button
                 onClick={() => setViewMode('list')}
                 title="Компактный список"
-                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                className={`p-1.5 rounded-lg transition-all cursor-pointer active:scale-90 ${
                   viewMode === 'list'
-                    ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-950'
+                    ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-950 shadow-2xs'
                     : 'text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
                 }`}
               >
@@ -404,7 +473,7 @@ export default function HomePage() {
             {isOwner && (
               <button
                 onClick={() => setIsAddOpen(true)}
-                className="hidden sm:inline-flex px-3 py-1.5 rounded-xl bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white text-white dark:text-stone-950 text-xs font-medium items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                className="hidden sm:inline-flex px-3.5 py-1.5 rounded-xl bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white text-white dark:text-stone-950 text-xs font-semibold items-center gap-1.5 transition-all cursor-pointer active:scale-95 shadow-2xs"
               >
                 <Plus className="w-3.5 h-3.5 stroke-[2.25]" />
                 <span>Желание</span>
@@ -415,7 +484,7 @@ export default function HomePage() {
 
         {/* Mobile Search input dropdown */}
         {isMobileSearchOpen && (
-          <div className="p-3 bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 sm:hidden animate-in fade-in duration-100">
+          <div className="p-3 bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 sm:hidden animate-in fade-in slide-in-from-top-1 duration-150">
             <div className="relative">
               <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -430,8 +499,11 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Canvas Body - padded at bottom for Mobile Dock */}
-        <main className="max-w-4xl w-full mx-auto p-4 sm:p-8 pb-28 md:pb-8 space-y-4 sm:space-y-6">
+        {/* Canvas Body with smooth transition when changing views or members */}
+        <main
+          key={`${selectedView}_${selectedUserId}`}
+          className="max-w-4xl w-full mx-auto p-4 sm:p-8 pb-28 md:pb-8 space-y-4 sm:space-y-6 animate-in fade-in duration-200 slide-in-from-bottom-1"
+        >
           {selectedView === 'wishes' ? (
             <>
               {/* Native iOS-Style Large Header */}
@@ -563,7 +635,7 @@ export default function HomePage() {
                   {isOwner && (
                     <button
                       onClick={() => setIsAddOpen(true)}
-                      className="px-4 py-2.5 rounded-full bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white text-white dark:text-stone-950 font-medium text-xs transition-all cursor-pointer shadow-xs active:scale-95"
+                      className="px-4 py-2.5 rounded-full bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white text-white dark:text-stone-950 font-semibold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
                     >
                       + Добавить первое желание
                     </button>
@@ -669,7 +741,7 @@ export default function HomePage() {
                   </p>
                   <button
                     onClick={() => setSelectedView('wishes')}
-                    className="px-4 py-2.5 rounded-full bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white text-white dark:text-stone-950 font-medium text-xs transition-all cursor-pointer shadow-xs active:scale-95"
+                    className="px-4 py-2.5 rounded-full bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white text-white dark:text-stone-950 font-semibold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
                   >
                     Перейти к желаниям семьи
                   </button>

@@ -307,7 +307,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                     required
                     value={relativeName}
                     onChange={(e) => setRelativeName(e.target.value)}
-                    placeholder="Мама, Папа, Катя..."
+                    placeholder="Мама, Папа..."
                     className={`${inputClass} pl-9`}
                   />
                 </div>

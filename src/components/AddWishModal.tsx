@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Wish, Priority } from '@/types';
+import { scrapeLink, normalizeUrl } from '@/lib/scraper';
+import { compressImage } from '@/lib/imageCompressor';
 import {
   X,
   Sparkles,
@@ -40,6 +42,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
   const [price, setPrice] = useState('');
   const [priority, setPriority] = useState<Priority>('nice_to_have');
   const [loading, setLoading] = useState(false);
+  const [compressing, setCompressing] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [imageTab, setImageTab] = useState<'upload' | 'url'>('upload');
 
@@ -48,19 +51,6 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
 
   if (!isOpen) return null;
 
-  const normalizeUrl = (raw: string): string => {
-    let clean = raw.trim();
-    if (!clean) return '';
-    if (
-      /^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(clean) &&
-      !clean.startsWith('http://') &&
-      !clean.startsWith('https://')
-    ) {
-      clean = 'https://' + clean;
-    }
-    return clean;
-  };
-
   const executeScrape = async (targetUrl: string) => {
     const cleanUrl = normalizeUrl(targetUrl);
     if (!cleanUrl || !cleanUrl.startsWith('http')) return;
@@ -68,13 +58,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
     setLoading(true);
     setImgError(false);
     try {
-      const res = await fetch('/api/scrape-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: cleanUrl }),
-      });
-      const data = await res.json();
-
+      const data = await scrapeLink(cleanUrl);
       if (data.title) setTitle(data.title);
       if (data.description) setDescription(data.description);
       if (data.image) {
@@ -83,7 +67,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
       }
       if (data.price) setPrice(String(data.price));
     } catch {
-      // ignore
+      /* ignore */
     } finally {
       setLoading(false);
     }
@@ -105,24 +89,21 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
     }
   };
 
-  // Handle file upload from gallery / device
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle file upload from gallery with high-speed canvas compression (~60KB)
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Размер фото не должен превышать 5 МБ');
-      return;
+    setCompressing(true);
+    try {
+      const compressedDataUrl = await compressImage(file, 1080, 0.82);
+      setImageUrl(compressedDataUrl);
+      setImgError(false);
+    } catch (err) {
+      console.error('Image compression error:', err);
+    } finally {
+      setCompressing(false);
     }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setImageUrl(reader.result);
-        setImgError(false);
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -142,7 +123,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
 
     try {
       confetti({
-        particleCount: 30,
+        particleCount: 35,
         spread: 60,
         origin: { y: 0.7 },
         colors: ['#171717', '#78716c', '#d6d3d1'],
@@ -165,14 +146,14 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
     'w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-900 focus:border-stone-900 dark:focus:border-stone-100 focus:ring-1 focus:ring-stone-900 dark:focus:ring-stone-100 transition-all placeholder:text-stone-400 dark:placeholder:text-stone-500';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-950/40 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-stone-900 rounded-t-3xl sm:rounded-2xl max-w-lg w-full border-t sm:border border-stone-200/90 dark:border-stone-800 shadow-2xl p-5 sm:p-6 relative max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-950/40 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-stone-900 rounded-t-3xl sm:rounded-2xl max-w-lg w-full border-t sm:border border-stone-200/90 dark:border-stone-800 shadow-2xl p-5 sm:p-6 relative max-h-[92vh] overflow-y-auto animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200">
         {/* Mobile handle indicator */}
         <div className="w-10 h-1 bg-stone-300 dark:bg-stone-700 rounded-full mx-auto -mt-1 mb-4 sm:hidden" />
 
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors cursor-pointer"
+          className="absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition-all cursor-pointer active:scale-90"
         >
           <X className="w-4 h-4" />
         </button>
@@ -194,7 +175,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
                 Ссылка на товар (Ozon, WB, Маркет...)
               </label>
               {loading && (
-                <span className="text-[11px] font-mono text-stone-500 flex items-center gap-1">
+                <span className="text-[11px] font-mono text-stone-500 flex items-center gap-1 animate-pulse">
                   <Loader2 className="w-3 h-3 animate-spin" />
                   Распознаём товар...
                 </span>
@@ -218,7 +199,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
                 onClick={() => executeScrape(linkUrl)}
                 disabled={loading || !linkUrl.trim()}
                 title="Заполнить название, цену и фото автоматически"
-                className="px-3 py-2 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 disabled:opacity-40 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+                className="px-3 py-2 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 disabled:opacity-40 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shrink-0 active:scale-95 shadow-2xs"
               >
                 {loading ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -277,7 +258,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setImageTab('upload')}
-                  className={`px-2 py-0.5 rounded-md font-medium transition-colors cursor-pointer ${
+                  className={`px-2 py-0.5 rounded-md font-medium transition-all cursor-pointer active:scale-95 ${
                     imageTab === 'upload'
                       ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-2xs'
                       : 'text-stone-500 hover:text-stone-900 dark:hover:text-stone-200'
@@ -288,7 +269,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setImageTab('url')}
-                  className={`px-2 py-0.5 rounded-md font-medium transition-colors cursor-pointer ${
+                  className={`px-2 py-0.5 rounded-md font-medium transition-all cursor-pointer active:scale-95 ${
                     imageTab === 'url'
                       ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-2xs'
                       : 'text-stone-500 hover:text-stone-900 dark:hover:text-stone-200'
@@ -311,15 +292,26 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
 
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-stone-200 dark:border-stone-700 hover:border-stone-400 dark:hover:border-stone-500 rounded-xl p-3.5 text-center cursor-pointer transition-colors bg-stone-50/50 dark:bg-stone-800/40"
+                  className="border-2 border-dashed border-stone-200 dark:border-stone-700 hover:border-stone-400 dark:hover:border-stone-500 rounded-xl p-3.5 text-center cursor-pointer transition-all bg-stone-50/50 dark:bg-stone-800/40 active:scale-[0.99]"
                 >
-                  <Upload className="w-5 h-5 mx-auto text-stone-400 mb-1" />
-                  <p className="text-xs font-medium text-stone-800 dark:text-stone-200">
-                    Нажмите, чтобы выбрать фото из галереи
-                  </p>
-                  <p className="text-[10px] text-stone-400 mt-0.5">
-                    PNG, JPG, WebP до 5 МБ
-                  </p>
+                  {compressing ? (
+                    <div className="py-1">
+                      <Loader2 className="w-5 h-5 mx-auto text-stone-500 animate-spin mb-1" />
+                      <p className="text-xs font-medium text-stone-700 dark:text-stone-300">
+                        Оптимизация фото...
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="w-5 h-5 mx-auto text-stone-400 mb-1" />
+                      <p className="text-xs font-medium text-stone-800 dark:text-stone-200">
+                        Нажмите, чтобы выбрать фото из галереи
+                      </p>
+                      <p className="text-[10px] text-stone-400 mt-0.5">
+                        Быстрое сжатие для мгновенной загрузки
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
             ) : (
@@ -340,7 +332,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
 
             {/* Thumbnail Preview if present */}
             {imageUrl && (
-              <div className="mt-2.5 flex items-center gap-2.5 p-2 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700">
+              <div className="mt-2.5 flex items-center gap-2.5 p-2 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 animate-in fade-in duration-150">
                 <div className="w-12 h-12 rounded-lg bg-stone-100 dark:bg-stone-700 overflow-hidden shrink-0 border border-stone-200 dark:border-stone-600 flex items-center justify-center">
                   {!imgError ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -360,7 +352,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
                     Фото прикреплено
                   </span>
                   <span className="text-[10px] text-stone-400 font-mono">
-                    {imageUrl.startsWith('data:') ? 'Из галереи' : 'Ссылка на картинку'}
+                    {imageUrl.startsWith('data:') ? 'Оптимизировано из галереи' : 'Ссылка на картинку'}
                   </span>
                 </div>
 
@@ -368,7 +360,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
                   type="button"
                   onClick={() => setImageUrl('')}
                   title="Удалить фото"
-                  className="p-1.5 text-stone-400 hover:text-red-500 rounded-lg hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors cursor-pointer"
+                  className="p-1.5 text-stone-400 hover:text-red-500 rounded-lg hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors cursor-pointer active:scale-90"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -389,9 +381,9 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
                     key={p.value}
                     type="button"
                     onClick={() => setPriority(p.value)}
-                    className={`py-2 px-2.5 rounded-xl text-xs font-medium border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    className={`py-2 px-2.5 rounded-xl text-xs font-medium border flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
                       isSelected
-                        ? 'border-stone-900 dark:border-stone-100 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 shadow-2xs'
+                        ? 'border-stone-900 dark:border-stone-100 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 shadow-2xs font-semibold'
                         : 'border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600 text-stone-600 dark:text-stone-400'
                     }`}
                   >
@@ -425,7 +417,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
           <div className="pt-2">
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white text-white dark:text-stone-900 font-medium text-xs transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.99]"
+              className="w-full py-3 rounded-xl bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white text-white dark:text-stone-900 font-semibold text-xs transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
             >
               <span>Сохранить в вишлист</span>
             </button>
