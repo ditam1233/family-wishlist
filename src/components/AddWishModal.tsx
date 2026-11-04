@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Wish, Priority } from '@/types';
+import { Wish } from '@/types';
 import { scrapeLink, normalizeUrl } from '@/lib/scraper';
 import { compressImage } from '@/lib/imageCompressor';
 import confetti from 'canvas-confetti';
@@ -35,7 +35,6 @@ interface AddWishModalProps {
   userId: string;
 }
 
-const EVENT_TAGS = ['Без повода', 'День рождения', 'Новый год', 'Годовщина', 'Новоселье'];
 
 export const AddWishModal: React.FC<AddWishModalProps> = ({
   isOpen,
@@ -48,8 +47,6 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
   const [linkUrl, setLinkUrl] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [price, setPrice] = useState('');
-  const [priority, setPriority] = useState<Priority>('nice_to_have');
-  const [eventTag, setEventTag] = useState('Без повода');
 
   const [loading, setLoading] = useState(false);
   const [compressing, setCompressing] = useState(false);
@@ -66,8 +63,6 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
       setLinkUrl('');
       setImageUrl('');
       setPrice('');
-      setPriority('nice_to_have');
-      setEventTag('Без повода');
       setErrorMsg('');
       setLoading(false);
       setCompressing(false);
@@ -143,8 +138,8 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
       image_url: imageUrl.trim() || undefined,
       price: !isNaN(cleanPrice) && cleanPrice > 0 ? cleanPrice : undefined,
       currency: '₽',
-      priority,
-      event_tag: eventTag,
+      priority: 'nice_to_have',
+      event_tag: 'Без повода',
     });
 
     try {
@@ -340,72 +335,18 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
             size="small"
           />
 
-          {/* Price & Priority */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-            <TextField
-              label="Примерная стоимость (₽)"
-              placeholder="3500"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              fullWidth
-              size="small"
-              slotProps={{ input: {
-                endAdornment: <InputAdornment position="end">₽</InputAdornment>,
-              }}}
-            />
-
-            <Box>
-              <Typography variant="caption" sx={{ display: 'block', mb: 0.75, color: 'text.secondary', fontWeight: 600 }}>
-                Приоритет
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 0.5 }}>
-                <Chip
-                  label="Хочу"
-                  clickable
-                  color={priority === 'nice_to_have' ? 'primary' : 'default'}
-                  variant={priority === 'nice_to_have' ? 'filled' : 'outlined'}
-                  onClick={() => setPriority('nice_to_have')}
-                  sx={{ flex: 1 }}
-                />
-                <Chip
-                  label="Очень хочу"
-                  clickable
-                  color={priority === 'must_have' ? 'error' : 'default'}
-                  variant={priority === 'must_have' ? 'filled' : 'outlined'}
-                  onClick={() => setPriority('must_have')}
-                  sx={{ flex: 1 }}
-                />
-                <Chip
-                  label="Мечта"
-                  clickable
-                  color={priority === 'dream' ? 'secondary' : 'default'}
-                  variant={priority === 'dream' ? 'filled' : 'outlined'}
-                  onClick={() => setPriority('dream')}
-                  sx={{ flex: 1 }}
-                />
-              </Box>
-            </Box>
-          </Box>
-
-          {/* Event Tag */}
-          <Box>
-            <Typography variant="caption" sx={{ display: 'block', mb: 0.75, color: 'text.secondary', fontWeight: 600 }}>
-              Повод для подарка
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
-              {EVENT_TAGS.map((tag) => (
-                <Chip
-                  key={tag}
-                  label={tag}
-                  clickable
-                  size="small"
-                  color={eventTag === tag ? 'primary' : 'default'}
-                  variant={eventTag === tag ? 'filled' : 'outlined'}
-                  onClick={() => setEventTag(tag)}
-                />
-              ))}
-            </Box>
-          </Box>
+          {/* Price */}
+          <TextField
+            label="Примерная стоимость (₽)"
+            placeholder="3500"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            fullWidth
+            size="small"
+            slotProps={{ input: {
+              endAdornment: <InputAdornment position="end">₽</InputAdornment>,
+            }}}
+          />
 
           {/* Description */}
           <TextField

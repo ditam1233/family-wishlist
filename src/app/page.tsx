@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { User, Wish, FamilyGroup, Priority } from '@/types';
+import { User, Wish, FamilyGroup } from '@/types';
 import { dataStore } from '@/lib/data';
 import { getInitials } from '@/lib/avatar';
 import { useColorMode } from '@/components/ThemeRegistry/MuiThemeProvider';
@@ -42,7 +42,6 @@ import {
 
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import AddIcon from '@mui/icons-material/Add';
-import SearchIcon from '@mui/icons-material/Search';
 import GridViewIcon from '@mui/icons-material/GridView';
 import ViewListIcon from '@mui/icons-material/ViewList';
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
@@ -64,8 +63,6 @@ export default function HomePage() {
   // View state
   const [activeTab, setActiveTab] = useState<'wishes' | 'reservations'>('wishes');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [priorityFilter, setPriorityFilter] = useState<'all' | Priority>('all');
 
   // Wishes data
   const [wishes, setWishes] = useState<(Wish & { is_reserved?: boolean; reserved_by_me?: boolean })[]>([]);
@@ -310,23 +307,10 @@ export default function HomePage() {
     setMyReservations([]);
   };
 
-  // Filtered wishes
+  // Wishes for active tab
   const displayedWishes = useMemo(() => {
-    const source = activeTab === 'reservations' ? myReservations : wishes;
-
-    return source.filter((wish) => {
-      const matchesSearch =
-        searchQuery === '' ||
-        wish.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (wish.description && wish.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (wish.event_tag && wish.event_tag.toLowerCase().includes(searchQuery.toLowerCase()));
-
-      const matchesPriority =
-        priorityFilter === 'all' || wish.priority === priorityFilter;
-
-      return matchesSearch && matchesPriority;
-    });
-  }, [activeTab, wishes, myReservations, searchQuery, priorityFilter]);
+    return activeTab === 'reservations' ? myReservations : wishes;
+  }, [activeTab, wishes, myReservations]);
 
   const activeGroup = userGroups.find((g) => g.id === selectedGroupId) || userGroups[0];
   const targetMember = familyMembers.find((m) => m.id === selectedUserId) || currentUser;
@@ -644,48 +628,6 @@ export default function HomePage() {
         </Box>
 
 
-        {/* Search & Filter Toolbar */}
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', md: 'row' },
-            gap: 1.5,
-            alignItems: { xs: 'stretch', md: 'center' },
-            mb: 2.5,
-          }}
-        >
-          {/* Search Field */}
-          <TextField
-            size="small"
-            placeholder="Поиск по названию или заметкам..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            sx={{ flex: 1 }}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="small" color="action" />
-                  </InputAdornment>
-                ),
-              },
-            }}
-          />
-
-          {/* Priority Filter Tabs */}
-          <Tabs
-            value={priorityFilter}
-            onChange={(_, val) => setPriorityFilter(val)}
-            variant="scrollable"
-            scrollButtons="auto"
-            sx={{ minHeight: 38 }}
-          >
-            <Tab label="Все" value="all" sx={{ minHeight: 38, py: 0.5, px: 1.5, fontSize: '0.8rem' }} />
-            <Tab label="Очень хочу" value="must_have" sx={{ minHeight: 38, py: 0.5, px: 1.5, fontSize: '0.8rem' }} />
-            <Tab label="Хочу" value="nice_to_have" sx={{ minHeight: 38, py: 0.5, px: 1.5, fontSize: '0.8rem' }} />
-            <Tab label="Мечта" value="dream" sx={{ minHeight: 38, py: 0.5, px: 1.5, fontSize: '0.8rem' }} />
-          </Tabs>
-        </Box>
 
         {/* Non-intrusive subtle background loading indicator (never jumps or unmounts the list!) */}
         {isRefreshing && (
@@ -718,8 +660,6 @@ export default function HomePage() {
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
               {activeTab === 'reservations'
                 ? 'Вы еще не забронировали ни одного подарка'
-                : searchQuery
-                ? 'Ничего не найдено'
                 : isOwner
                 ? 'Ваш вишлист пока пуст'
                 : 'У этого человека пока нет желаний'}

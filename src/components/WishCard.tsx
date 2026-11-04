@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Wish, Priority } from '@/types';
+import { Wish } from '@/types';
 import { formatPrice } from '@/lib/utils';
 import confetti from 'canvas-confetti';
 import {
@@ -33,14 +33,7 @@ interface WishCardProps {
   onEditWish?: (wish: Wish) => void;
 }
 
-const PRIORITY_CONFIG: Record<
-  Priority,
-  { label: string; color: 'error' | 'primary' | 'secondary' }
-> = {
-  must_have: { label: 'Очень хочу', color: 'error' },
-  nice_to_have: { label: 'Хочется', color: 'primary' },
-  dream: { label: 'Мечта', color: 'secondary' },
-};
+
 
 export const WishCard: React.FC<WishCardProps> = ({
   wish,
@@ -52,7 +45,6 @@ export const WishCard: React.FC<WishCardProps> = ({
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  const prio = PRIORITY_CONFIG[wish.priority] || PRIORITY_CONFIG.nice_to_have;
 
   const handleReserve = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -178,17 +170,7 @@ export const WishCard: React.FC<WishCardProps> = ({
                 pointerEvents: 'none',
               }}
             >
-              <Chip
-                label={prio.label}
-                color={prio.color}
-                size="small"
-                sx={{
-                  backdropFilter: 'blur(8px)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                  fontWeight: 700,
-                  pointerEvents: 'auto',
-                }}
-              />
+<Box />
 
               {wish.price && wish.price > 0 && (
                 <Chip
@@ -244,14 +226,6 @@ export const WishCard: React.FC<WishCardProps> = ({
 
             {/* Event Tag or Store Domain */}
             <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mt: 1 }}>
-              {wish.event_tag && wish.event_tag !== 'Без повода' && (
-                <Chip
-                  label={wish.event_tag}
-                  size="small"
-                  variant="outlined"
-                  sx={{ fontSize: '0.72rem', height: 22 }}
-                />
-              )}
               {domain && (
                 <Chip
                   component="a"

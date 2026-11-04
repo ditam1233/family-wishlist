@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Wish, Priority } from '@/types';
+import { Wish } from '@/types';
 import { formatPrice } from '@/lib/utils';
 import confetti from 'canvas-confetti';
 import {
@@ -30,14 +30,7 @@ interface WishRowProps {
   onEditWish?: (wish: Wish) => void;
 }
 
-const PRIORITY_CONFIG: Record<
-  Priority,
-  { label: string; color: 'error' | 'primary' | 'secondary' }
-> = {
-  must_have: { label: 'Очень хочу', color: 'error' },
-  nice_to_have: { label: 'Хочется', color: 'primary' },
-  dream: { label: 'Мечта', color: 'secondary' },
-};
+
 
 export const WishRow: React.FC<WishRowProps> = ({
   wish,
@@ -47,7 +40,6 @@ export const WishRow: React.FC<WishRowProps> = ({
   onEditWish,
 }) => {
   const [imgError, setImgError] = useState(false);
-  const prio = PRIORITY_CONFIG[wish.priority] || PRIORITY_CONFIG.nice_to_have;
 
   const handleReserve = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -132,7 +124,6 @@ export const WishRow: React.FC<WishRowProps> = ({
             >
               {wish.title}
             </Typography>
-            <Chip label={prio.label} color={prio.color} size="small" sx={{ height: 20, fontSize: '0.68rem' }} />
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
