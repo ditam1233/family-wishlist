@@ -308,6 +308,7 @@ class WishlistDataStore {
             email: cleanEmail,
             created_at: data.user.created_at,
           };
+          this.setCachedUser(userObj);
           return { success: true, user: userObj };
         }
       } catch (err: unknown) {
@@ -369,6 +370,7 @@ class WishlistDataStore {
             email: cleanEmail,
             created_at: data.user.created_at,
           };
+          this.setCachedUser(userObj);
           return { success: true, user: userObj };
         }
       } catch (err: unknown) {
@@ -653,6 +655,7 @@ class WishlistDataStore {
               is_reserved: false,
               reserved_by_me: false,
             }));
+            localStore.set(STORAGE_WISHES, wishes);
           } else {
             const wishIds = wishes.map((w) => w.id);
             const { data: reservations } = await supabase

@@ -142,6 +142,9 @@ export default function HomePage() {
 
   // Complete user and family data loader (parallelized without waterfalls)
   const loadInitialData = useCallback(async (user: User) => {
+    // Immediately set selected user to self so ownership is locked instantly
+    setSelectedUserId(user.id);
+
     try {
       // Parallelize: start fetching user's reservations immediately without waiting for groups/members
       const reservationsPromise = fetchReservations(user.id);
@@ -155,7 +158,6 @@ export default function HomePage() {
 
       const members = await dataStore.getFamilyMembers(user.id, activeGroupId);
       setFamilyMembers(members);
-      setSelectedUserId(user.id);
 
       await Promise.all([
         fetchWishes(user.id, user.id),
@@ -196,7 +198,7 @@ export default function HomePage() {
         const user = await dataStore.getCurrentUser();
         if (user) {
           setCurrentUser(user);
-          setSelectedUserId((prev) => prev || user.id);
+          setSelectedUserId(user.id);
           await loadInitialData(user);
         } else {
           setCurrentUser(null);
@@ -333,10 +335,20 @@ export default function HomePage() {
     return activeTab === 'reservations' ? myReservations : wishes;
   }, [activeTab, wishes, myReservations]);
 
-  const effectiveTargetUserId = selectedUserId || currentUser?.id || '';
+  // User is owner if selectedUserId is empty or explicitly matches currentUser.id
+  const isOwner = Boolean(
+    currentUser &&
+    (!selectedUserId || selectedUserId === currentUser.id)
+  );
+
+  const effectiveTargetUserId = isOwner
+    ? (currentUser?.id || '')
+    : (selectedUserId || currentUser?.id || '');
+
   const activeGroup = userGroups.find((g) => g.id === selectedGroupId) || userGroups[0];
-  const targetMember = familyMembers.find((m) => m.id === effectiveTargetUserId) || currentUser;
-  const isOwner = Boolean(currentUser?.id && effectiveTargetUserId === currentUser.id);
+  const targetMember = isOwner
+    ? currentUser
+    : (familyMembers.find((m) => m.id === effectiveTargetUserId) || currentUser);
 
   if (isInitialLoading) {
     return (
@@ -729,7 +741,38 @@ export default function HomePage() {
         )}
 
         {/* Wishes Content List / Grid */}
-        {displayedWishes.length === 0 && !isRefreshing ? (
+        {displayedWishes.length === 0 && isRefreshing ? (
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: 'repeat(2, 1fr)',
+                md: 'repeat(3, 1fr)',
+              },
+              gap: 2.5,
+            }}
+          >
+            {[1, 2, 3].map((k) => (
+              <Box
+                key={k}
+                className="glass-card"
+                sx={{
+                  p: 2,
+                  borderRadius: 4,
+                  minHeight: 240,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1.5,
+                }}
+              >
+                <Skeleton variant="rounded" height={130} sx={{ borderRadius: 3 }} animation="wave" />
+                <Skeleton variant="text" width="70%" height={26} animation="wave" />
+                <Skeleton variant="text" width="40%" height={18} animation="wave" />
+              </Box>
+            ))}
+          </Box>
+        ) : displayedWishes.length === 0 && !isRefreshing ? (
           <Box
             className="glass-panel"
             sx={{
