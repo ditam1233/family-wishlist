@@ -13,7 +13,7 @@ import {
   IconButton,
   Avatar,
   Tooltip,
-  Fade,
+  
 } from '@mui/material';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
@@ -78,8 +78,7 @@ export const WishRow: React.FC<WishRowProps> = ({
   const domain = getDomain(wish.link_url);
 
   return (
-    <Fade in timeout={250}>
-      <Paper
+    <Paper
         elevation={0}
         sx={{
           p: 1.5,
@@ -224,6 +223,5 @@ export const WishRow: React.FC<WishRowProps> = ({
           )}
         </Box>
       </Paper>
-    </Fade>
   );
 };

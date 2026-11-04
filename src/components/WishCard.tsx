@@ -15,7 +15,7 @@ import {
   Button,
   IconButton,
   Tooltip,
-  Grow,
+  
   Skeleton,
 } from '@mui/material';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
@@ -83,8 +83,7 @@ export const WishCard: React.FC<WishCardProps> = ({
   const domain = getDomain(wish.link_url);
 
   return (
-    <Grow in timeout={300}>
-      <Card
+    <Card
         sx={{
           height: '100%',
           display: 'flex',
@@ -356,6 +355,5 @@ export const WishCard: React.FC<WishCardProps> = ({
           )}
         </CardActions>
       </Card>
-    </Grow>
   );
 };

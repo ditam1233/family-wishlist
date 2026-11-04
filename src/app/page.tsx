@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { User, Wish, FamilyGroup, Priority } from '@/types';
 import { dataStore } from '@/lib/data';
 import { getInitials } from '@/lib/avatar';
@@ -36,7 +36,7 @@ import {
   Snackbar,
   Alert,
   Skeleton,
-  Badge,
+  LinearProgress,
   Fab,
   Tooltip,
 } from '@mui/material';
@@ -51,8 +51,6 @@ import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import GroupsIcon from '@mui/icons-material/Groups';
 import LogoutIcon from '@mui/icons-material/Logout';
-import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
-import FilterListIcon from '@mui/icons-material/FilterList';
 
 export default function HomePage() {
   const { mode, toggleColorMode } = useColorMode();
@@ -73,7 +71,7 @@ export default function HomePage() {
   // Wishes data
   const [wishes, setWishes] = useState<(Wish & { is_reserved?: boolean; reserved_by_me?: boolean })[]>([]);
   const [myReservations, setMyReservations] = useState<(Wish & { is_reserved?: boolean; reserved_by_me?: boolean })[]>([]);
-  const [isWishesLoading, setIsWishesLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Modals
@@ -98,21 +96,32 @@ export default function HomePage() {
     setSnackbar((prev) => ({ ...prev, open: false }));
   };
 
-  // Fast load wishes with cache
-  const loadWishes = useCallback(async (targetId: string, viewerId: string) => {
-    setIsWishesLoading(true);
+  // Keep a ref to currentUser for async callbacks without triggering re-renders
+  const currentUserRef = useRef<User | null>(null);
+  currentUserRef.current = currentUser;
+
+  // Load wishes: first show local cache instantly, then sync remote in background
+  const fetchWishes = useCallback(async (targetId: string, viewerId: string) => {
+    // 1. Instant local render (0ms)
+    const local = dataStore.getLocalWishes(targetId, viewerId);
+    if (local.length > 0) {
+      setWishes(local);
+    }
+
+    // 2. Background remote sync
+    setIsRefreshing(true);
     try {
       const items = await dataStore.getWishesForUser(targetId, viewerId);
       setWishes(items);
     } catch (err) {
-      console.error('Error loading wishes:', err);
+      console.error('Error fetching wishes:', err);
     } finally {
-      setIsWishesLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
 
   // Load reservations
-  const loadMyReservations = useCallback(async (viewerId: string) => {
+  const fetchReservations = useCallback(async (viewerId: string) => {
     try {
       const items = await dataStore.getMyReservations(viewerId);
       setMyReservations(items);
@@ -121,101 +130,107 @@ export default function HomePage() {
     }
   }, []);
 
-  // Load family and groups
-  const loadUserData = useCallback(async (userId: string, preferredGroupId?: string) => {
+  // Complete user and family data loader
+  const loadInitialData = useCallback(async (user: User) => {
     try {
-      const groups = await dataStore.getUserGroups(userId);
+      const groups = await dataStore.getUserGroups(user.id);
       setUserGroups(groups);
 
-      let activeGroupId = preferredGroupId;
-      if (!activeGroupId) {
-        if (selectedGroupId && (groups.some((g) => g.id === selectedGroupId) || selectedGroupId === 'all')) {
-          activeGroupId = selectedGroupId;
-        } else {
-          activeGroupId = groups[0]?.id || 'all';
-        }
-      }
+      const activeGroup = groups[0];
+      const activeGroupId = activeGroup?.id || 'all';
       setSelectedGroupId(activeGroupId);
 
-      const members = await dataStore.getFamilyMembers(userId, activeGroupId);
+      const members = await dataStore.getFamilyMembers(user.id, activeGroupId);
       setFamilyMembers(members);
-
-      const activeTargetId = selectedUserId && members.some((m) => m.id === selectedUserId)
-        ? selectedUserId
-        : userId;
-
-      setSelectedUserId(activeTargetId);
+      setSelectedUserId(user.id);
 
       await Promise.all([
-        loadWishes(activeTargetId, userId),
-        loadMyReservations(userId),
+        fetchWishes(user.id, user.id),
+        fetchReservations(user.id),
       ]);
     } catch (err) {
-      console.error('Error loading user data:', err);
+      console.error('Initial data load error:', err);
+    } finally {
+      setIsInitialLoading(false);
     }
-  }, [selectedGroupId, selectedUserId, loadWishes, loadMyReservations]);
+  }, [fetchWishes, fetchReservations]);
 
-  // Initial startup
+  // Run ONCE on mount
   useEffect(() => {
     const cachedUser = dataStore.getCachedUser();
-    const cachedGroups = dataStore.getCachedGroups();
-    const cachedMembers = dataStore.getCachedMembers();
-
     if (cachedUser) {
       setCurrentUser(cachedUser);
+      const cachedGroups = dataStore.getCachedGroups();
       if (cachedGroups && cachedGroups.length > 0) {
         setUserGroups(cachedGroups);
         setSelectedGroupId(cachedGroups[0].id);
       }
+      const cachedMembers = dataStore.getCachedMembers();
       if (cachedMembers && cachedMembers.length > 0) {
         setFamilyMembers(cachedMembers);
         setSelectedUserId(cachedUser.id);
       }
+      const cachedWishes = dataStore.getLocalWishes(cachedUser.id, cachedUser.id);
+      if (cachedWishes.length > 0) {
+        setWishes(cachedWishes);
+      }
       setIsInitialLoading(false);
     }
 
-    const init = async () => {
+    // Remote sync
+    (async () => {
       try {
         const user = await dataStore.getCurrentUser();
         if (user) {
           setCurrentUser(user);
-          await loadUserData(user.id);
+          await loadInitialData(user);
         } else {
           setCurrentUser(null);
+          setIsInitialLoading(false);
         }
       } catch (err) {
-        console.error('Init error:', err);
-      } finally {
+        console.error('Mount init error:', err);
         setIsInitialLoading(false);
       }
-    };
+    })();
+  }, [loadInitialData]);
 
-    init();
-  }, [loadUserData]);
-
-  // Switch target user
+  // Smooth switch target user: zero twitching, instant local cache, stable scroll
   const handleSwitchUser = useCallback(async (targetId: string) => {
-    if (!currentUser) return;
+    const user = currentUserRef.current;
+    if (!user) return;
+
     setSelectedUserId(targetId);
     setActiveTab('wishes');
-    await loadWishes(targetId, currentUser.id);
-  }, [currentUser, loadWishes]);
 
-  // Switch family group
+    await fetchWishes(targetId, user.id);
+  }, [fetchWishes]);
+
+  // Smooth switch family group
   const handleSwitchGroup = useCallback(async (groupId: string) => {
+    const user = currentUserRef.current;
+    if (!user) return;
+
     setSelectedGroupId(groupId);
-    if (!currentUser) return;
+    setIsRefreshing(true);
 
-    const members = await dataStore.getFamilyMembers(currentUser.id, groupId);
-    setFamilyMembers(members);
+    try {
+      const members = await dataStore.getFamilyMembers(user.id, groupId);
+      setFamilyMembers(members);
 
-    const targetId = members.some((m) => m.id === selectedUserId)
-      ? selectedUserId
-      : currentUser.id;
+      // Select self if member, otherwise first member
+      const nextTargetId = members.some((m) => m.id === user.id)
+        ? user.id
+        : members[0]?.id || user.id;
 
-    setSelectedUserId(targetId);
-    await loadWishes(targetId, currentUser.id);
-  }, [currentUser, selectedUserId, loadWishes]);
+      setSelectedUserId(nextTargetId);
+      await fetchWishes(nextTargetId, user.id);
+    } catch (err) {
+      console.error('Error switching group:', err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchWishes]);
 
   // Add wish
   const handleAddWish = async (wishData: Omit<Wish, 'id' | 'created_at'>) => {
@@ -240,7 +255,7 @@ export default function HomePage() {
     const wish = wishes.find((w) => w.id === wishId);
     const wasReservedByMe = wish?.reserved_by_me;
 
-    // Optimistic update
+    // Optimistic instant update
     setWishes((prev) =>
       prev.map((w) => {
         if (w.id === wishId) {
@@ -257,7 +272,7 @@ export default function HomePage() {
 
     try {
       await dataStore.toggleReservation(wishId, currentUser.id);
-      await loadMyReservations(currentUser.id);
+      await fetchReservations(currentUser.id);
       showNotification(
         wasReservedByMe
           ? 'Бронь снята'
@@ -265,7 +280,7 @@ export default function HomePage() {
       );
     } catch {
       showNotification('Не удалось обновить статус брони', 'error');
-      await loadWishes(selectedUserId, currentUser.id);
+      await fetchWishes(selectedUserId, currentUser.id);
     }
   };
 
@@ -281,7 +296,7 @@ export default function HomePage() {
       showNotification('Подарок удален из списка');
     } catch {
       showNotification('Ошибка при удалении', 'error');
-      await loadWishes(selectedUserId, currentUser.id);
+      await fetchWishes(selectedUserId, currentUser.id);
     }
   };
 
@@ -343,7 +358,7 @@ export default function HomePage() {
       <AuthScreen
         onSuccess={(user) => {
           setCurrentUser(user);
-          loadUserData(user.id);
+          loadInitialData(user);
         }}
       />
     );
@@ -538,7 +553,12 @@ export default function HomePage() {
               <Chip
                 key={member.id}
                 avatar={
-                  <Avatar sx={{ bgcolor: isSelected ? '#ffffff' : 'primary.main', color: isSelected ? 'primary.main' : '#ffffff' }}>
+                  <Avatar
+                    sx={{
+                      bgcolor: isSelected ? '#ffffff' : 'primary.main',
+                      color: isSelected ? 'primary.main' : '#ffffff',
+                    }}
+                  >
                     {getInitials(member.name)}
                   </Avatar>
                 }
@@ -553,8 +573,6 @@ export default function HomePage() {
                   fontWeight: 700,
                   fontSize: '0.85rem',
                   borderRadius: 3,
-                  transition: 'all 0.18s ease',
-                  '&:active': { transform: 'scale(0.96)' },
                 }}
               />
             );
@@ -644,7 +662,7 @@ export default function HomePage() {
             flexDirection: { xs: 'column', md: 'row' },
             gap: 1.5,
             alignItems: { xs: 'stretch', md: 'center' },
-            mb: 3,
+            mb: 2.5,
           }}
         >
           {/* Search Field */}
@@ -654,13 +672,15 @@ export default function HomePage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             sx={{ flex: 1 }}
-            slotProps={{ input: {
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" color="action" />
-                </InputAdornment>
-              ),
-            }}}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" color="action" />
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
 
           {/* Priority Filter Tabs */}
@@ -678,28 +698,20 @@ export default function HomePage() {
           </Tabs>
         </Box>
 
-        {/* Wishes Content List / Grid */}
-        {isWishesLoading ? (
-          <Box
+        {/* Non-intrusive subtle background loading indicator (never jumps or unmounts the list!) */}
+        {isRefreshing && (
+          <LinearProgress
             sx={{
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: '1fr',
-                sm: 'repeat(2, 1fr)',
-                md: 'repeat(3, 1fr)',
-              },
-              gap: 2.5,
+              height: 3,
+              borderRadius: 1.5,
+              mb: 2,
+              backgroundColor: 'transparent',
             }}
-          >
-            {[1, 2, 3, 4, 5, 6].map((idx) => (
-              <Box key={idx} sx={{ borderRadius: 3, overflow: 'hidden', p: 1 }}>
-                <Skeleton variant="rectangular" height={180} sx={{ borderRadius: 2.5, mb: 1.5 }} />
-                <Skeleton variant="text" width="80%" height={28} />
-                <Skeleton variant="text" width="50%" height={20} />
-              </Box>
-            ))}
-          </Box>
-        ) : displayedWishes.length === 0 ? (
+          />
+        )}
+
+        {/* Wishes Content List / Grid */}
+        {displayedWishes.length === 0 && !isRefreshing ? (
           <Box
             sx={{
               py: 8,
@@ -750,6 +762,8 @@ export default function HomePage() {
                 md: 'repeat(3, 1fr)',
               },
               gap: 2.5,
+              opacity: isRefreshing ? 0.8 : 1,
+              transition: 'opacity 0.2s ease',
             }}
           >
             {displayedWishes.map((wish) => (
@@ -763,7 +777,15 @@ export default function HomePage() {
             ))}
           </Box>
         ) : (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 1.5,
+              opacity: isRefreshing ? 0.8 : 1,
+              transition: 'opacity 0.2s ease',
+            }}
+          >
             {displayedWishes.map((wish) => (
               <WishRow
                 key={wish.id}
@@ -810,7 +832,11 @@ export default function HomePage() {
         selectedGroupId={selectedGroupId}
         onSelectGroup={handleSwitchGroup}
         onClose={() => setIsFamilyModalOpen(false)}
-        onUpdate={() => loadUserData(currentUser.id, selectedGroupId)}
+        onUpdate={() => {
+          if (currentUser) {
+            handleSwitchGroup(selectedGroupId);
+          }
+        }}
       />
 
       {/* Global Toast Notification */}

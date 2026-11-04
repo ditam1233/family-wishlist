@@ -681,6 +681,25 @@ class WishlistDataStore {
 
   // --- Wishes & Anti-Spoiler ---
 
+  public getLocalWishes(targetUserId: string, viewerId: string) {
+    const isOwner = targetUserId === viewerId;
+    const localWishes = this.getLocal<Wish[]>(STORAGE_WISHES, []).filter(
+      (w) => w.user_id === targetUserId
+    );
+    const localReservations = this.getLocal<Reservation[]>(STORAGE_RESERVATIONS, []);
+    return localWishes.map((wish) => {
+      const reservation = localReservations.find((r) => r.wish_id === wish.id);
+      if (isOwner) {
+        return { ...wish, is_reserved: false, reserved_by_me: false };
+      }
+      return {
+        ...wish,
+        is_reserved: Boolean(reservation),
+        reserved_by_me: reservation?.reserved_by === viewerId,
+      };
+    });
+  }
+
   public async getWishesForUser(targetUserId: string, viewerId: string) {
     const isOwner = targetUserId === viewerId;
     let remoteWishes: (Wish & { is_reserved?: boolean; reserved_by_me?: boolean })[] = [];
