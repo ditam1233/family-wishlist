@@ -1,100 +1,44 @@
-export const isUUID = (str?: string): boolean => {
-  if (!str) return false;
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
-};
-
 import { User, FamilyGroup, Wish, Reservation } from '@/types';
 import { supabase, isSupabaseConfigured } from './supabase';
+import { isUUID, normalizeInviteCode, simpleHash } from './utils/inviteCode';
+import {
+  localStore,
+  STORAGE_USERS,
+  STORAGE_GROUPS,
+  STORAGE_MEMBERSHIPS,
+  STORAGE_WISHES,
+  STORAGE_RESERVATIONS,
+  STORAGE_SESSION,
+} from './storage/localStorageAdapter';
+import { applyAntiSpoiler, DisplayWish } from './wishes/antiSpoiler';
 
-const STORAGE_USERS = 'fw_users';
-const STORAGE_GROUPS = 'fw_groups';
-const STORAGE_MEMBERSHIPS = 'fw_memberships';
-const STORAGE_WISHES = 'fw_wishes';
-const STORAGE_RESERVATIONS = 'fw_reservations';
-const STORAGE_SESSION = 'fw_session_user_id';
-
-const LATIN_TO_CYRILLIC: Record<string, string> = {
-  A: 'А', B: 'В', C: 'С', E: 'Е', H: 'Н',
-  K: 'К', M: 'М', O: 'О', P: 'Р', T: 'Т',
-  X: 'Х', Y: 'У',
-};
-
-export function normalizeInviteCode(raw: string): string {
-  let code = raw.trim().toUpperCase().replace(/[\u2010-\u2015\u2212\s_]+/g, '-');
-  if (!code.includes('-') && code.length >= 4) {
-    code = code.slice(0, 3) + '-' + code.slice(3);
-  }
-  const parts = code.split('-');
-  const prefix = parts[0];
-  if (/[А-ЯЁ]/.test(prefix)) {
-    parts[0] = prefix
-      .split('')
-      .map((ch) => LATIN_TO_CYRILLIC[ch] || ch)
-      .join('');
-  }
-  return parts.join('-');
-}
-
-function simpleHash(str: string): string {
-  let h1 = 0xdeadbeef, h2 = 0x41c64e6d;
-  for (let i = 0; i < str.length; i++) {
-    const ch = str.charCodeAt(i);
-    h1 = Math.imul(h1 ^ ch, 2654435761);
-    h2 = Math.imul(h2 ^ ch, 1597334677);
-  }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
-  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
-  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
-}
+export { isUUID, normalizeInviteCode, simpleHash };
+export type { DisplayWish };
 
 class WishlistDataStore {
-  private isClient = typeof window !== 'undefined';
-
-  private getLocal<T>(key: string, defaultValue: T): T {
-    if (!this.isClient) return defaultValue;
-    try {
-      const data = localStorage.getItem(key);
-      return data ? JSON.parse(data) : defaultValue;
-    } catch {
-      return defaultValue;
-    }
-  }
-
-  private setLocal<T>(key: string, value: T): void {
-    if (!this.isClient) return;
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-    } catch {
-      // quota
-    }
-  }
-
   // --- Cache helpers for instant 0ms restoration ---
   public getCachedUser(): User | null {
-    return this.getLocal<User | null>('fw_cached_user', null);
+    return localStore.getCachedUser();
   }
 
   public setCachedUser(user: User | null): void {
-    if (user) this.setLocal('fw_cached_user', user);
-    else if (this.isClient) localStorage.removeItem('fw_cached_user');
+    localStore.setCachedUser(user);
   }
 
   public getCachedGroups(): FamilyGroup[] {
-    return this.getLocal<FamilyGroup[]>('fw_cached_groups', []);
+    return localStore.getCachedGroups();
   }
 
   public setCachedGroups(groups: FamilyGroup[]): void {
-    this.setLocal('fw_cached_groups', groups);
+    localStore.setCachedGroups(groups);
   }
 
   public getCachedMembers(): User[] {
-    return this.getLocal<User[]>('fw_cached_members', []);
+    return localStore.getCachedMembers();
   }
 
   public setCachedMembers(members: User[]): void {
-    this.setLocal('fw_cached_members', members);
+    localStore.setCachedMembers(members);
   }
 
   // --- Auth / Users ---
@@ -102,7 +46,6 @@ class WishlistDataStore {
   public async getCurrentUser(): Promise<User | null> {
     if (isSupabaseConfigured() && supabase) {
       try {
-        // Fast path: getSession() reads session token synchronously from local storage
         const { data: sessionData } = await supabase.auth.getSession();
         if (!sessionData?.session?.user) {
           this.setCachedUser(null);
@@ -127,7 +70,10 @@ class WishlistDataStore {
             }
           : {
               id: authUser.id,
-              name: (authUser.user_metadata?.name as string) || authUser.email?.split('@')[0] || 'Пользователь',
+              name:
+                (authUser.user_metadata?.name as string) ||
+                authUser.email?.split('@')[0] ||
+                'Пользователь',
               email: authUser.email || '',
               created_at: authUser.created_at,
             };
@@ -140,17 +86,12 @@ class WishlistDataStore {
       }
     }
 
-    // Local fallback
-    if (!this.isClient) return null;
-    const userId = localStorage.getItem(STORAGE_SESSION);
+    const userId = localStore.get<string | null>(STORAGE_SESSION, null);
     if (!userId) return null;
-    const users = this.getLocal<User[]>(STORAGE_USERS, []);
+    const users = localStore.get<User[]>(STORAGE_USERS, []);
     return users.find((u) => u.id === userId) || null;
   }
 
-  /**
-   * Получение информации о семье по коду (для экрана входа)
-   */
   public async getFamilyInfoByCode(
     inviteCode: string
   ): Promise<{ group: FamilyGroup | null; members: User[] }> {
@@ -187,22 +128,23 @@ class WishlistDataStore {
       }
     }
 
-    const groups = this.getLocal<FamilyGroup[]>(STORAGE_GROUPS, []);
+    const groups = localStore.get<FamilyGroup[]>(STORAGE_GROUPS, []);
     const group = groups.find((g) => g.invite_code === cleanCode) || null;
     if (!group) return { group: null, members: [] };
 
-    const memberships = this.getLocal<{ group_id: string; user_id: string }[]>(STORAGE_MEMBERSHIPS, []);
-    const users = this.getLocal<User[]>(STORAGE_USERS, []);
-    const memberIds = memberships.filter((m) => m.group_id === group.id).map((m) => m.user_id);
+    const memberships = localStore.get<{ group_id: string; user_id: string }[]>(
+      STORAGE_MEMBERSHIPS,
+      []
+    );
+    const users = localStore.get<User[]>(STORAGE_USERS, []);
+    const memberIds = memberships
+      .filter((m) => m.group_id === group.id)
+      .map((m) => m.user_id);
     const members = users.filter((u) => memberIds.includes(u.id));
 
     return { group, members };
   }
 
-  /**
-   * Быстрый вход для родственников: только Код приглашения + Имя
-   * Автоматически входит в СУЩЕСТВУЮЩИЙ аккаунт или создает его один раз
-   */
   public async joinByCode(
     inviteCode: string,
     name: string
@@ -216,7 +158,6 @@ class WishlistDataStore {
 
     if (isSupabaseConfigured() && supabase) {
       try {
-        // 1. Проверяем существование группы (регистронезависимо через ilike)
         const { data: group, error: grpErr } = await supabase
           .from('family_groups')
           .select('*')
@@ -227,7 +168,6 @@ class WishlistDataStore {
           return { success: false, error: 'Семья с таким кодом не найдена. Проверьте код.' };
         }
 
-        // 2. Детерминированные учетные данные: одно и то же имя в семье ВСЕГДА получает один и тот же аккаунт!
         const hash = simpleHash(`${group.id}_${cleanName.toLowerCase()}`);
         const deterministicEmail = `rel_${hash}@family.local`;
         const deterministicPassword = `pwd_rel_${hash}_wishlist2026`;
@@ -235,7 +175,6 @@ class WishlistDataStore {
         let userId = '';
         let userCreatedAt = new Date().toISOString();
 
-        // 3. Сначала пробуем ВОЙТИ в уже существующий профиль родственника
         const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
           email: deterministicEmail,
           password: deterministicPassword,
@@ -245,7 +184,6 @@ class WishlistDataStore {
           userId = signInData.user.id;
           userCreatedAt = signInData.user.created_at;
         } else {
-          // Если аккаунт ещё не создан — регистрируем его первый раз
           const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
             email: deterministicEmail,
             password: deterministicPassword,
@@ -261,7 +199,6 @@ class WishlistDataStore {
           userCreatedAt = signUpData.user.created_at;
         }
 
-        // 4. Гарантируем привязку к семье (только если ещё не привязан)
         const { data: existingMember } = await supabase
           .from('group_members')
           .select('user_id')
@@ -291,24 +228,27 @@ class WishlistDataStore {
       }
     }
 
-    // Local fallback
-    const groups = this.getLocal<FamilyGroup[]>(STORAGE_GROUPS, []);
+    const groups = localStore.get<FamilyGroup[]>(STORAGE_GROUPS, []);
     const group = groups.find((g) => g.invite_code === cleanCode);
     if (!group) {
       return { success: false, error: 'Семья с таким кодом не найдена' };
     }
 
-    const memberships = this.getLocal<{ group_id: string; user_id: string }[]>(STORAGE_MEMBERSHIPS, []);
-    const users = this.getLocal<User[]>(STORAGE_USERS, []);
+    const memberships = localStore.get<{ group_id: string; user_id: string }[]>(
+      STORAGE_MEMBERSHIPS,
+      []
+    );
+    const users = localStore.get<User[]>(STORAGE_USERS, []);
 
-    // Проверяем, существует ли уже этот родственник в этой семье
-    const memberIds = memberships.filter((m) => m.group_id === group.id).map((m) => m.user_id);
-    let existingUser = users.find(
+    const memberIds = memberships
+      .filter((m) => m.group_id === group.id)
+      .map((m) => m.user_id);
+    const existingUser = users.find(
       (u) => memberIds.includes(u.id) && u.name.trim().toLowerCase() === cleanName.toLowerCase()
     );
 
     if (existingUser) {
-      if (this.isClient) localStorage.setItem(STORAGE_SESSION, existingUser.id);
+      localStore.set(STORAGE_SESSION, existingUser.id);
       this.setCachedUser(existingUser);
       return { success: true, user: existingUser };
     }
@@ -320,10 +260,10 @@ class WishlistDataStore {
       created_at: new Date().toISOString(),
     };
     users.push(newUser);
-    this.setLocal(STORAGE_USERS, users);
+    localStore.set(STORAGE_USERS, users);
     memberships.push({ group_id: group.id, user_id: newUser.id });
-    this.setLocal(STORAGE_MEMBERSHIPS, memberships);
-    if (this.isClient) localStorage.setItem(STORAGE_SESSION, newUser.id);
+    localStore.set(STORAGE_MEMBERSHIPS, memberships);
+    localStore.set(STORAGE_SESSION, newUser.id);
     this.setCachedUser(newUser);
 
     return { success: true, user: newUser };
@@ -376,8 +316,7 @@ class WishlistDataStore {
       }
     }
 
-    // Local fallback
-    const users = this.getLocal<User[]>(STORAGE_USERS, []);
+    const users = localStore.get<User[]>(STORAGE_USERS, []);
     if (users.some((u) => u.email === cleanEmail)) {
       return { success: false, error: 'Пользователь с таким email уже существует' };
     }
@@ -391,8 +330,8 @@ class WishlistDataStore {
     };
 
     users.push(newUser);
-    this.setLocal(STORAGE_USERS, users);
-    if (this.isClient) localStorage.setItem(STORAGE_SESSION, newUser.id);
+    localStore.set(STORAGE_USERS, users);
+    localStore.set(STORAGE_SESSION, newUser.id);
 
     return { success: true, user: newUser };
   }
@@ -423,7 +362,10 @@ class WishlistDataStore {
 
           const userObj: User = {
             id: data.user.id,
-            name: profile?.name || (data.user.user_metadata?.name as string) || cleanEmail.split('@')[0],
+            name:
+              profile?.name ||
+              (data.user.user_metadata?.name as string) ||
+              cleanEmail.split('@')[0],
             email: cleanEmail,
             created_at: data.user.created_at,
           };
@@ -435,13 +377,12 @@ class WishlistDataStore {
       }
     }
 
-    // Local fallback
-    const users = this.getLocal<User[]>(STORAGE_USERS, []);
+    const users = localStore.get<User[]>(STORAGE_USERS, []);
     const user = users.find((u) => u.email === cleanEmail && u.password === password);
     if (!user) {
       return { success: false, error: 'Неверный email или пароль' };
     }
-    if (this.isClient) localStorage.setItem(STORAGE_SESSION, user.id);
+    localStore.set(STORAGE_SESSION, user.id);
     return { success: true, user };
   }
 
@@ -454,11 +395,9 @@ class WishlistDataStore {
       }
     }
     this.setCachedUser(null);
-    if (this.isClient) {
-      localStorage.removeItem(STORAGE_SESSION);
-      localStorage.removeItem('fw_cached_groups');
-      localStorage.removeItem('fw_cached_members');
-    }
+    localStore.remove(STORAGE_SESSION);
+    localStore.remove(STORAGE_GROUPS);
+    localStore.remove(STORAGE_MEMBERSHIPS);
   }
 
   // --- Family Groups ---
@@ -491,12 +430,10 @@ class WishlistDataStore {
       }
     }
 
-    // Local fallback
-    const memberships = this.getLocal<{ group_id: string; user_id: string }[]>(
-      STORAGE_MEMBERSHIPS,
-      []
-    ).filter((m) => m.user_id === userId);
-    const groups = this.getLocal<FamilyGroup[]>(STORAGE_GROUPS, []);
+    const memberships = localStore
+      .get<{ group_id: string; user_id: string }[]>(STORAGE_MEMBERSHIPS, [])
+      .filter((m) => m.user_id === userId);
+    const groups = localStore.get<FamilyGroup[]>(STORAGE_GROUPS, []);
     return groups.filter((g) => memberships.some((m) => m.group_id === g.id));
   }
 
@@ -505,7 +442,8 @@ class WishlistDataStore {
     creatorId: string
   ): Promise<{ success: boolean; group?: FamilyGroup; error?: string }> {
     const cleanName = name.trim();
-    const code = cleanName.slice(0, 3).toUpperCase() + '-' + Math.floor(1000 + Math.random() * 9000);
+    const code =
+      cleanName.slice(0, 3).toUpperCase() + '-' + Math.floor(1000 + Math.random() * 9000);
 
     if (isSupabaseConfigured() && supabase) {
       try {
@@ -524,7 +462,10 @@ class WishlistDataStore {
 
         if (groupErr || !group) {
           console.error('Group insert error:', groupErr);
-          return { success: false, error: groupErr?.message || 'Ошибка создания группы в базе' };
+          return {
+            success: false,
+            error: groupErr?.message || 'Ошибка создания группы в базе',
+          };
         }
 
         await supabase.from('group_members').insert({
@@ -539,8 +480,7 @@ class WishlistDataStore {
       }
     }
 
-    // Local fallback
-    const groups = this.getLocal<FamilyGroup[]>(STORAGE_GROUPS, []);
+    const groups = localStore.get<FamilyGroup[]>(STORAGE_GROUPS, []);
     const newGroup: FamilyGroup = {
       id: `group-${Date.now()}`,
       name: cleanName,
@@ -549,14 +489,14 @@ class WishlistDataStore {
       created_at: new Date().toISOString(),
     };
     groups.push(newGroup);
-    this.setLocal(STORAGE_GROUPS, groups);
+    localStore.set(STORAGE_GROUPS, groups);
 
-    const memberships = this.getLocal<{ group_id: string; user_id: string }[]>(
+    const memberships = localStore.get<{ group_id: string; user_id: string }[]>(
       STORAGE_MEMBERSHIPS,
       []
     );
     memberships.push({ group_id: newGroup.id, user_id: creatorId });
-    this.setLocal(STORAGE_MEMBERSHIPS, memberships);
+    localStore.set(STORAGE_MEMBERSHIPS, memberships);
 
     return { success: true, group: newGroup };
   }
@@ -598,12 +538,11 @@ class WishlistDataStore {
       }
     }
 
-    // Local fallback
-    const groups = this.getLocal<FamilyGroup[]>(STORAGE_GROUPS, []);
+    const groups = localStore.get<FamilyGroup[]>(STORAGE_GROUPS, []);
     const group = groups.find((g) => g.invite_code === code);
     if (!group) return { success: false, error: 'Группа не найдена' };
 
-    const memberships = this.getLocal<{ group_id: string; user_id: string }[]>(
+    const memberships = localStore.get<{ group_id: string; user_id: string }[]>(
       STORAGE_MEMBERSHIPS,
       []
     );
@@ -611,7 +550,7 @@ class WishlistDataStore {
       return { success: false, error: 'Вы уже состоите в этой группе' };
     }
     memberships.push({ group_id: group.id, user_id: userId });
-    this.setLocal(STORAGE_MEMBERSHIPS, memberships);
+    localStore.set(STORAGE_MEMBERSHIPS, memberships);
 
     return { success: true, group };
   }
@@ -660,16 +599,16 @@ class WishlistDataStore {
       }
     }
 
-    // Local fallback
-    const targetGroupIds = groupId && groupId !== 'all'
-      ? [groupId]
-      : (await this.getUserGroups(userId)).map((g) => g.id);
+    const targetGroupIds =
+      groupId && groupId !== 'all'
+        ? [groupId]
+        : (await this.getUserGroups(userId)).map((g) => g.id);
 
-    const memberships = this.getLocal<{ group_id: string; user_id: string }[]>(
+    const memberships = localStore.get<{ group_id: string; user_id: string }[]>(
       STORAGE_MEMBERSHIPS,
       []
     );
-    const users = this.getLocal<User[]>(STORAGE_USERS, []);
+    const users = localStore.get<User[]>(STORAGE_USERS, []);
     const relatedUserIds = new Set<string>([userId]);
 
     memberships.forEach((m) => {
@@ -682,27 +621,15 @@ class WishlistDataStore {
   // --- Wishes & Anti-Spoiler ---
 
   public getLocalWishes(targetUserId: string, viewerId: string) {
-    const isOwner = targetUserId === viewerId;
-    const localWishes = this.getLocal<Wish[]>(STORAGE_WISHES, []).filter(
-      (w) => w.user_id === targetUserId
-    );
-    const localReservations = this.getLocal<Reservation[]>(STORAGE_RESERVATIONS, []);
-    return localWishes.map((wish) => {
-      const reservation = localReservations.find((r) => r.wish_id === wish.id);
-      if (isOwner) {
-        return { ...wish, is_reserved: false, reserved_by_me: false };
-      }
-      return {
-        ...wish,
-        is_reserved: Boolean(reservation),
-        reserved_by_me: reservation?.reserved_by === viewerId,
-      };
-    });
+    const localWishes = localStore
+      .get<Wish[]>(STORAGE_WISHES, [])
+      .filter((w) => w.user_id === targetUserId);
+    const localReservations = localStore.get<Reservation[]>(STORAGE_RESERVATIONS, []);
+    return applyAntiSpoiler(localWishes, localReservations, viewerId, targetUserId);
   }
 
   public async getWishesForUser(targetUserId: string, viewerId: string) {
-    const isOwner = targetUserId === viewerId;
-    let remoteWishes: (Wish & { is_reserved?: boolean; reserved_by_me?: boolean })[] = [];
+    let remoteWishes: DisplayWish[] = [];
     let remoteFetched = false;
 
     if (isSupabaseConfigured() && supabase && isUUID(targetUserId)) {
@@ -715,6 +642,7 @@ class WishlistDataStore {
 
         if (!error && wishes) {
           remoteFetched = true;
+          const isOwner = targetUserId === viewerId;
           if (isOwner) {
             remoteWishes = wishes.map((w) => ({
               ...w,
@@ -728,14 +656,12 @@ class WishlistDataStore {
               .select('*')
               .in('wish_id', wishIds);
 
-            remoteWishes = wishes.map((w) => {
-              const res = (reservations || []).find((r) => r.wish_id === w.id);
-              return {
-                ...w,
-                is_reserved: Boolean(res),
-                reserved_by_me: res?.reserved_by === viewerId,
-              };
-            });
+            remoteWishes = applyAntiSpoiler(
+              wishes,
+              reservations || [],
+              viewerId,
+              targetUserId
+            );
           }
         }
       } catch (err) {
@@ -743,29 +669,12 @@ class WishlistDataStore {
       }
     }
 
-    // Local fallback / cached wishes
-    const localWishes = this.getLocal<Wish[]>(STORAGE_WISHES, []).filter(
-      (w) => w.user_id === targetUserId
-    );
-    const localReservations = this.getLocal<Reservation[]>(STORAGE_RESERVATIONS, []);
-
-    const formattedLocal = localWishes.map((wish) => {
-      const reservation = localReservations.find((r) => r.wish_id === wish.id);
-      if (isOwner) {
-        return { ...wish, is_reserved: false, reserved_by_me: false };
-      }
-      return {
-        ...wish,
-        is_reserved: Boolean(reservation),
-        reserved_by_me: reservation?.reserved_by === viewerId,
-      };
-    });
+    const formattedLocal = this.getLocalWishes(targetUserId, viewerId);
 
     if (!remoteFetched) {
       return formattedLocal;
     }
 
-    // Merge: remoteWishes + any local wishes that are not yet synced to remote
     const merged = [...remoteWishes];
     for (const lw of formattedLocal) {
       const exists = merged.some(
@@ -810,24 +719,23 @@ class WishlistDataStore {
       }
     }
 
-    // Always update local reservations
-    const reservations = this.getLocal<Reservation[]>(STORAGE_RESERVATIONS, []);
+    const reservations = localStore.get<Reservation[]>(STORAGE_RESERVATIONS, []);
     const idx = reservations.findIndex((r) => r.wish_id === wishId);
     if (idx >= 0) {
       if (reservations[idx].reserved_by === viewerId) {
         reservations.splice(idx, 1);
-        this.setLocal(STORAGE_RESERVATIONS, reservations);
+        localStore.set(STORAGE_RESERVATIONS, reservations);
         return true;
       }
       return false;
     }
     reservations.push({
-      id: "res-" + Date.now(),
+      id: 'res-' + Date.now(),
       wish_id: wishId,
       reserved_by: viewerId,
       created_at: new Date().toISOString(),
     });
-    this.setLocal(STORAGE_RESERVATIONS, reservations);
+    localStore.set(STORAGE_RESERVATIONS, reservations);
     return true;
   }
 
@@ -886,11 +794,10 @@ class WishlistDataStore {
       }
     }
 
-    // Resilient offline-first store
-    const wishes = this.getLocal<Wish[]>(STORAGE_WISHES, []);
+    const wishes = localStore.get<Wish[]>(STORAGE_WISHES, []);
     const localWish: Wish = remoteWish || {
       ...cleanWishData,
-      id: "wish-" + Date.now(),
+      id: 'wish-' + Date.now(),
       user_id: wishData.user_id,
       created_at: new Date().toISOString(),
       price: cleanWishData.price ?? undefined,
@@ -905,7 +812,7 @@ class WishlistDataStore {
     } else {
       wishes.unshift(localWish);
     }
-    this.setLocal(STORAGE_WISHES, wishes);
+    localStore.set(STORAGE_WISHES, wishes);
 
     return localWish;
   }
@@ -928,23 +835,22 @@ class WishlistDataStore {
       }
     }
 
-    // Local fallback
-    const wishes = this.getLocal<Wish[]>(STORAGE_WISHES, []);
-    this.setLocal(
+    const wishes = localStore.get<Wish[]>(STORAGE_WISHES, []);
+    localStore.set(
       STORAGE_WISHES,
       wishes.filter((w) => w.id !== wishId)
     );
-    this.setLocal(
+    localStore.set(
       STORAGE_RESERVATIONS,
-      this.getLocal<Reservation[]>(STORAGE_RESERVATIONS, []).filter(
-        (r) => r.wish_id !== wishId
-      )
+      localStore
+        .get<Reservation[]>(STORAGE_RESERVATIONS, [])
+        .filter((r) => r.wish_id !== wishId)
     );
     return true;
   }
 
-  public async getMyReservations(viewerId: string): Promise<(Wish & { owner_name?: string })[]> {
-    let remoteReservations: (Wish & { owner_name?: string })[] = [];
+  public async getMyReservations(viewerId: string): Promise<DisplayWish[]> {
+    let remoteReservations: DisplayWish[] = [];
     let remoteSuccess = false;
 
     if (isSupabaseConfigured() && supabase && isUUID(viewerId)) {
@@ -986,16 +892,15 @@ class WishlistDataStore {
       }
     }
 
-    // Local fallback
-    const reservations = this.getLocal<Reservation[]>(STORAGE_RESERVATIONS, []).filter(
-      (r) => r.reserved_by === viewerId
-    );
+    const reservations = localStore
+      .get<Reservation[]>(STORAGE_RESERVATIONS, [])
+      .filter((r) => r.reserved_by === viewerId);
     const wishIds = new Set(reservations.map((r) => r.wish_id));
-    const allWishes = this.getLocal<Wish[]>(STORAGE_WISHES, []);
-    const users = this.getLocal<User[]>(STORAGE_USERS, []);
+    const allWishes = localStore.get<Wish[]>(STORAGE_WISHES, []);
+    const users = localStore.get<User[]>(STORAGE_USERS, []);
     const userMap = new Map(users.map((u) => [u.id, u.name]));
 
-    const localList = allWishes
+    const localList: DisplayWish[] = allWishes
       .filter((w) => wishIds.has(w.id))
       .map((w) => ({
         ...w,
