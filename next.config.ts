@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  experimental: {
+    optimizePackageImports: ["@mui/material", "@mui/icons-material", "lucide-react"],
+  },
 };
 
 export default nextConfig;

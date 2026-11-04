@@ -7,8 +7,17 @@ import { getInitials } from '@/lib/avatar';
 import { useColorMode } from '@/components/ThemeRegistry/MuiThemeProvider';
 import { WishCard } from '@/components/WishCard';
 import { WishRow } from '@/components/WishRow';
-import { AddWishModal } from '@/components/AddWishModal';
-import { FamilyGroupModal } from '@/components/FamilyGroupModal';
+import dynamic from 'next/dynamic';
+
+const AddWishModal = dynamic(
+  () => import('@/components/AddWishModal').then((m) => m.AddWishModal),
+  { ssr: false }
+);
+
+const FamilyGroupModal = dynamic(
+  () => import('@/components/FamilyGroupModal').then((m) => m.FamilyGroupModal),
+  { ssr: false }
+);
 import { AuthScreen } from '@/components/AuthScreen';
 
 import {
@@ -131,9 +140,12 @@ export default function HomePage() {
     }
   }, []);
 
-  // Complete user and family data loader
+  // Complete user and family data loader (parallelized without waterfalls)
   const loadInitialData = useCallback(async (user: User) => {
     try {
+      // Parallelize: start fetching user's reservations immediately without waiting for groups/members
+      const reservationsPromise = fetchReservations(user.id);
+
       const groups = await dataStore.getUserGroups(user.id);
       setUserGroups(groups);
 
@@ -147,7 +159,7 @@ export default function HomePage() {
 
       await Promise.all([
         fetchWishes(user.id, user.id),
-        fetchReservations(user.id),
+        reservationsPromise,
       ]);
     } catch (err) {
       console.error('Initial data load error:', err);
@@ -234,12 +246,13 @@ export default function HomePage() {
   }, [fetchWishes]);
 
   // Add wish
-  const handleAddWish = async (wishData: Omit<Wish, 'id' | 'created_at'>) => {
-    if (!currentUser) return;
+  const handleAddWish = useCallback(async (wishData: Omit<Wish, 'id' | 'created_at'>) => {
+    const user = currentUserRef.current;
+    if (!user) return;
 
     const newWish = await dataStore.addWish(wishData);
     if (newWish) {
-      if (selectedUserId === currentUser.id) {
+      if (selectedUserId === user.id) {
         setWishes((prev) => [
           { ...newWish, is_reserved: false, reserved_by_me: false },
           ...prev,
@@ -247,11 +260,12 @@ export default function HomePage() {
       }
       showNotification('Подарок успешно добавлен в список!');
     }
-  };
+  }, [selectedUserId, showNotification]);
 
   // Toggle reserve
-  const handleToggleReserve = async (wishId: string) => {
-    if (!currentUser) return;
+  const handleToggleReserve = useCallback(async (wishId: string) => {
+    const user = currentUserRef.current;
+    if (!user) return;
 
     const wish = wishes.find((w) => w.id === wishId);
     const wasReservedByMe = wish?.reserved_by_me;
@@ -272,8 +286,8 @@ export default function HomePage() {
     );
 
     try {
-      await dataStore.toggleReservation(wishId, currentUser.id);
-      await fetchReservations(currentUser.id);
+      await dataStore.toggleReservation(wishId, user.id);
+      await fetchReservations(user.id);
       showNotification(
         wasReservedByMe
           ? 'Бронь снята'
@@ -281,25 +295,26 @@ export default function HomePage() {
       );
     } catch {
       showNotification('Не удалось обновить статус брони', 'error');
-      await fetchWishes(selectedUserId, currentUser.id);
+      await fetchWishes(selectedUserId, user.id);
     }
-  };
+  }, [wishes, fetchReservations, fetchWishes, selectedUserId, showNotification]);
 
   // Delete wish
-  const handleDeleteWish = async (wishId: string) => {
-    if (!currentUser) return;
+  const handleDeleteWish = useCallback(async (wishId: string) => {
+    const user = currentUserRef.current;
+    if (!user) return;
     if (!confirm('Вы уверены, что хотите удалить этот подарок?')) return;
 
     setWishes((prev) => prev.filter((w) => w.id !== wishId));
 
     try {
-      await dataStore.deleteWish(wishId, currentUser.id);
+      await dataStore.deleteWish(wishId, user.id);
       showNotification('Подарок удален из списка');
     } catch {
       showNotification('Ошибка при удалении', 'error');
-      await fetchWishes(selectedUserId, currentUser.id);
+      await fetchWishes(selectedUserId, user.id);
     }
-  };
+  }, [fetchWishes, selectedUserId, showNotification]);
 
   // Logout
   const handleLogout = async () => {
