@@ -194,8 +194,8 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
 
           {/* Link Scraper Input */}
           <TextField
-            label="Ссылка на товар (Ozon, WB, Яндекс и др.)"
-            placeholder="Вставьте ссылку для автозаполнения фото и цены"
+            label="Ссылка на товар"
+            placeholder="Вставьте ссылку на товар"
             value={linkUrl}
             onChange={(e) => handleUrlChange(e.target.value)}
             fullWidth
@@ -307,9 +307,6 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
                       Нажмите, чтобы выбрать фото
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Сжимается автоматически за доли секунды
-                    </Typography>
                   </>
                 )}
               </Box>
@@ -326,7 +323,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
 
           {/* Title */}
           <TextField
-            label="Название подарка *"
+            label="Название подарка"
             placeholder="Например: Беспроводные наушники Sony"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -337,7 +334,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
 
           {/* Price */}
           <TextField
-            label="Примерная стоимость (₽)"
+            label="Примерная стоимость"
             placeholder="3500"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
@@ -350,7 +347,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
 
           {/* Description */}
           <TextField
-            label="Заметки или пожелания (размер, цвет и т.д.)"
+            label="Заметки или пожелания"
             placeholder="Цвет черный, размер M, или артикул"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
