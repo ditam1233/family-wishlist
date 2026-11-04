@@ -12,6 +12,7 @@ import { FamilyGroupModal } from '@/components/FamilyGroupModal';
 import { AuthScreen } from '@/components/AuthScreen';
 
 import {
+  Card,
   AppBar,
   Toolbar,
   Typography,
@@ -42,6 +43,10 @@ import {
 
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import AddIcon from '@mui/icons-material/Add';
+
+
+
+
 import GridViewIcon from '@mui/icons-material/GridView';
 import ViewListIcon from '@mui/icons-material/ViewList';
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
@@ -356,15 +361,15 @@ export default function HomePage() {
         sx={{
           backdropFilter: 'blur(24px) saturate(180%)',
           WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-          backgroundColor: (theme) =>
+          backgroundColor: (theme: any) =>
             theme.palette.mode === 'dark'
               ? 'rgba(11, 17, 30, 0.72)'
               : 'rgba(255, 255, 255, 0.75)',
-          borderBottom: (theme) =>
+          borderBottom: (theme: any) =>
             theme.palette.mode === 'dark'
               ? '1px solid rgba(255, 255, 255, 0.09)'
               : '1px solid rgba(255, 255, 255, 0.7)',
-          boxShadow: (theme) =>
+          boxShadow: (theme: any) =>
             theme.palette.mode === 'dark'
               ? '0 4px 20px rgba(0, 0, 0, 0.4)'
               : '0 4px 20px rgba(15, 23, 42, 0.04)',
@@ -379,7 +384,7 @@ export default function HomePage() {
                 width: 38,
                 height: 38,
                 borderRadius: 2.5,
-                background: (theme) =>
+                background: (theme: any) =>
                   theme.palette.mode === 'dark'
                     ? 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)'
                     : 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)',
@@ -593,48 +598,106 @@ export default function HomePage() {
           />
         </Box>
 
-        {/* Section Header with Actions */}
-        <Box
+        {/* Apple Bento Hero Header & Member Card */}
+        <Card
+          className="glass-panel"
           sx={{
+            p: { xs: 2.5, sm: 3 },
+            mb: 3,
+            borderRadius: 4,
             display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
+            flexDirection: { xs: 'column', md: 'row' },
             justifyContent: 'space-between',
-            alignItems: { xs: 'stretch', sm: 'center' },
-            gap: 2,
-            mb: 2.5,
+            alignItems: { xs: 'flex-start', md: 'center' },
+            gap: 2.5,
+            border: (theme: any) =>
+              theme.palette.mode === 'dark'
+                ? '1px solid rgba(255, 255, 255, 0.12)'
+                : '1px solid rgba(255, 255, 255, 0.85)',
           }}
         >
-          <Box>
-            <Typography variant="h5" component="h2" sx={{ fontWeight: 800 }}>
-              {activeTab === 'reservations'
-                ? 'Подарки, которые вы дарите'
-                : isOwner
-                ? 'Ваш список желаний'
-                : `Желания: ${targetMember?.name}`}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {activeTab === 'reservations'
-                ? 'Тайный список подарков, которые вы пообещали подарить близким'
-                : isOwner
-                ? 'Добавляйте то, что хотите получить в подарок'
-                : 'Выберите подарок и нажмите «Подарю я!», чтобы другие не купили то же самое'}
-            </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Avatar
+              sx={{
+                width: { xs: 52, sm: 60 },
+                height: { xs: 52, sm: 60 },
+                fontWeight: 800,
+                fontSize: { xs: '1.2rem', sm: '1.4rem' },
+                background: (theme: any) =>
+                  theme.palette.mode === 'dark'
+                    ? 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)'
+                    : 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+                color: '#ffffff',
+                boxShadow: '0 8px 24px rgba(37, 99, 235, 0.3)',
+              }}
+            >
+              {activeTab === 'reservations' ? '🎁' : getInitials(targetMember?.name || currentUser.name)}
+            </Avatar>
+            <Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, flexWrap: 'wrap' }}>
+                <Typography variant="h5" component="h2" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>
+                  {activeTab === 'reservations'
+                    ? 'Подарки, которые вы дарите'
+                    : isOwner
+                    ? `${currentUser.name} (Мой список)`
+                    : `Список желаний: ${targetMember?.name}`}
+                </Typography>
+                <Chip
+                  size="small"
+                  label={
+                    activeTab === 'reservations'
+                      ? `${displayedWishes.length} забронировано`
+                      : `${displayedWishes.length} ${
+                          displayedWishes.length === 1
+                            ? 'желание'
+                            : displayedWishes.length >= 2 && displayedWishes.length <= 4
+                            ? 'желания'
+                            : 'желаний'
+                        }`
+                  }
+                  sx={{
+                    fontWeight: 700,
+                    height: 24,
+                    fontSize: '0.75rem',
+                    backgroundColor: (theme: any) =>
+                      theme.palette.mode === 'dark' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(37, 99, 235, 0.1)',
+                    color: 'primary.main',
+                  }}
+                />
+              </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, maxWidth: 640, lineHeight: 1.5 }}>
+                {activeTab === 'reservations'
+                  ? 'Тайный список подарков, которые вы пообещали подарить близким. Они не знают, что вы это выбрали!'
+                  : isOwner
+                  ? 'Добавляйте любые желанные подарки со ссылками на маркетплейсы, чтобы близким было легко порадовать вас.'
+                  : '🤫 Секретная бронь: нажмите «Подарю я!», чтобы застолбить подарок. Другие родственники увидят, что подарок занят, а виновник торжества — нет!'}
+              </Typography>
+            </Box>
           </Box>
 
-          {isOwner && activeTab === 'wishes' && (
-            <Button
-              variant="contained"
-              size="medium"
-              startIcon={<AddIcon />}
-              onClick={() => setIsAddModalOpen(true)}
-              sx={{ borderRadius: 2.5, px: 2.5, fontWeight: 700, whiteSpace: 'nowrap' }}
-            >
-              Добавить подарок
-            </Button>
-          )}
-        </Box>
-
-
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: { xs: '100%', md: 'auto' } }}>
+            {isOwner && activeTab === 'wishes' && (
+              <Button
+                variant="contained"
+                size="large"
+                fullWidth
+                startIcon={<AddIcon />}
+                onClick={() => setIsAddModalOpen(true)}
+                sx={{
+                  borderRadius: 3,
+                  py: 1.2,
+                  px: 3,
+                  fontWeight: 700,
+                  fontSize: '0.92rem',
+                  boxShadow: '0 8px 24px rgba(37, 99, 235, 0.35)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Добавить подарок
+              </Button>
+            )}
+          </Box>
+        </Card>
 
         {/* Non-intrusive subtle background loading indicator (never jumps or unmounts the list!) */}
         {isRefreshing && (
@@ -657,7 +720,7 @@ export default function HomePage() {
               textAlign: 'center',
               backgroundColor: 'background.paper',
               borderRadius: 4,
-              border: (theme) =>
+              border: (theme: any) =>
                 theme.palette.mode === 'dark'
                   ? '1px dashed rgba(255,255,255,0.12)'
                   : '1px dashed rgba(0,0,0,0.12)',
@@ -702,6 +765,63 @@ export default function HomePage() {
               transition: 'opacity 0.2s ease',
             }}
           >
+            {/* Interactive Add Wish Quick Card (When viewing own wishlist) */}
+            {isOwner && activeTab === 'wishes' && (
+              <Card
+                className="glass-card"
+                onClick={() => setIsAddModalOpen(true)}
+                sx={{
+                  border: (theme: any) =>
+                    theme.palette.mode === 'dark'
+                      ? '2px dashed rgba(59, 130, 246, 0.35) !important'
+                      : '2px dashed rgba(37, 99, 235, 0.35) !important',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  p: 4,
+                  minHeight: 280,
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  background: (theme: any) =>
+                    theme.palette.mode === 'dark'
+                      ? 'rgba(17, 24, 39, 0.4) !important'
+                      : 'rgba(255, 255, 255, 0.5) !important',
+                  '&:hover': {
+                    borderColor: 'primary.main !important',
+                    transform: 'translateY(-4px)',
+                    background: (theme: any) =>
+                      theme.palette.mode === 'dark'
+                        ? 'rgba(59, 130, 246, 0.08) !important'
+                        : 'rgba(37, 99, 235, 0.04) !important',
+                  },
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bgcolor: (theme: any) =>
+                      theme.palette.mode === 'dark' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(37, 99, 235, 0.1)',
+                    color: 'primary.main',
+                    mb: 2,
+                  }}
+                >
+                  <AddIcon sx={{ fontSize: 32 }} />
+                </Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
+                  Добавить подарок
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, maxWidth: 220 }}>
+                  Вставьте ссылку или напишите название подарка
+                </Typography>
+              </Card>
+            )}
+
             {displayedWishes.map((wish) => (
               <WishCard
                 key={wish.id}
