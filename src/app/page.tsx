@@ -714,40 +714,65 @@ export default function HomePage() {
         {/* Wishes Content List / Grid */}
         {displayedWishes.length === 0 && !isRefreshing ? (
           <Box
+            className="glass-panel"
             sx={{
-              py: 8,
-              px: 2,
+              py: { xs: 6, sm: 8 },
+              px: { xs: 3, sm: 4 },
               textAlign: 'center',
-              backgroundColor: 'background.paper',
               borderRadius: 4,
+              maxWidth: 600,
+              mx: 'auto',
               border: (theme: any) =>
                 theme.palette.mode === 'dark'
-                  ? '1px dashed rgba(255,255,255,0.12)'
-                  : '1px dashed rgba(0,0,0,0.12)',
+                  ? '1.5px dashed rgba(59, 130, 246, 0.3)'
+                  : '1.5px dashed rgba(37, 99, 235, 0.3)',
             }}
           >
-            <CardGiftcardIcon sx={{ fontSize: 56, color: 'text.secondary', mb: 1, opacity: 0.5 }} />
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            <Box
+              sx={{
+                width: 72,
+                height: 72,
+                borderRadius: '50%',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: (theme: any) =>
+                  theme.palette.mode === 'dark' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(37, 99, 235, 0.08)',
+                color: 'primary.main',
+                mb: 2,
+              }}
+            >
+              <CardGiftcardIcon sx={{ fontSize: 36 }} />
+            </Box>
+            <Typography variant="h6" sx={{ fontWeight: 800, mb: 1, letterSpacing: '-0.01em' }}>
               {activeTab === 'reservations'
-                ? 'Вы еще не забронировали ни одного подарка'
+                ? 'Вы еще не выбрали подарки'
                 : isOwner
-                ? 'Ваш вишлист пока пуст'
-                : 'У этого человека пока нет желаний'}
+                ? 'Ваш список пока пуст'
+                : `${targetMember?.name || 'Родственник'} еще не составил список`}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 2.5 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto', mb: 3, lineHeight: 1.6 }}>
               {activeTab === 'reservations'
-                ? 'Зайдите в список родственника и нажмите кнопку «Подарю я!», чтобы подарок появился здесь.'
+                ? 'Перейдите в список любого члена семьи сверху и нажмите «Подарю я!». Забронированные подарки будут видны только вам.'
                 : isOwner
-                ? 'Добавьте ваше первое желание по ссылке или напишите текстом!'
-                : 'Попросите близкого добавить свои желания или зайдите позже.'}
+                ? 'Добавьте первое желание — просто вставьте ссылку на Ozon, Wildberries, Яндекс.Маркет или напишите текстом!'
+                : 'Напомните близкому человеку добавить желания, чтобы сделать идеальный сюрприз к празднику.'}
             </Typography>
             {isOwner && activeTab === 'wishes' && (
               <Button
                 variant="contained"
+                size="large"
                 startIcon={<AddIcon />}
                 onClick={() => setIsAddModalOpen(true)}
+                sx={{
+                  borderRadius: 3,
+                  py: 1.2,
+                  px: 3.5,
+                  fontWeight: 700,
+                  boxShadow: '0 8px 24px rgba(37, 99, 235, 0.35)',
+                }}
               >
-                Добавить подарок
+                Добавить первое желание
               </Button>
             )}
           </Box>

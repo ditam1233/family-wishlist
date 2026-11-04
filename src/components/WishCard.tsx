@@ -76,6 +76,7 @@ export const WishCard: React.FC<WishCardProps> = ({
 
   return (
     <Card
+        className="glass-card"
         sx={{
           height: '100%',
           display: 'flex',
@@ -83,7 +84,8 @@ export const WishCard: React.FC<WishCardProps> = ({
           justifyContent: 'space-between',
           position: 'relative',
           overflow: 'hidden',
-          backgroundColor: 'background.paper',
+          borderRadius: '22px',
+          transition: 'all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
         }}
       >
         <Box>
@@ -290,10 +292,15 @@ export const WishCard: React.FC<WishCardProps> = ({
                     fullWidth
                     variant="outlined"
                     color="success"
-                    size="small"
                     startIcon={<CheckCircleOutlinedIcon />}
                     onClick={handleReserve}
-                    sx={{ fontWeight: 600 }}
+                    sx={{
+                      fontWeight: 700,
+                      minHeight: 44,
+                      borderRadius: 2.5,
+                      borderWidth: 1.5,
+                      fontSize: '0.86rem',
+                    }}
                   >
                     Вы дарите (Отменить)
                   </Button>
@@ -302,9 +309,13 @@ export const WishCard: React.FC<WishCardProps> = ({
                     fullWidth
                     variant="contained"
                     disabled
-                    size="small"
                     startIcon={<LockOutlinedIcon />}
-                    sx={{ opacity: 0.7 }}
+                    sx={{
+                      opacity: 0.7,
+                      minHeight: 44,
+                      borderRadius: 2.5,
+                      fontSize: '0.86rem',
+                    }}
                   >
                     Уже забронировано
                   </Button>
@@ -314,12 +325,18 @@ export const WishCard: React.FC<WishCardProps> = ({
                   fullWidth
                   variant="contained"
                   color="primary"
-                  size="small"
                   startIcon={<CardGiftcardIcon />}
                   onClick={handleReserve}
                   sx={{
                     fontWeight: 700,
                     letterSpacing: '0.01em',
+                    minHeight: 44,
+                    borderRadius: 2.5,
+                    fontSize: '0.88rem',
+                    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
+                    '&:hover': {
+                      boxShadow: '0 6px 20px rgba(37, 99, 235, 0.45)',
+                    },
                   }}
                 >
                   Подарю я!
