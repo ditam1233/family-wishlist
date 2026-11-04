@@ -3,7 +3,33 @@
 import React, { useState, useEffect } from 'react';
 import { User, FamilyGroup } from '@/types';
 import { dataStore } from '@/lib/data';
-import { X, Users, Copy, Check, Share2, Loader2, Hash } from 'lucide-react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Tabs,
+  Tab,
+  Box,
+  Typography,
+  TextField,
+  Button,
+  IconButton,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
+  Chip,
+  Alert,
+  CircularProgress,
+  Tooltip,
+} from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CheckIcon from '@mui/icons-material/Check';
+import GroupAddIcon from '@mui/icons-material/GroupAdd';
+import GroupsIcon from '@mui/icons-material/Groups';
+import KeyIcon from '@mui/icons-material/Key';
 
 interface FamilyGroupModalProps {
   isOpen: boolean;
@@ -27,7 +53,6 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
   const [newGroupName, setNewGroupName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,303 +67,245 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
     setUserGroups(groups);
   };
 
-  if (!isOpen) return null;
-
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
-  const handleShareLink = (code: string) => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const pathname =
-      typeof window !== 'undefined'
-        ? window.location.pathname.replace(/\/$/, '')
-        : '';
-    const shareUrl = `${origin}${pathname}/?code=${encodeURIComponent(code)}`;
-    navigator.clipboard.writeText(shareUrl);
-    setCopiedLink(code);
-    setTimeout(() => setCopiedLink(null), 2000);
-  };
-
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGroupName.trim()) return;
+
     setLoading(true);
     setError(null);
-
     try {
-      const res = await dataStore.createGroup(
-        newGroupName.trim(),
-        currentUser.id
-      );
+      const res = await dataStore.createGroup(newGroupName.trim(), currentUser.id);
       if (res.success && res.group) {
         setNewGroupName('');
         await loadGroups();
-        if (onSelectGroup) onSelectGroup(res.group.id);
         onUpdate();
+        if (onSelectGroup) onSelectGroup(res.group.id);
         setTab('list');
       } else {
-        setError(res.error || 'Не удалось создать группу');
+        setError(res.error || 'Не удалось создать семью.');
       }
     } catch {
-      setError('Ошибка при создании группы');
+      setError('Не удалось создать семью. Попробуйте снова.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleJoin = async (e: React.FormEvent) => {
+  const handleJoinGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteCode.trim()) return;
+
     setLoading(true);
     setError(null);
-
     try {
-      const res = await dataStore.joinGroup(
-        inviteCode.trim(),
-        currentUser.id
-      );
+      const res = await dataStore.joinGroup(inviteCode.trim(), currentUser.id);
       if (res.success && res.group) {
         setInviteCode('');
         await loadGroups();
-        if (onSelectGroup) onSelectGroup(res.group.id);
         onUpdate();
+        if (onSelectGroup) onSelectGroup(res.group.id);
         setTab('list');
       } else {
-        setError(res.error || 'Неверный код приглашения');
+        setError(res.error || 'Семья с таким кодом не найдена. Проверьте код и попробуйте снова.');
       }
     } catch {
-      setError('Не удалось вступить в группу');
+      setError('Ошибка при подключении. Проверьте соединение.');
     } finally {
       setLoading(false);
     }
   };
 
-  const inputClass =
-    'w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-900 focus:border-stone-900 dark:focus:border-stone-100 focus:ring-1 focus:ring-stone-900 dark:focus:ring-stone-100 transition-all placeholder:text-stone-400 dark:placeholder:text-stone-500';
-
-  const tabBtnClass = (active: boolean) =>
-    `flex-1 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
-      active
-        ? 'bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 shadow-2xs'
-        : 'text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
-    }`;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-950/40 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-stone-900 rounded-t-3xl sm:rounded-2xl max-w-md w-full border-t sm:border border-stone-200/90 dark:border-stone-800 shadow-2xl p-5 sm:p-6 relative max-h-[90vh] overflow-y-auto">
-        {/* Mobile handle indicator */}
-        <div className="w-10 h-1 bg-stone-300 dark:bg-stone-700 rounded-full mx-auto -mt-1 mb-4 sm:hidden" />
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      slotProps={{
+        backdrop: { sx: { backdropFilter: 'blur(6px)' } },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          m: 0,
+          p: 2.5,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontWeight: 700,
+        }}
+      >
+        Управление семьями
+        <IconButton onClick={onClose} size="small" sx={{ color: 'text.secondary' }}>
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </DialogTitle>
 
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors cursor-pointer"
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2.5 }}>
+        <Tabs
+          value={tab}
+          onChange={(_, val) => {
+            setTab(val);
+            setError(null);
+          }}
+          variant="fullWidth"
         >
-          <X className="w-4 h-4" />
-        </button>
+          <Tab icon={<GroupsIcon fontSize="small" />} iconPosition="start" label="Мои семьи" value="list" />
+          <Tab icon={<GroupAddIcon fontSize="small" />} iconPosition="start" label="Создать" value="create" />
+          <Tab icon={<KeyIcon fontSize="small" />} iconPosition="start" label="По коду" value="join" />
+        </Tabs>
+      </Box>
 
-        <div className="flex items-center gap-2.5 mb-5">
-          <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 flex items-center justify-center">
-            <Users className="w-4 h-4" />
-          </div>
-          <div>
-            <h2 className="text-sm font-semibold text-stone-900 dark:text-stone-100 tracking-tight">
-              Семейные круги
-            </h2>
-            <p className="text-[11px] text-stone-500 dark:text-stone-400 font-mono">
-              / группы и коды приглашений
-            </p>
-          </div>
-        </div>
-
-        {/* Minimalist Tabs */}
-        <div className="flex bg-stone-100 dark:bg-stone-800/80 p-1 rounded-xl mb-4">
-          <button
-            onClick={() => {
-              setTab('list');
-              setError(null);
-            }}
-            className={tabBtnClass(tab === 'list')}
-          >
-            Круги ({userGroups.length})
-          </button>
-          <button
-            onClick={() => {
-              setTab('create');
-              setError(null);
-            }}
-            className={tabBtnClass(tab === 'create')}
-          >
-            Создать
-          </button>
-          <button
-            onClick={() => {
-              setTab('join');
-              setError(null);
-            }}
-            className={tabBtnClass(tab === 'join')}
-          >
-            По коду
-          </button>
-        </div>
-
+      <DialogContent sx={{ p: 2.5 }}>
         {error && (
-          <div className="mb-4 p-2.5 rounded-xl bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-200 text-xs text-center font-medium">
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
             {error}
-          </div>
+          </Alert>
         )}
 
         {tab === 'list' && (
-          <div className="space-y-2 max-h-[50vh] overflow-y-auto">
-            {userGroups.length > 0 ? (
-              userGroups.map((group) => {
-                const isActive = selectedGroupId === group.id;
+          <Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Вы можете состоять в нескольких семьях одновременно (семья родителей, своя семья, друзья).
+            </Typography>
+
+            <List disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {userGroups.map((group) => {
+                const isSelected = selectedGroupId === group.id;
                 return (
-                  <div
+                  <ListItem
                     key={group.id}
-                    className={`p-3.5 rounded-xl border transition-all ${
-                      isActive
-                        ? 'bg-stone-50 dark:bg-stone-800/60 border-stone-900 dark:border-stone-100'
-                        : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'
-                    } flex items-center justify-between gap-3`}
+                    disablePadding
+                    sx={{
+                      border: (theme) =>
+                        isSelected
+                          ? `2px solid ${theme.palette.primary.main}`
+                          : theme.palette.mode === 'dark'
+                          ? '1px solid rgba(255, 255, 255, 0.08)'
+                          : '1px solid rgba(0, 0, 0, 0.06)',
+                      borderRadius: 2.5,
+                      overflow: 'hidden',
+                      backgroundColor: 'background.paper',
+                    }}
+                    secondaryAction={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 1 }}>
+                        <Chip
+                          label={group.invite_code}
+                          size="small"
+                          variant="outlined"
+                          sx={{ fontFamily: 'monospace', fontWeight: 700 }}
+                        />
+                        <Tooltip title="Скопировать код">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleCopyCode(group.invite_code)}
+                            color={copiedCode === group.invite_code ? 'success' : 'default'}
+                          >
+                            {copiedCode === group.invite_code ? (
+                              <CheckIcon fontSize="small" />
+                            ) : (
+                              <ContentCopyIcon fontSize="small" />
+                            )}
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    }
                   >
-                    <div
-                      className="cursor-pointer flex-1 min-w-0"
+                    <ListItemButton
                       onClick={() => {
-                        if (onSelectGroup) {
-                          onSelectGroup(group.id);
-                          onClose();
-                        }
+                        if (onSelectGroup) onSelectGroup(group.id);
+                        onClose();
                       }}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-xs text-stone-900 dark:text-stone-100 truncate">
-                          {group.name}
-                        </span>
-                        {isActive && (
-                          <span className="text-[9px] bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 font-mono uppercase px-1.5 py-0.2 rounded shrink-0">
-                            Активен
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-1 text-[11px] text-stone-500 dark:text-stone-400 font-mono">
-                        <Hash className="w-3 h-3 text-stone-400" />
-                        <code className="text-stone-900 dark:text-stone-100 font-semibold">
-                          {group.invite_code}
-                        </code>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1 shrink-0">
-                      {onSelectGroup && !isActive && (
-                        <button
-                          onClick={() => {
-                            onSelectGroup(group.id);
-                            onClose();
-                          }}
-                          className="px-2.5 py-1 text-xs text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors cursor-pointer"
-                        >
-                          Выбрать
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => handleCopyCode(group.invite_code)}
-                        title="Скопировать код"
-                        className="p-1.5 text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors cursor-pointer"
-                      >
-                        {copiedCode === group.invite_code ? (
-                          <Check className="w-3.5 h-3.5 text-stone-900 dark:text-stone-100" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-
-                      <button
-                        onClick={() => handleShareLink(group.invite_code)}
-                        title="Скопировать ссылку для родственников"
-                        className="p-1.5 text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors cursor-pointer"
-                      >
-                        {copiedLink === group.invite_code ? (
-                          <Check className="w-3.5 h-3.5 text-stone-900 dark:text-stone-100" />
-                        ) : (
-                          <Share2 className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
+                      <ListItemText
+                        primary={
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                            {group.name}
+                          </Typography>
+                        }
+                        secondary={isSelected ? 'Текущая выбранная семья' : 'Нажмите, чтобы переключить'}
+                      />
+                    </ListItemButton>
+                  </ListItem>
                 );
-              })
-            ) : (
-              <div className="text-center py-8 text-stone-400 text-xs">
-                У вас пока нет групп
-              </div>
-            )}
-          </div>
+              })}
+            </List>
+          </Box>
         )}
 
         {tab === 'create' && (
-          <form onSubmit={handleCreate} className="space-y-4">
-            <div>
-              <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">
-                Название круга
-              </label>
-              <input
-                type="text"
-                required
-                value={newGroupName}
-                onChange={(e) => setNewGroupName(e.target.value)}
-                placeholder="Семья Ивановых"
-                className={inputClass}
-              />
-            </div>
+          <Box component="form" onSubmit={handleCreateGroup} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Придумайте название для новой семейной группы. Вы получите персональный код для приглашения близких.
+            </Typography>
 
-            <button
+            <TextField
+              label="Название семьи"
+              placeholder="Например: Семья Ивановых"
+              value={newGroupName}
+              onChange={(e) => setNewGroupName(e.target.value)}
+              fullWidth
+              required
+              autoFocus
+            />
+
+            <Button
               type="submit"
+              variant="contained"
+              size="large"
               disabled={loading || !newGroupName.trim()}
-              className="w-full py-2.5 rounded-xl bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white disabled:opacity-40 text-white dark:text-stone-900 font-medium text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
+              startIcon={loading ? <CircularProgress size={20} /> : <GroupAddIcon />}
             >
-              {loading ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                'Создать круг'
-              )}
-            </button>
-          </form>
+              Создать семью
+            </Button>
+          </Box>
         )}
 
         {tab === 'join' && (
-          <form onSubmit={handleJoin} className="space-y-4">
-            <div>
-              <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">
-                Код приглашения
-              </label>
-              <input
-                type="text"
-                required
-                value={inviteCode}
-                onChange={(e) => setInviteCode(e.target.value)}
-                placeholder="Например: СТЕМ-1234"
-                className={`${inputClass} uppercase font-mono tracking-wider`}
-              />
-            </div>
+          <Box component="form" onSubmit={handleJoinGroup} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Введите код приглашения, который вам прислал создатель семьи (например: <code>ФЭМ-3031</code>).
+            </Typography>
 
-            <button
+            <TextField
+              label="Код приглашения"
+              placeholder="ФЭМ-3031"
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value)}
+              fullWidth
+              required
+              autoFocus
+              slotProps={{
+                htmlInput: {
+                  style: { textTransform: 'uppercase', fontFamily: 'monospace', letterSpacing: '0.1em' },
+                },
+              }}
+            />
+
+            <Button
               type="submit"
+              variant="contained"
+              size="large"
               disabled={loading || !inviteCode.trim()}
-              className="w-full py-2.5 rounded-xl bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white disabled:opacity-40 text-white dark:text-stone-900 font-medium text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
+              startIcon={loading ? <CircularProgress size={20} /> : <KeyIcon />}
             >
-              {loading ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                'Присоединиться'
-              )}
-            </button>
-          </form>
+              Подключиться к семье
+            </Button>
+          </Box>
         )}
-      </div>
-    </div>
+      </DialogContent>
+
+      <DialogActions sx={{ p: 2 }}>
+        <Button onClick={onClose} color="inherit">
+          Закрыть
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };

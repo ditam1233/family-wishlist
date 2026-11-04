@@ -3,20 +3,43 @@
 import React, { useState } from 'react';
 import { Wish, Priority } from '@/types';
 import { formatPrice } from '@/lib/utils';
-import { ExternalLink, Trash2, Lock, Check, Gift } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import {
+  Card,
+  CardMedia,
+  CardContent,
+  CardActions,
+  Typography,
+  Box,
+  Chip,
+  Button,
+  IconButton,
+  Tooltip,
+  Grow,
+  Skeleton,
+} from '@mui/material';
+import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
+import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 
 interface WishCardProps {
   wish: Wish & { is_reserved?: boolean; reserved_by_me?: boolean };
   isOwner: boolean;
   onToggleReserve: (wishId: string) => void;
   onDeleteWish: (wishId: string) => void;
+  onEditWish?: (wish: Wish) => void;
 }
 
-const PRIORITY_BADGES: Record<Priority, { label: string; dot: string }> = {
-  must_have: { label: 'Очень хочу', dot: 'bg-stone-900 dark:bg-stone-100' },
-  nice_to_have: { label: 'Хочется', dot: 'bg-stone-400 dark:bg-stone-500' },
-  dream: { label: 'Мечта', dot: 'bg-stone-300 dark:bg-stone-600' },
+const PRIORITY_CONFIG: Record<
+  Priority,
+  { label: string; color: 'error' | 'primary' | 'secondary' }
+> = {
+  must_have: { label: 'Очень хочу', color: 'error' },
+  nice_to_have: { label: 'Хочется', color: 'primary' },
+  dream: { label: 'Мечта', color: 'secondary' },
 };
 
 export const WishCard: React.FC<WishCardProps> = ({
@@ -24,18 +47,22 @@ export const WishCard: React.FC<WishCardProps> = ({
   isOwner,
   onToggleReserve,
   onDeleteWish,
+  onEditWish,
 }) => {
   const [imageError, setImageError] = useState(false);
-  const prio = PRIORITY_BADGES[wish.priority] || PRIORITY_BADGES.nice_to_have;
+  const [imageLoaded, setImageLoaded] = useState(false);
 
-  const handleReserve = () => {
+  const prio = PRIORITY_CONFIG[wish.priority] || PRIORITY_CONFIG.nice_to_have;
+
+  const handleReserve = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!wish.is_reserved) {
       try {
         confetti({
           particleCount: 35,
           spread: 60,
           origin: { y: 0.7 },
-          colors: ['#171717', '#78716c', '#d6d3d1'],
+          colors: ['#6366f1', '#ec4899', '#10b981'],
         });
       } catch {
         /* noop */
@@ -44,123 +71,291 @@ export const WishCard: React.FC<WishCardProps> = ({
     onToggleReserve(wish.id);
   };
 
-  const hostname = (url?: string) => {
+  const getDomain = (url?: string) => {
     if (!url) return '';
     try {
       return new URL(url).hostname.replace(/^www\./, '');
     } catch {
-      return url;
+      return '';
     }
   };
 
+  const domain = getDomain(wish.link_url);
+
   return (
-    <div className="group bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 dark:border-stone-800 hover:border-stone-400/80 dark:hover:border-stone-700 transition-all duration-200 flex flex-col justify-between overflow-hidden shadow-2xs hover:shadow-sm animate-in fade-in duration-200">
-      <div>
-        {/* Top Image or Pattern */}
-        <div className="relative aspect-[4/3] bg-stone-100 dark:bg-stone-800 overflow-hidden border-b border-stone-100 dark:border-stone-800 flex items-center justify-center">
-          {wish.image_url && !imageError ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={wish.image_url}
-              alt={wish.title}
-              onError={() => setImageError(true)}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center text-stone-300 dark:text-stone-600">
-              <Gift className="w-8 h-8 stroke-[1.5]" />
-            </div>
-          )}
-
-          {/* Badges on image */}
-          <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/95 dark:bg-stone-900/95 backdrop-blur-xs text-stone-800 dark:text-stone-200 shadow-2xs border border-stone-200/50 dark:border-stone-700/50">
-              <span className={`w-1.5 h-1.5 rounded-full ${prio.dot}`} />
-              <span>{prio.label}</span>
-            </span>
-          </div>
-
-          {/* Owner delete button */}
-          {isOwner && (
-            <button
-              onClick={() => onDeleteWish(wish.id)}
-              title="Удалить желание"
-              className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-white/90 dark:bg-stone-900/90 hover:bg-white dark:hover:bg-stone-800 text-stone-400 dark:text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 shadow-2xs transition-all cursor-pointer active:scale-90"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-
-        {/* Content body */}
-        <div className="p-4 space-y-2">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="font-semibold text-stone-900 dark:text-stone-100 text-sm leading-snug line-clamp-2">
-              {wish.title}
-            </h3>
-            {wish.price !== undefined && wish.price > 0 && (
-              <span className="font-mono font-bold text-xs text-stone-900 dark:text-stone-100 shrink-0 mt-0.5">
-                {formatPrice(wish.price, wish.currency)}
-              </span>
+    <Grow in timeout={300}>
+      <Card
+        sx={{
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          position: 'relative',
+          overflow: 'hidden',
+          backgroundColor: 'background.paper',
+        }}
+      >
+        <Box>
+          {/* Card Media / Image Header */}
+          <Box
+            sx={{
+              position: 'relative',
+              width: '100%',
+              paddingTop: '62%', // 16:10 aspect ratio
+              backgroundColor: (theme) =>
+                theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+              overflow: 'hidden',
+            }}
+          >
+            {wish.image_url && !imageError ? (
+              <>
+                {!imageLoaded && (
+                  <Skeleton
+                    variant="rectangular"
+                    sx={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                    }}
+                    animation="wave"
+                  />
+                )}
+                <CardMedia
+                  component="img"
+                  image={wish.image_url}
+                  alt={wish.title}
+                  loading="lazy"
+                  onLoad={() => setImageLoaded(true)}
+                  onError={() => setImageError(true)}
+                  sx={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    transition: 'transform 0.3s ease',
+                    '&:hover': {
+                      transform: 'scale(1.04)',
+                    },
+                  }}
+                />
+              </>
+            ) : (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <CardGiftcardIcon
+                  sx={{
+                    fontSize: 48,
+                    color: (theme) =>
+                      theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
+                  }}
+                />
+              </Box>
             )}
-          </div>
 
-          {wish.description && (
-            <p className="text-xs text-stone-500 dark:text-stone-400 line-clamp-2 leading-relaxed">
-              {wish.description}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Footer Actions */}
-      <div className="p-4 pt-0">
-        <div className="pt-3 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between gap-2">
-          {wish.link_url ? (
-            <a
-              href={wish.link_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-[11px] font-mono text-stone-400 dark:text-stone-500 hover:text-stone-900 dark:hover:text-stone-200 transition-colors truncate max-w-[150px] active:opacity-70"
+            {/* Badges Over Image */}
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 10,
+                left: 10,
+                right: 10,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                pointerEvents: 'none',
+              }}
             >
-              <ExternalLink className="w-3 h-3 shrink-0" />
-              <span className="truncate">{hostname(wish.link_url)}</span>
-            </a>
-          ) : (
-            <span className="text-[10px] font-mono text-stone-300 dark:text-stone-600">
-              без ссылки
-            </span>
-          )}
+              <Chip
+                label={prio.label}
+                color={prio.color}
+                size="small"
+                sx={{
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  fontWeight: 700,
+                  pointerEvents: 'auto',
+                }}
+              />
 
-          {/* Reservation controls for relatives */}
-          {!isOwner && (
-            <div>
-              {wish.reserved_by_me ? (
-                <button
-                  onClick={handleReserve}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-semibold transition-all cursor-pointer active:scale-95 shadow-2xs"
-                >
-                  <Check className="w-3.5 h-3.5 text-stone-300 dark:text-stone-700 stroke-[2.5]" />
-                  <span>Вы дарите</span>
-                </button>
-              ) : wish.is_reserved ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-500 text-xs font-medium cursor-not-allowed">
-                  <Lock className="w-3 h-3" />
-                  <span>Занято</span>
-                </span>
-              ) : (
-                <button
-                  onClick={handleReserve}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white text-white dark:text-stone-900 text-xs font-semibold transition-all cursor-pointer active:scale-95 shadow-2xs"
-                >
-                  <Lock className="w-3 h-3" />
-                  <span>Подарю я</span>
-                </button>
+              {wish.price && wish.price > 0 && (
+                <Chip
+                  label={formatPrice(wish.price, wish.currency)}
+                  size="small"
+                  sx={{
+                    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                    color: '#ffffff',
+                    backdropFilter: 'blur(8px)',
+                    fontWeight: 700,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    pointerEvents: 'auto',
+                  }}
+                />
               )}
-            </div>
+            </Box>
+          </Box>
+
+          {/* Content */}
+          <CardContent sx={{ p: 2, pb: 1 }}>
+            <Typography
+              variant="subtitle1"
+              component="h3"
+              sx={{
+                fontWeight: 700,
+                lineHeight: 1.3,
+                mb: 0.5,
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}
+            >
+              {wish.title}
+            </Typography>
+
+            {wish.description && (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  lineHeight: 1.4,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  mb: 1,
+                }}
+              >
+                {wish.description}
+              </Typography>
+            )}
+
+            {/* Event Tag or Store Domain */}
+            <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mt: 1 }}>
+              {wish.event_tag && wish.event_tag !== 'Без повода' && (
+                <Chip
+                  label={wish.event_tag}
+                  size="small"
+                  variant="outlined"
+                  sx={{ fontSize: '0.72rem', height: 22 }}
+                />
+              )}
+              {domain && (
+                <Chip
+                  component="a"
+                  href={wish.link_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  clickable
+                  icon={<OpenInNewIcon sx={{ fontSize: '13px !important' }} />}
+                  label={domain}
+                  size="small"
+                  variant="outlined"
+                  sx={{ fontSize: '0.72rem', height: 22 }}
+                />
+              )}
+            </Box>
+          </CardContent>
+        </Box>
+
+        {/* Action Bottom Bar */}
+        <CardActions
+          sx={{
+            p: 2,
+            pt: 0,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          {isOwner ? (
+            <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="caption" color="text.secondary">
+                Ваше желание
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                {onEditWish && (
+                  <Tooltip title="Редактировать">
+                    <IconButton
+                      size="small"
+                      onClick={() => onEditWish(wish)}
+                      sx={{ color: 'text.secondary' }}
+                    >
+                      <EditOutlinedIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                <Tooltip title="Удалить">
+                  <IconButton
+                    size="small"
+                    onClick={() => onDeleteWish(wish.id)}
+                    sx={{ color: 'error.main' }}
+                  >
+                    <DeleteOutlinedIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            </Box>
+          ) : (
+            <Box sx={{ width: '100%' }}>
+              {wish.is_reserved ? (
+                wish.reserved_by_me ? (
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    color="success"
+                    size="small"
+                    startIcon={<CheckCircleOutlinedIcon />}
+                    onClick={handleReserve}
+                    sx={{ fontWeight: 600 }}
+                  >
+                    Вы дарите (Отменить)
+                  </Button>
+                ) : (
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    disabled
+                    size="small"
+                    startIcon={<LockOutlinedIcon />}
+                    sx={{ opacity: 0.7 }}
+                  >
+                    Уже забронировано
+                  </Button>
+                )
+              ) : (
+                <Button
+                  fullWidth
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  startIcon={<CardGiftcardIcon />}
+                  onClick={handleReserve}
+                  sx={{
+                    fontWeight: 700,
+                    letterSpacing: '0.01em',
+                  }}
+                >
+                  Подарю я!
+                </Button>
+              )}
+            </Box>
           )}
-        </div>
-      </div>
-    </div>
+        </CardActions>
+      </Card>
+    </Grow>
   );
 };

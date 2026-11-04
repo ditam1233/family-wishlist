@@ -1,39 +1,47 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Wish, Priority } from '@/types';
 import { scrapeLink, normalizeUrl } from '@/lib/scraper';
 import { compressImage } from '@/lib/imageCompressor';
-import {
-  X,
-  Sparkles,
-  Loader2,
-  Link2,
-  Gift,
-  Upload,
-  Image as ImageIcon,
-  Trash2,
-} from 'lucide-react';
 import confetti from 'canvas-confetti';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  IconButton,
+  Box,
+  Typography,
+  Chip,
+  Tabs,
+  Tab,
+  CircularProgress,
+  InputAdornment,
+  Alert,
+} from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import LinkIcon from '@mui/icons-material/Link';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 
 interface AddWishModalProps {
   isOpen: boolean;
-  currentUserId: string;
   onClose: () => void;
   onAddWish: (wish: Omit<Wish, 'id' | 'created_at'>) => void;
+  userId: string;
 }
 
-const PRIORITIES: { value: Priority; label: string; dot: string }[] = [
-  { value: 'must_have', label: 'Очень хочу', dot: 'bg-stone-900 dark:bg-stone-100' },
-  { value: 'nice_to_have', label: 'Хочется', dot: 'bg-stone-400 dark:bg-stone-500' },
-  { value: 'dream', label: 'Мечта', dot: 'bg-stone-300 dark:bg-stone-600' },
-];
+const EVENT_TAGS = ['Без повода', 'День рождения', 'Новый год', 'Годовщина', 'Новоселье'];
 
 export const AddWishModal: React.FC<AddWishModalProps> = ({
   isOpen,
-  currentUserId,
   onClose,
   onAddWish,
+  userId,
 }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -41,22 +49,37 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
   const [imageUrl, setImageUrl] = useState('');
   const [price, setPrice] = useState('');
   const [priority, setPriority] = useState<Priority>('nice_to_have');
+  const [eventTag, setEventTag] = useState('Без повода');
+
   const [loading, setLoading] = useState(false);
   const [compressing, setCompressing] = useState(false);
-  const [imgError, setImgError] = useState(false);
   const [imageTab, setImageTab] = useState<'upload' | 'url'>('upload');
+  const [errorMsg, setErrorMsg] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrapeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (!isOpen) {
+      setTitle('');
+      setDescription('');
+      setLinkUrl('');
+      setImageUrl('');
+      setPrice('');
+      setPriority('nice_to_have');
+      setEventTag('Без повода');
+      setErrorMsg('');
+      setLoading(false);
+      setCompressing(false);
+    }
+  }, [isOpen]);
 
   const executeScrape = async (targetUrl: string) => {
     const cleanUrl = normalizeUrl(targetUrl);
     if (!cleanUrl || !cleanUrl.startsWith('http')) return;
 
     setLoading(true);
-    setImgError(false);
+    setErrorMsg('');
     try {
       const data = await scrapeLink(cleanUrl);
       if (data.title) setTitle(data.title);
@@ -73,7 +96,6 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
     }
   };
 
-  // Handle URL change with auto-scraping
   const handleUrlChange = (val: string) => {
     setLinkUrl(val);
     const clean = normalizeUrl(val);
@@ -89,7 +111,6 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
     }
   };
 
-  // Handle file upload from gallery with high-speed canvas compression (~60KB)
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -98,7 +119,6 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
     try {
       const compressedDataUrl = await compressImage(file, 960, 0.78);
       setImageUrl(compressedDataUrl);
-      setImgError(false);
     } catch (err) {
       console.error('Image compression error:', err);
     } finally {
@@ -108,322 +128,307 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim()) {
+      setErrorMsg('Пожалуйста, введите название подарка');
+      return;
+    }
+
+    const cleanPrice = parseFloat(price.replace(/[^\d.]/g, ''));
 
     onAddWish({
-      user_id: currentUserId,
+      user_id: userId,
       title: title.trim(),
       description: description.trim() || undefined,
-      link_url: normalizeUrl(linkUrl) || undefined,
+      link_url: linkUrl.trim() || undefined,
       image_url: imageUrl.trim() || undefined,
-      price: price ? parseFloat(price) : undefined,
+      price: !isNaN(cleanPrice) && cleanPrice > 0 ? cleanPrice : undefined,
       currency: '₽',
       priority,
+      event_tag: eventTag,
     });
 
     try {
       confetti({
-        particleCount: 35,
-        spread: 60,
-        origin: { y: 0.7 },
-        colors: ['#171717', '#78716c', '#d6d3d1'],
+        particleCount: 50,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#6366f1', '#ec4899', '#10b981'],
       });
     } catch {
-      // noop
+      /* noop */
     }
 
-    // Reset fields
-    setTitle('');
-    setDescription('');
-    setLinkUrl('');
-    setImageUrl('');
-    setPrice('');
-    setPriority('nice_to_have');
     onClose();
   };
 
-  const inputClass =
-    'w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-3.5 py-2.5 text-base sm:text-xs text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-900 focus:border-stone-900 dark:focus:border-stone-100 focus:ring-1 focus:ring-stone-900 dark:focus:ring-stone-100 transition-all placeholder:text-stone-400 dark:placeholder:text-stone-500';
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-950/40 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-stone-900 rounded-t-3xl sm:rounded-2xl max-w-lg w-full border-t sm:border border-stone-200/90 dark:border-stone-800 shadow-2xl p-5 sm:p-6 relative max-h-[92vh] overflow-y-auto animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200">
-        {/* Mobile handle indicator */}
-        <div className="w-10 h-1 bg-stone-300 dark:bg-stone-700 rounded-full mx-auto -mt-1 mb-4 sm:hidden" />
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      slotProps={{
+        backdrop: {
+          sx: { backdropFilter: 'blur(6px)' },
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          m: 0,
+          p: 2.5,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontWeight: 700,
+        }}
+      >
+        Новое желание
+        <IconButton onClick={onClose} size="small" sx={{ color: 'text.secondary' }}>
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </DialogTitle>
 
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition-all cursor-pointer active:scale-90"
-        >
-          <X className="w-4 h-4" />
-        </button>
+      <form onSubmit={handleSubmit}>
+        <DialogContent dividers sx={{ p: 2.5, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+          {errorMsg && (
+            <Alert severity="error" onClose={() => setErrorMsg('')}>
+              {errorMsg}
+            </Alert>
+          )}
 
-        <div className="mb-5">
-          <h2 className="text-sm font-semibold text-stone-900 dark:text-stone-100 tracking-tight">
-            Новое желание
-          </h2>
-          <p className="text-[11px] text-stone-500 dark:text-stone-400 font-mono">
-            / добавьте подарок в ваш список
-          </p>
-        </div>
+          {/* Link Scraper Input */}
+          <TextField
+            label="Ссылка на товар (Ozon, WB, Яндекс и др.)"
+            placeholder="Вставьте ссылку для автозаполнения фото и цены"
+            value={linkUrl}
+            onChange={(e) => handleUrlChange(e.target.value)}
+            fullWidth
+            size="small"
+            slotProps={{ input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <LinkIcon fontSize="small" color="action" />
+                </InputAdornment>
+              ),
+              endAdornment: loading ? (
+                <InputAdornment position="end">
+                  <CircularProgress size={20} />
+                </InputAdornment>
+              ) : (
+                linkUrl && (
+                  <InputAdornment position="end">
+                    <Button
+                      size="small"
+                      startIcon={<AutoFixHighIcon fontSize="small" />}
+                      onClick={() => executeScrape(linkUrl)}
+                      sx={{ textTransform: 'none', px: 1, py: 0.25 }}
+                    >
+                      Заполнить
+                    </Button>
+                  </InputAdornment>
+                )
+              ),
+            }}}
+          />
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Link URL with auto-fill */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[11px] font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400">
-                Ссылка на товар (Ozon, WB, Маркет...)
-              </label>
-              {loading && (
-                <span className="text-[11px] font-mono text-stone-500 flex items-center gap-1 animate-pulse">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Распознаём товар...
-                </span>
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Link2 className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={linkUrl}
-                  onChange={(e) => handleUrlChange(e.target.value)}
-                  placeholder="Вставьте ссылку на товар..."
-                  className={`${inputClass} pl-9`}
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={() => executeScrape(linkUrl)}
-                disabled={loading || !linkUrl.trim()}
-                title="Заполнить название, цену и фото автоматически"
-                className="px-3 py-2 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 disabled:opacity-40 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shrink-0 active:scale-95 shadow-2xs"
+          {/* Image Upload / URL Tabs */}
+          <Box
+            sx={{
+              p: 2,
+              borderRadius: 3,
+              backgroundColor: (theme) =>
+                theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+              border: (theme) =>
+                theme.palette.mode === 'dark'
+                  ? '1px dashed rgba(255,255,255,0.12)'
+                  : '1px dashed rgba(0,0,0,0.12)',
+            }}
+          >
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+              <Typography variant="caption" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary' }}>
+                Фотография
+              </Typography>
+              <Tabs
+                value={imageTab}
+                onChange={(_, val) => setImageTab(val)}
+                sx={{ minHeight: 28 }}
               >
-                {loading ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <>
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Автозаполнение</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
+                <Tab label="Галерея / Камера" value="upload" sx={{ minHeight: 28, py: 0, px: 1.5, fontSize: '0.75rem' }} />
+                <Tab label="Ссылка на фото" value="url" sx={{ minHeight: 28, py: 0, px: 1.5, fontSize: '0.75rem' }} />
+              </Tabs>
+            </Box>
 
-          {/* Title */}
-          <div>
-            <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">
-              Название <span className="text-stone-400">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Беспроводные наушники"
-              className={inputClass}
-            />
-          </div>
-
-          {/* Стоимость (Price) with ₽ symbol */}
-          <div>
-            <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">
-              Стоимость
-            </label>
-            <div className="relative">
-              <span className="font-mono text-stone-500 dark:text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-xs select-none">
-                ₽
-              </span>
-              <input
-                type="number"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="например: 3500"
-                className={`${inputClass} pl-8 font-mono`}
-              />
-            </div>
-          </div>
-
-          {/* Image: Gallery upload or URL link */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[11px] font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400">
-                Изображение
-              </label>
-
-              <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 p-0.5 rounded-lg text-[10px]">
-                <button
-                  type="button"
-                  onClick={() => setImageTab('upload')}
-                  className={`px-2 py-0.5 rounded-md font-medium transition-all cursor-pointer active:scale-95 ${
-                    imageTab === 'upload'
-                      ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-2xs'
-                      : 'text-stone-500 hover:text-stone-900 dark:hover:text-stone-200'
-                  }`}
+            {imageUrl ? (
+              <Box sx={{ position: 'relative', width: '100%', height: 160, borderRadius: 2, overflow: 'hidden' }}>
+                <Box
+                  component="img"
+                  src={imageUrl}
+                  alt="Предпросмотр"
+                  sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+                <IconButton
+                  size="small"
+                  onClick={() => setImageUrl('')}
+                  sx={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    color: '#ffffff',
+                    '&:hover': { backgroundColor: 'rgba(0,0,0,0.8)' },
+                  }}
                 >
-                  Из галереи
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setImageTab('url')}
-                  className={`px-2 py-0.5 rounded-md font-medium transition-all cursor-pointer active:scale-95 ${
-                    imageTab === 'url'
-                      ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-2xs'
-                      : 'text-stone-500 hover:text-stone-900 dark:hover:text-stone-200'
-                  }`}
-                >
-                  По ссылке
-                </button>
-              </div>
-            </div>
-
-            {imageTab === 'upload' ? (
-              <div>
+                  <DeleteOutlinedIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            ) : imageTab === 'upload' ? (
+              <Box
+                onClick={() => fileInputRef.current?.click()}
+                sx={{
+                  py: 3,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 1,
+                  cursor: 'pointer',
+                  borderRadius: 2,
+                  '&:hover': { backgroundColor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)') },
+                }}
+              >
                 <input
-                  type="file"
                   ref={fileInputRef}
+                  type="file"
                   accept="image/*"
                   onChange={handleFileChange}
-                  className="hidden"
+                  style={{ display: 'none' }}
                 />
-
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-stone-200 dark:border-stone-700 hover:border-stone-400 dark:hover:border-stone-500 rounded-xl p-3.5 text-center cursor-pointer transition-all bg-stone-50/50 dark:bg-stone-800/40 active:scale-[0.99]"
-                >
-                  {compressing ? (
-                    <div className="py-1">
-                      <Loader2 className="w-5 h-5 mx-auto text-stone-500 animate-spin mb-1" />
-                      <p className="text-xs font-medium text-stone-700 dark:text-stone-300">
-                        Оптимизация фото...
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      <Upload className="w-5 h-5 mx-auto text-stone-400 mb-1" />
-                      <p className="text-xs font-medium text-stone-800 dark:text-stone-200">
-                        Нажмите, чтобы выбрать фото из галереи
-                      </p>
-                      <p className="text-[10px] text-stone-400 mt-0.5">
-                        Быстрое сжатие для мгновенной загрузки
-                      </p>
-                    </>
-                  )}
-                </div>
-              </div>
+                {compressing ? (
+                  <CircularProgress size={32} />
+                ) : (
+                  <>
+                    <PhotoCameraIcon sx={{ fontSize: 36, color: 'text.secondary' }} />
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      Нажмите, чтобы выбрать фото
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Сжимается автоматически за доли секунды
+                    </Typography>
+                  </>
+                )}
+              </Box>
             ) : (
-              <div className="relative">
-                <ImageIcon className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={imageUrl}
-                  onChange={(e) => {
-                    setImageUrl(e.target.value);
-                    setImgError(false);
-                  }}
-                  placeholder="https://example.com/photo.jpg"
-                  className={`${inputClass} pl-9`}
+              <TextField
+                placeholder="https://example.com/photo.jpg"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                fullWidth
+                size="small"
+              />
+            )}
+          </Box>
+
+          {/* Title */}
+          <TextField
+            label="Название подарка *"
+            placeholder="Например: Беспроводные наушники Sony"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            fullWidth
+            required
+            size="small"
+          />
+
+          {/* Price & Priority */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <TextField
+              label="Примерная стоимость (₽)"
+              placeholder="3500"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              fullWidth
+              size="small"
+              slotProps={{ input: {
+                endAdornment: <InputAdornment position="end">₽</InputAdornment>,
+              }}}
+            />
+
+            <Box>
+              <Typography variant="caption" sx={{ display: 'block', mb: 0.75, color: 'text.secondary', fontWeight: 600 }}>
+                Приоритет
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                <Chip
+                  label="Хочу"
+                  clickable
+                  color={priority === 'nice_to_have' ? 'primary' : 'default'}
+                  variant={priority === 'nice_to_have' ? 'filled' : 'outlined'}
+                  onClick={() => setPriority('nice_to_have')}
+                  sx={{ flex: 1 }}
                 />
-              </div>
-            )}
+                <Chip
+                  label="Очень хочу"
+                  clickable
+                  color={priority === 'must_have' ? 'error' : 'default'}
+                  variant={priority === 'must_have' ? 'filled' : 'outlined'}
+                  onClick={() => setPriority('must_have')}
+                  sx={{ flex: 1 }}
+                />
+                <Chip
+                  label="Мечта"
+                  clickable
+                  color={priority === 'dream' ? 'secondary' : 'default'}
+                  variant={priority === 'dream' ? 'filled' : 'outlined'}
+                  onClick={() => setPriority('dream')}
+                  sx={{ flex: 1 }}
+                />
+              </Box>
+            </Box>
+          </Box>
 
-            {/* Thumbnail Preview if present */}
-            {imageUrl && (
-              <div className="mt-2.5 flex items-center gap-2.5 p-2 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 animate-in fade-in duration-150">
-                <div className="w-12 h-12 rounded-lg bg-stone-100 dark:bg-stone-700 overflow-hidden shrink-0 border border-stone-200 dark:border-stone-600 flex items-center justify-center">
-                  {!imgError ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={imageUrl}
-                      alt="Preview"
-                      onError={() => setImgError(true)}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Gift className="w-5 h-5 text-stone-400" />
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <span className="text-xs font-medium text-stone-900 dark:text-stone-100 truncate block">
-                    Фото прикреплено
-                  </span>
-                  <span className="text-[10px] text-stone-400 font-mono">
-                    {imageUrl.startsWith('data:') ? 'Оптимизировано из галереи' : 'Ссылка на картинку'}
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setImageUrl('')}
-                  title="Удалить фото"
-                  className="p-1.5 text-stone-400 hover:text-red-500 rounded-lg hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors cursor-pointer active:scale-90"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Priority */}
-          <div>
-            <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">
-              Приоритет
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {PRIORITIES.map((p) => {
-                const isSelected = priority === p.value;
-                return (
-                  <button
-                    key={p.value}
-                    type="button"
-                    onClick={() => setPriority(p.value)}
-                    className={`py-2 px-2.5 rounded-xl text-xs font-medium border flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
-                      isSelected
-                        ? 'border-stone-900 dark:border-stone-100 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 shadow-2xs font-semibold'
-                        : 'border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600 text-stone-600 dark:text-stone-400'
-                    }`}
-                  >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        isSelected ? 'bg-white dark:bg-stone-900' : p.dot
-                      }`}
-                    />
-                    <span>{p.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {/* Event Tag */}
+          <Box>
+            <Typography variant="caption" sx={{ display: 'block', mb: 0.75, color: 'text.secondary', fontWeight: 600 }}>
+              Повод для подарка
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
+              {EVENT_TAGS.map((tag) => (
+                <Chip
+                  key={tag}
+                  label={tag}
+                  clickable
+                  size="small"
+                  color={eventTag === tag ? 'primary' : 'default'}
+                  variant={eventTag === tag ? 'filled' : 'outlined'}
+                  onClick={() => setEventTag(tag)}
+                />
+              ))}
+            </Box>
+          </Box>
 
           {/* Description */}
-          <div>
-            <label className="block text-[11px] font-mono uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">
-              Примечание (размер, цвет, пожелания)
-            </label>
-            <textarea
-              rows={2}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Например: черный цвет, размер M..."
-              className={inputClass}
-            />
-          </div>
+          <TextField
+            label="Заметки или пожелания (размер, цвет и т.д.)"
+            placeholder="Цвет черный, размер M, или артикул"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            multiline
+            rows={2}
+            fullWidth
+            size="small"
+          />
+        </DialogContent>
 
-          {/* Submit */}
-          <div className="pt-2">
-            <button
-              type="submit"
-              className="w-full py-3 rounded-xl bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white text-white dark:text-stone-900 font-semibold text-xs transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
-            >
-              <span>Сохранить в вишлист</span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <DialogActions sx={{ p: 2.5 }}>
+          <Button onClick={onClose} color="inherit">
+            Отмена
+          </Button>
+          <Button type="submit" variant="contained" color="primary" disabled={loading || compressing}>
+            Добавить подарок
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 };

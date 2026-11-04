@@ -3,20 +3,40 @@
 import React, { useState } from 'react';
 import { Wish, Priority } from '@/types';
 import { formatPrice } from '@/lib/utils';
-import { ExternalLink, Trash2, Lock, Check, Gift } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import {
+  Paper,
+  Box,
+  Typography,
+  Chip,
+  Button,
+  IconButton,
+  Avatar,
+  Tooltip,
+  Fade,
+} from '@mui/material';
+import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
+import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 
 interface WishRowProps {
-  wish: Wish & { is_reserved?: boolean; reserved_by_me?: boolean; owner_name?: string };
+  wish: Wish & { is_reserved?: boolean; reserved_by_me?: boolean };
   isOwner: boolean;
   onToggleReserve: (wishId: string) => void;
   onDeleteWish: (wishId: string) => void;
+  onEditWish?: (wish: Wish) => void;
 }
 
-const PRIORITY_CONFIG: Record<Priority, { label: string; dot: string }> = {
-  must_have: { label: 'Очень хочу', dot: 'bg-stone-900 dark:bg-stone-100' },
-  nice_to_have: { label: 'Хочется', dot: 'bg-stone-400 dark:bg-stone-500' },
-  dream: { label: 'Мечта', dot: 'bg-stone-300 dark:bg-stone-600' },
+const PRIORITY_CONFIG: Record<
+  Priority,
+  { label: string; color: 'error' | 'primary' | 'secondary' }
+> = {
+  must_have: { label: 'Очень хочу', color: 'error' },
+  nice_to_have: { label: 'Хочется', color: 'primary' },
+  dream: { label: 'Мечта', color: 'secondary' },
 };
 
 export const WishRow: React.FC<WishRowProps> = ({
@@ -24,8 +44,9 @@ export const WishRow: React.FC<WishRowProps> = ({
   isOwner,
   onToggleReserve,
   onDeleteWish,
+  onEditWish,
 }) => {
-  const [imageError, setImageError] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const prio = PRIORITY_CONFIG[wish.priority] || PRIORITY_CONFIG.nice_to_have;
 
   const handleReserve = (e: React.MouseEvent) => {
@@ -33,10 +54,10 @@ export const WishRow: React.FC<WishRowProps> = ({
     if (!wish.is_reserved) {
       try {
         confetti({
-          particleCount: 35,
+          particleCount: 30,
           spread: 55,
           origin: { y: 0.7 },
-          colors: ['#171717', '#78716c', '#d6d3d1'],
+          colors: ['#6366f1', '#ec4899', '#10b981'],
         });
       } catch {
         /* noop */
@@ -45,112 +66,164 @@ export const WishRow: React.FC<WishRowProps> = ({
     onToggleReserve(wish.id);
   };
 
-  const hostname = (url?: string) => {
+  const getDomain = (url?: string) => {
     if (!url) return '';
     try {
       return new URL(url).hostname.replace(/^www\./, '');
     } catch {
-      return url;
+      return '';
     }
   };
 
+  const domain = getDomain(wish.link_url);
+
   return (
-    <div className="group bg-white dark:bg-stone-900 hover:bg-stone-50/80 dark:hover:bg-stone-800/60 active:bg-stone-100/70 dark:active:bg-stone-800 p-3 sm:p-4 flex items-center justify-between gap-3 transition-colors duration-150 animate-in fade-in duration-200">
-      {/* Left: Rounded Thumbnail */}
-      <div className="relative w-12 h-12 sm:w-11 sm:h-11 rounded-xl bg-stone-100 dark:bg-stone-800 border border-stone-200/70 dark:border-stone-700 overflow-hidden shrink-0 flex items-center justify-center transition-transform group-hover:scale-102">
-        {wish.image_url && !imageError ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={wish.image_url}
-            alt=""
-            onError={() => setImageError(true)}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <Gift className="w-5 h-5 text-stone-300 dark:text-stone-600 stroke-[1.5]" />
-        )}
-      </div>
+    <Fade in timeout={250}>
+      <Paper
+        elevation={0}
+        sx={{
+          p: 1.5,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          border: (theme) =>
+            theme.palette.mode === 'dark'
+              ? '1px solid rgba(255, 255, 255, 0.08)'
+              : '1px solid rgba(0, 0, 0, 0.06)',
+          borderRadius: 3,
+          backgroundColor: 'background.paper',
+          transition: 'all 0.18s ease',
+          '&:hover': {
+            boxShadow: (theme) =>
+              theme.palette.mode === 'dark'
+                ? '0 4px 16px rgba(0,0,0,0.4)'
+                : '0 4px 16px rgba(15,23,42,0.06)',
+          },
+        }}
+      >
+        {/* Avatar / Thumbnail */}
+        <Avatar
+          src={!imgError && wish.image_url ? wish.image_url : undefined}
+          variant="rounded"
+          onError={() => setImgError(true)}
+          sx={{
+            width: 56,
+            height: 56,
+            borderRadius: 2.5,
+            backgroundColor: (theme) =>
+              theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+            color: 'text.secondary',
+          }}
+        >
+          <CardGiftcardIcon sx={{ fontSize: 26 }} />
+        </Avatar>
 
-      {/* Middle: Title, Shop & Metadata */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="font-semibold sm:font-medium text-[13.5px] sm:text-sm text-stone-950 dark:text-stone-100 truncate max-w-full">
-            {wish.title}
-          </span>
-        </div>
-
-        {wish.description && (
-          <p className="text-[11px] text-stone-400 dark:text-stone-500 line-clamp-1 mt-0.5">
-            {wish.description}
-          </p>
-        )}
-
-        <div className="flex items-center gap-2 mt-1 text-[11px] text-stone-500 dark:text-stone-400">
-          <span className="inline-flex items-center gap-1 font-mono text-[10px]">
-            <span className={`w-1.5 h-1.5 rounded-full ${prio.dot}`} />
-            <span>{prio.label}</span>
-          </span>
-
-          {wish.link_url && (
-            <a
-              href={wish.link_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1 text-stone-400 dark:text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 transition-colors font-mono text-[10px] active:opacity-70"
+        {/* Wish Info */}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}>
+            <Typography
+              variant="subtitle2"
+              component="h3"
+              sx={{
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
             >
-              <ExternalLink className="w-2.5 h-2.5" />
-              <span className="truncate max-w-[120px]">
-                {hostname(wish.link_url)}
-              </span>
-            </a>
-          )}
-        </div>
-      </div>
+              {wish.title}
+            </Typography>
+            <Chip label={prio.label} color={prio.color} size="small" sx={{ height: 20, fontSize: '0.68rem' }} />
+          </Box>
 
-      {/* Right: Price & Tap Action */}
-      <div className="flex flex-col sm:flex-row sm:items-center items-end gap-1.5 sm:gap-3 shrink-0">
-        {wish.price !== undefined && wish.price > 0 && (
-          <div className="text-xs sm:text-sm font-bold font-mono text-stone-900 dark:text-stone-100">
-            {formatPrice(wish.price, wish.currency)}
-          </div>
-        )}
-
-        {!isOwner ? (
-          <div>
-            {wish.reserved_by_me ? (
-              <button
-                onClick={handleReserve}
-                className="px-2.5 py-1.5 rounded-full bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-[11px] font-semibold flex items-center gap-1 shadow-2xs active:scale-95 transition-all cursor-pointer"
-              >
-                <Check className="w-3 h-3 text-stone-300 dark:text-stone-700 stroke-[2.5]" />
-                <span>Вы дарите</span>
-              </button>
-            ) : wish.is_reserved ? (
-              <span className="px-2.5 py-1 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-500 text-[11px] font-medium flex items-center gap-1">
-                <Lock className="w-2.5 h-2.5 text-stone-400 dark:text-stone-500" />
-                <span>Занято</span>
-              </span>
-            ) : (
-              <button
-                onClick={handleReserve}
-                className="px-3 py-1.5 rounded-full bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-900 dark:text-stone-100 border border-stone-200 dark:border-stone-700 text-[11px] font-semibold flex items-center gap-1 shadow-2xs active:scale-95 transition-all cursor-pointer"
-              >
-                <Lock className="w-2.5 h-2.5 text-stone-600 dark:text-stone-300" />
-                <span>Подарю я</span>
-              </button>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+            {wish.price && wish.price > 0 && (
+              <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                {formatPrice(wish.price, wish.currency)}
+              </Typography>
             )}
-          </div>
-        ) : (
-          <button
-            onClick={() => onDeleteWish(wish.id)}
-            title="Удалить желание"
-            className="p-2 text-stone-300 dark:text-stone-600 hover:text-red-600 dark:hover:text-red-400 rounded-lg transition-all cursor-pointer active:scale-90"
-          >
-            <Trash2 className="w-4 h-4 stroke-[1.75]" />
-          </button>
-        )}
-      </div>
-    </div>
+
+            {domain && (
+              <Box
+                component="a"
+                href={wish.link_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  fontSize: '0.75rem',
+                  color: 'text.secondary',
+                  textDecoration: 'none',
+                  '&:hover': { color: 'primary.main', textDecoration: 'underline' },
+                }}
+              >
+                {domain}
+                <OpenInNewIcon sx={{ fontSize: 12 }} />
+              </Box>
+            )}
+          </Box>
+        </Box>
+
+        {/* Actions */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {isOwner ? (
+            <Box sx={{ display: 'flex', gap: 0.5 }}>
+              {onEditWish && (
+                <Tooltip title="Редактировать">
+                  <IconButton size="small" onClick={() => onEditWish(wish)} sx={{ color: 'text.secondary' }}>
+                    <EditOutlinedIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              )}
+              <Tooltip title="Удалить">
+                <IconButton size="small" onClick={() => onDeleteWish(wish.id)} sx={{ color: 'error.main' }}>
+                  <DeleteOutlinedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          ) : (
+            <Box>
+              {wish.is_reserved ? (
+                wish.reserved_by_me ? (
+                  <Button
+                    variant="outlined"
+                    color="success"
+                    size="small"
+                    startIcon={<CheckCircleOutlinedIcon />}
+                    onClick={handleReserve}
+                    sx={{ whiteSpace: 'nowrap' }}
+                  >
+                    Я подарю
+                  </Button>
+                ) : (
+                  <Button
+                    variant="contained"
+                    disabled
+                    size="small"
+                    startIcon={<LockOutlinedIcon />}
+                    sx={{ whiteSpace: 'nowrap', opacity: 0.7 }}
+                  >
+                    Забронировано
+                  </Button>
+                )
+              ) : (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  startIcon={<CardGiftcardIcon />}
+                  onClick={handleReserve}
+                  sx={{ whiteSpace: 'nowrap', fontWeight: 700 }}
+                >
+                  Подарю я!
+                </Button>
+              )}
+            </Box>
+          )}
+        </Box>
+      </Paper>
+    </Fade>
   );
 };

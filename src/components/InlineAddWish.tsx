@@ -3,8 +3,19 @@
 import React, { useState } from 'react';
 import { Wish } from '@/types';
 import { scrapeLink, normalizeUrl } from '@/lib/scraper';
-import { Plus, Sparkles, Loader2, SlidersHorizontal } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import {
+  Paper,
+  InputBase,
+  IconButton,
+  Button,
+  CircularProgress,
+  Box,
+  Tooltip,
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import TuneIcon from '@mui/icons-material/Tune';
 
 interface InlineAddWishProps {
   currentUserId: string;
@@ -67,7 +78,7 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
         particleCount: 25,
         spread: 45,
         origin: { y: 0.7 },
-        colors: ['#171717', '#78716c', '#d6d3d1'],
+        colors: ['#6366f1', '#ec4899', '#10b981'],
       });
     } catch {
       /* noop */
@@ -77,53 +88,89 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
   };
 
   const isCurrentUrl = Boolean(
-    inputVal.trim() && (normalizeUrl(inputVal).startsWith('http://') || normalizeUrl(inputVal).startsWith('https://'))
+    inputVal.trim() &&
+      (normalizeUrl(inputVal).startsWith('http://') ||
+        normalizeUrl(inputVal).startsWith('https://'))
   );
 
   return (
-    <form
+    <Paper
+      component="form"
       onSubmit={handleSubmit}
-      className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 dark:border-stone-800 hover:border-stone-400/80 dark:hover:border-stone-600 transition-all p-2 flex items-center gap-1.5 shadow-2xs focus-within:ring-2 focus-within:ring-stone-400/30"
+      elevation={0}
+      sx={{
+        p: '4px 8px',
+        display: 'flex',
+        alignItems: 'center',
+        borderRadius: 3,
+        border: (theme) =>
+          theme.palette.mode === 'dark'
+            ? '1px solid rgba(255, 255, 255, 0.1)'
+            : '1px solid rgba(0, 0, 0, 0.08)',
+        backgroundColor: 'background.paper',
+        boxShadow: (theme) =>
+          theme.palette.mode === 'dark'
+            ? '0 2px 10px rgba(0,0,0,0.3)'
+            : '0 2px 10px rgba(15,23,42,0.04)',
+        transition: 'all 0.2s ease',
+        '&:focus-within': {
+          borderColor: 'primary.main',
+          boxShadow: (theme) =>
+            theme.palette.mode === 'dark'
+              ? '0 0 0 2px rgba(99, 102, 241, 0.25)'
+              : '0 0 0 2px rgba(79, 70, 229, 0.15)',
+        },
+      }}
     >
-      <div className="pl-2 text-stone-400 dark:text-stone-500">
-        <Plus className="w-4 h-4 stroke-[2]" />
-      </div>
+      <Box sx={{ p: 1, color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
+        <AddIcon fontSize="small" />
+      </Box>
 
-      <input
-        type="text"
+      <InputBase
+        sx={{ ml: 1, flex: 1, fontSize: '0.9rem' }}
+        placeholder="Вставьте ссылку на товар или напишите название..."
         value={inputVal}
         onChange={(e) => setInputVal(e.target.value)}
-        placeholder="Ссылка на товар или название..."
-        className="w-full bg-transparent px-2 py-1 text-base sm:text-xs text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none"
+        disabled={loading}
       />
 
-      <div className="flex items-center gap-1 shrink-0 pr-0.5">
-        <button
-          type="button"
-          onClick={onOpenFullModal}
-          title="Подробная форма"
-          className="p-2 text-stone-400 dark:text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition-all cursor-pointer active:scale-90"
-        >
-          <SlidersHorizontal className="w-4 h-4" />
-        </button>
-
-        <button
+      {loading ? (
+        <Box sx={{ p: 1, display: 'flex', alignItems: 'center' }}>
+          <CircularProgress size={20} />
+        </Box>
+      ) : isCurrentUrl ? (
+        <Button
           type="submit"
-          disabled={loading || !inputVal.trim()}
-          className="h-9 px-3.5 rounded-xl bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white disabled:opacity-30 text-white dark:text-stone-950 font-semibold text-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
+          variant="contained"
+          size="small"
+          startIcon={<AutoAwesomeIcon fontSize="small" />}
+          sx={{ borderRadius: 2, mr: 0.5, fontSize: '0.8rem', py: 0.5 }}
         >
-          {loading ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : isCurrentUrl ? (
-            <>
-              <Sparkles className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Распознать</span>
-            </>
-          ) : (
-            <span>Добавить</span>
-          )}
-        </button>
-      </div>
-    </form>
+          Парсинг
+        </Button>
+      ) : inputVal.trim() ? (
+        <Button
+          type="submit"
+          variant="contained"
+          size="small"
+          sx={{ borderRadius: 2, mr: 0.5, fontSize: '0.8rem', py: 0.5 }}
+        >
+          Добавить
+        </Button>
+      ) : null}
+
+      <Tooltip title="Подробные параметры (фото, приоритет, цена)">
+        <IconButton
+          size="small"
+          onClick={onOpenFullModal}
+          sx={{
+            color: 'text.secondary',
+            '&:hover': { color: 'primary.main' },
+          }}
+        >
+          <TuneIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+    </Paper>
   );
 };

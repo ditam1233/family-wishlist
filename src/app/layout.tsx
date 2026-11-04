@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { MuiThemeProvider } from "@/components/ThemeRegistry/MuiThemeProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,8 +15,8 @@ export const viewport: Viewport = {
   userScalable: false,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fafaf9" },
-    { media: "(prefers-color-scheme: dark)", color: "#0c0a09" },
+    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
+    { media: "(prefers-color-scheme: dark)", color: "#09090b" },
   ],
 };
 
@@ -25,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ru" suppressHydrationWarning className="h-full bg-stone-50 dark:bg-stone-950">
+    <html lang="ru" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -33,8 +34,10 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col antialiased bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 selection:bg-stone-900 selection:text-white dark:selection:bg-stone-100 dark:selection:text-stone-950">
-        {children}
+      <body>
+        <MuiThemeProvider>
+          {children}
+        </MuiThemeProvider>
       </body>
     </html>
   );

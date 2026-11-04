@@ -1,87 +1,161 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { User, Wish, FamilyGroup } from '@/types';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { User, Wish, FamilyGroup, Priority } from '@/types';
 import { dataStore } from '@/lib/data';
-import { getStoredTheme, applyTheme, Theme } from '@/lib/theme';
-import { Sidebar } from '@/components/Sidebar';
-import { MobileNav } from '@/components/MobileNav';
+import { getInitials } from '@/lib/avatar';
+import { useColorMode } from '@/components/ThemeRegistry/MuiThemeProvider';
 import { WishCard } from '@/components/WishCard';
 import { WishRow } from '@/components/WishRow';
 import { InlineAddWish } from '@/components/InlineAddWish';
 import { AddWishModal } from '@/components/AddWishModal';
 import { FamilyGroupModal } from '@/components/FamilyGroupModal';
-import { OnboardingModal } from '@/components/OnboardingModal';
 import { AuthScreen } from '@/components/AuthScreen';
-import { formatPrice } from '@/lib/utils';
-import { getAvatarStyle, getInitials } from '@/lib/avatar';
+
 import {
-  Gift,
-  Plus,
-  LayoutGrid,
-  List,
-  Lock,
-  Search,
-  BookmarkCheck,
-  X,
-  ChevronDown,
-  Sun,
-  Moon,
-  HelpCircle,
-} from 'lucide-react';
+  AppBar,
+  Toolbar,
+  Typography,
+  Box,
+  Container,
+  Button,
+  IconButton,
+  Avatar,
+  Chip,
+  Tabs,
+  Tab,
+  TextField,
+  InputAdornment,
+  ToggleButtonGroup,
+  ToggleButton,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Divider,
+  Snackbar,
+  Alert,
+  Skeleton,
+  Badge,
+  Fab,
+  Tooltip,
+} from '@mui/material';
+
+import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
+import AddIcon from '@mui/icons-material/Add';
+import SearchIcon from '@mui/icons-material/Search';
+import GridViewIcon from '@mui/icons-material/GridView';
+import ViewListIcon from '@mui/icons-material/ViewList';
+import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
+import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined';
+import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
+import GroupsIcon from '@mui/icons-material/Groups';
+import LogoutIcon from '@mui/icons-material/Logout';
+import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
+import FilterListIcon from '@mui/icons-material/FilterList';
 
 export default function HomePage() {
+  const { mode, toggleColorMode } = useColorMode();
+
+  // Authentication & Groups
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [familyMembers, setFamilyMembers] = useState<User[]>([]);
   const [userGroups, setUserGroups] = useState<FamilyGroup[]>([]);
+  const [familyMembers, setFamilyMembers] = useState<User[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
-  const [selectedUserId, setSelectedUserId] = useState('');
-  const [selectedView, setSelectedView] = useState<'wishes' | 'my_reservations'>('wishes');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+
+  // View state
+  const [activeTab, setActiveTab] = useState<'wishes' | 'reservations'>('wishes');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState<Theme>('light');
+  const [priorityFilter, setPriorityFilter] = useState<'all' | Priority>('all');
 
-  type DisplayWish = Wish & {
-    is_reserved?: boolean;
-    reserved_by_me?: boolean;
-    owner_name?: string;
-  };
+  // Wishes data
+  const [wishes, setWishes] = useState<(Wish & { is_reserved?: boolean; reserved_by_me?: boolean })[]>([]);
+  const [myReservations, setMyReservations] = useState<(Wish & { is_reserved?: boolean; reserved_by_me?: boolean })[]>([]);
+  const [isWishesLoading, setIsWishesLoading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-  const [wishes, setWishes] = useState<DisplayWish[]>([]);
-  const [myReservations, setMyReservations] = useState<DisplayWish[]>([]);
+  // Modals
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isFamilyModalOpen, setIsFamilyModalOpen] = useState(false);
 
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [isGroupsOpen, setIsGroupsOpen] = useState(false);
-  const [isAppLoading, setIsAppLoading] = useState(true);
+  // User Profile Menu
+  const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
 
-  // Initialize theme on mount
-  useEffect(() => {
-    const t = getStoredTheme();
-    setCurrentTheme(t);
+  // Notifications
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'info' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success',
+  });
+
+  const showNotification = useCallback((message: string, severity: 'success' | 'info' | 'error' = 'success') => {
+    setSnackbar({ open: true, message, severity });
   }, []);
 
-  const handleToggleTheme = () => {
-    const nextTheme: Theme = currentTheme === 'dark' ? 'light' : 'dark';
-    setCurrentTheme(nextTheme);
-    applyTheme(nextTheme);
+  const handleCloseSnackbar = () => {
+    setSnackbar((prev) => ({ ...prev, open: false }));
   };
 
-  // Check onboarding on user change
-  const checkOnboarding = () => {
+  // Fast load wishes with cache
+  const loadWishes = useCallback(async (targetId: string, viewerId: string) => {
+    setIsWishesLoading(true);
     try {
-      const seen = localStorage.getItem('wishlist_onboarding_done');
-      if (!seen) {
-        setIsOnboardingOpen(true);
-      }
-    } catch {
-      /* noop */
+      const items = await dataStore.getWishesForUser(targetId, viewerId);
+      setWishes(items);
+    } catch (err) {
+      console.error('Error loading wishes:', err);
+    } finally {
+      setIsWishesLoading(false);
     }
-  };
+  }, []);
 
-  // Initialize data on mount
+  // Load reservations
+  const loadMyReservations = useCallback(async (viewerId: string) => {
+    try {
+      const items = await dataStore.getMyReservations(viewerId);
+      setMyReservations(items);
+    } catch (err) {
+      console.error('Error loading reservations:', err);
+    }
+  }, []);
+
+  // Load family and groups
+  const loadUserData = useCallback(async (userId: string, preferredGroupId?: string) => {
+    try {
+      const groups = await dataStore.getUserGroups(userId);
+      setUserGroups(groups);
+
+      let activeGroupId = preferredGroupId;
+      if (!activeGroupId) {
+        if (selectedGroupId && (groups.some((g) => g.id === selectedGroupId) || selectedGroupId === 'all')) {
+          activeGroupId = selectedGroupId;
+        } else {
+          activeGroupId = groups[0]?.id || 'all';
+        }
+      }
+      setSelectedGroupId(activeGroupId);
+
+      const members = await dataStore.getFamilyMembers(userId, activeGroupId);
+      setFamilyMembers(members);
+
+      const activeTargetId = selectedUserId && members.some((m) => m.id === selectedUserId)
+        ? selectedUserId
+        : userId;
+
+      setSelectedUserId(activeTargetId);
+
+      await Promise.all([
+        loadWishes(activeTargetId, userId),
+        loadMyReservations(userId),
+      ]);
+    } catch (err) {
+      console.error('Error loading user data:', err);
+    }
+  }, [selectedGroupId, selectedUserId, loadWishes, loadMyReservations]);
+
+  // Initial startup
   useEffect(() => {
     const cachedUser = dataStore.getCachedUser();
     const cachedGroups = dataStore.getCachedGroups();
@@ -97,8 +171,7 @@ export default function HomePage() {
         setFamilyMembers(cachedMembers);
         setSelectedUserId(cachedUser.id);
       }
-      setIsAppLoading(false);
-      checkOnboarding();
+      setIsInitialLoading(false);
     }
 
     const init = async () => {
@@ -107,55 +180,29 @@ export default function HomePage() {
         if (user) {
           setCurrentUser(user);
           await loadUserData(user.id);
-          checkOnboarding();
         } else {
           setCurrentUser(null);
-          setUserGroups([]);
-          setFamilyMembers([]);
         }
       } catch (err) {
-        console.error('Initialization error:', err);
+        console.error('Init error:', err);
       } finally {
-        setIsAppLoading(false);
+        setIsInitialLoading(false);
       }
     };
+
     init();
-  }, []);
+  }, [loadUserData]);
 
-  const loadUserData = async (userId: string, preferredGroupId?: string) => {
-    const groups = await dataStore.getUserGroups(userId);
-    setUserGroups(groups);
+  // Switch target user
+  const handleSwitchUser = useCallback(async (targetId: string) => {
+    if (!currentUser) return;
+    setSelectedUserId(targetId);
+    setActiveTab('wishes');
+    await loadWishes(targetId, currentUser.id);
+  }, [currentUser, loadWishes]);
 
-    let activeGroupId = preferredGroupId;
-    if (!activeGroupId) {
-      if (
-        selectedGroupId &&
-        (groups.some((g) => g.id === selectedGroupId) || selectedGroupId === 'all')
-      ) {
-        activeGroupId = selectedGroupId;
-      } else {
-        activeGroupId = groups[0]?.id || 'all';
-      }
-    }
-    setSelectedGroupId(activeGroupId);
-
-    const members = await dataStore.getFamilyMembers(userId, activeGroupId);
-    setFamilyMembers(members);
-    dataStore.setCachedMembers(members);
-
-    const activeTargetId =
-      selectedUserId && members.some((m) => m.id === selectedUserId)
-        ? selectedUserId
-        : userId;
-
-    setSelectedUserId(activeTargetId);
-    await Promise.all([
-      loadWishes(activeTargetId, userId),
-      loadMyReservations(userId),
-    ]);
-  };
-
-  const handleSwitchGroup = async (groupId: string) => {
+  // Switch family group
+  const handleSwitchGroup = useCallback(async (groupId: string) => {
     setSelectedGroupId(groupId);
     if (!currentUser) return;
 
@@ -168,56 +215,36 @@ export default function HomePage() {
 
     setSelectedUserId(targetId);
     await loadWishes(targetId, currentUser.id);
-  };
+  }, [currentUser, selectedUserId, loadWishes]);
 
-  const loadWishes = async (targetId: string, viewerId: string) => {
-    const list = await dataStore.getWishesForUser(targetId, viewerId);
-    setWishes(list);
-  };
+  // Add wish
+  const handleAddWish = async (wishData: Omit<Wish, 'id' | 'created_at'>) => {
+    if (!currentUser) return;
 
-  const loadMyReservations = async (userId: string) => {
-    const reserved = await dataStore.getMyReservations(userId);
-    setMyReservations(reserved);
-  };
-
-  const handleSelectUser = async (id: string) => {
-    setSelectedUserId(id);
-    setSelectedView('wishes');
-    if (currentUser) {
-      await loadWishes(id, currentUser.id);
+    const newWish = await dataStore.addWish(wishData);
+    if (newWish) {
+      if (selectedUserId === currentUser.id) {
+        setWishes((prev) => [
+          { ...newWish, is_reserved: false, reserved_by_me: false },
+          ...prev,
+        ]);
+      }
+      showNotification('Подарок успешно добавлен в список!');
     }
   };
 
-  const handleAuth = async (user: User) => {
-    setCurrentUser(user);
-    await loadUserData(user.id);
-    checkOnboarding();
-  };
-
-  const handleLogout = async () => {
-    await dataStore.logout();
-    setCurrentUser(null);
-    setFamilyMembers([]);
-    setUserGroups([]);
-    setWishes([]);
-    setSelectedUserId('');
-  };
-
-  const handleGroupsUpdated = async () => {
-    if (currentUser) {
-      await loadUserData(currentUser.id);
-    }
-  };
-
-  // Optimistic toggle reservation for instant 0ms feedback
+  // Toggle reserve
   const handleToggleReserve = async (wishId: string) => {
     if (!currentUser) return;
 
-    // Optimistically update wishes state
+    const wish = wishes.find((w) => w.id === wishId);
+    const wasReservedByMe = wish?.reserved_by_me;
+
+    // Optimistic update
     setWishes((prev) =>
       prev.map((w) => {
         if (w.id === wishId) {
-          const nextReserved = !w.is_reserved;
+          const nextReserved = !w.reserved_by_me;
           return {
             ...w,
             is_reserved: nextReserved,
@@ -228,557 +255,575 @@ export default function HomePage() {
       })
     );
 
-    // Optimistically update myReservations state
-    setMyReservations((prev) => {
-      const exists = prev.some((w) => w.id === wishId);
-      if (exists) {
-        return prev.filter((w) => w.id !== wishId);
-      }
-      const item = wishes.find((w) => w.id === wishId);
-      if (item) {
-        return [{ ...item, is_reserved: true, reserved_by_me: true }, ...prev];
-      }
-      return prev;
-    });
-
     try {
       await dataStore.toggleReservation(wishId, currentUser.id);
-    } catch (err) {
-      console.error('Reservation error:', err);
-      // Revert if error
-      await Promise.all([
-        loadWishes(selectedUserId, currentUser.id),
-        loadMyReservations(currentUser.id),
-      ]);
+      await loadMyReservations(currentUser.id);
+      showNotification(
+        wasReservedByMe
+          ? 'Бронь снята'
+          : 'Подарок забронирован! Именинник об этом не узнает 😉'
+      );
+    } catch {
+      showNotification('Не удалось обновить статус брони', 'error');
+      await loadWishes(selectedUserId, currentUser.id);
     }
   };
 
-  // Optimistic delete wish for instant 0ms removal
+  // Delete wish
   const handleDeleteWish = async (wishId: string) => {
     if (!currentUser) return;
-    if (!confirm('Удалить это желание?')) return;
+    if (!confirm('Вы уверены, что хотите удалить этот подарок?')) return;
 
-    // Optimistic UI update
     setWishes((prev) => prev.filter((w) => w.id !== wishId));
-    setMyReservations((prev) => prev.filter((w) => w.id !== wishId));
 
     try {
       await dataStore.deleteWish(wishId, currentUser.id);
-    } catch (err) {
-      console.error('Delete wish error:', err);
-      await Promise.all([
-        loadWishes(selectedUserId, currentUser.id),
-        loadMyReservations(currentUser.id),
-      ]);
+      showNotification('Подарок удален из списка');
+    } catch {
+      showNotification('Ошибка при удалении', 'error');
+      await loadWishes(selectedUserId, currentUser.id);
     }
   };
 
-  // Optimistic instant add wish (0ms appearance even with photo!)
-  const handleAddWish = async (wishData: Omit<Wish, 'id' | 'created_at'>) => {
-    if (!currentUser) return;
-
-    const tempId = `temp-${Date.now()}`;
-    const optimisticWish: DisplayWish = {
-      ...wishData,
-      id: tempId,
-      created_at: new Date().toISOString(),
-    };
-
-    // INSTANT UI ADDITION (Zero delay)
-    if (selectedUserId === currentUser.id) {
-      setWishes((prev) => [optimisticWish, ...prev]);
-    }
-
-    try {
-      const created = await dataStore.addWish(wishData);
-      if (created) {
-        setWishes((prev) =>
-          prev.map((w) => (w.id === tempId ? { ...created, is_reserved: false } : w))
-        );
-      }
-    } catch (err) {
-      console.error('Add wish error:', err);
-    }
+  // Logout
+  const handleLogout = async () => {
+    setUserMenuAnchor(null);
+    await dataStore.logout();
+    setCurrentUser(null);
+    setUserGroups([]);
+    setFamilyMembers([]);
+    setWishes([]);
+    setMyReservations([]);
   };
 
-  if (isAppLoading) {
+  // Filtered wishes
+  const displayedWishes = useMemo(() => {
+    const source = activeTab === 'reservations' ? myReservations : wishes;
+
+    return source.filter((wish) => {
+      const matchesSearch =
+        searchQuery === '' ||
+        wish.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (wish.description && wish.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (wish.event_tag && wish.event_tag.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      const matchesPriority =
+        priorityFilter === 'all' || wish.priority === priorityFilter;
+
+      return matchesSearch && matchesPriority;
+    });
+  }, [activeTab, wishes, myReservations, searchQuery, priorityFilter]);
+
+  const activeGroup = userGroups.find((g) => g.id === selectedGroupId) || userGroups[0];
+  const targetMember = familyMembers.find((m) => m.id === selectedUserId) || currentUser;
+  const isOwner = currentUser?.id === selectedUserId;
+
+  if (isInitialLoading) {
     return (
-      <div className="min-h-screen bg-stone-50 dark:bg-stone-950 flex flex-col items-center justify-center p-6">
-        <div className="w-10 h-10 rounded-2xl bg-stone-900 dark:bg-stone-100 text-stone-100 dark:text-stone-900 flex items-center justify-center mb-3 animate-pulse">
-          <Gift className="w-5 h-5 stroke-[1.75]" />
-        </div>
-        <div className="text-xs font-mono tracking-wider uppercase text-stone-400">
-          Загрузка...
-        </div>
-      </div>
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 2,
+        }}
+      >
+        <CardGiftcardIcon sx={{ fontSize: 48, color: 'primary.main' }} />
+        <Typography variant="body2" color="text.secondary">
+          Загрузка вишлиста...
+        </Typography>
+      </Box>
     );
   }
 
-  if (!currentUser) return <AuthScreen onSuccess={handleAuth} />;
-
-  const activeGroup = userGroups.find((g) => g.id === selectedGroupId);
-  const selectedMember =
-    familyMembers.find((m) => m.id === selectedUserId) || currentUser;
-  const isOwner = currentUser.id === selectedMember.id;
-
-  // Filter wishes (search only — occasion removed per request)
-  const visibleWishes = (
-    selectedView === 'wishes' ? wishes : myReservations
-  ).filter((w) => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
+  if (!currentUser) {
     return (
-      w.title.toLowerCase().includes(q) ||
-      w.description?.toLowerCase().includes(q)
+      <AuthScreen
+        onSuccess={(user) => {
+          setCurrentUser(user);
+          loadUserData(user.id);
+        }}
+      />
     );
-  });
-
-  const totalReservedBudget = myReservations.reduce(
-    (acc, w) => acc + (w.price || 0),
-    0
-  );
+  }
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 flex text-stone-900 dark:text-stone-100 antialiased transition-colors duration-200">
-      {/* Permanent Left Sidebar (desktop) + Slide-over Drawer (mobile) */}
-      <Sidebar
-        currentUser={currentUser}
-        userGroups={userGroups}
-        selectedGroupId={selectedGroupId}
-        onSelectGroup={handleSwitchGroup}
-        familyMembers={familyMembers}
-        selectedUserId={selectedUserId}
-        onSelectUser={handleSelectUser}
-        selectedView={selectedView}
-        onSelectView={setSelectedView}
-        myReservationsCount={myReservations.length}
-        isOpenMobile={isMobileSidebarOpen}
-        onCloseMobile={() => setIsMobileSidebarOpen(false)}
-        onOpenGroupsModal={() => setIsGroupsOpen(true)}
-        onLogout={handleLogout}
-        currentTheme={currentTheme}
-        onToggleTheme={handleToggleTheme}
-        onOpenOnboarding={() => setIsOnboardingOpen(true)}
-      />
-
-      {/* Main Focus Canvas */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-        {/* iOS-Style Minimalist Top Bar */}
-        <header className="sticky top-0 z-20 bg-stone-50/85 dark:bg-stone-950/85 backdrop-blur-xl border-b border-stone-200/60 dark:border-stone-800/80 px-4 sm:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-2.5 transition-colors">
-          <div className="flex items-center gap-2 min-w-0">
-            {/* Mobile Circle Trigger */}
-            <button
-              onClick={() => setIsMobileSidebarOpen(true)}
-              className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-xs font-semibold text-stone-900 dark:text-stone-100 shadow-2xs active:scale-95 transition-all cursor-pointer"
+    <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default', pb: 10 }}>
+      {/* Top Navigation Bar */}
+      <AppBar
+        position="sticky"
+        elevation={0}
+        sx={{
+          backdropFilter: 'blur(16px)',
+          backgroundColor: (theme) =>
+            theme.palette.mode === 'dark'
+              ? 'rgba(9, 9, 11, 0.85)'
+              : 'rgba(255, 255, 255, 0.85)',
+          borderBottom: (theme) =>
+            theme.palette.mode === 'dark'
+              ? '1px solid rgba(255, 255, 255, 0.08)'
+              : '1px solid rgba(0, 0, 0, 0.06)',
+          color: 'text.primary',
+        }}
+      >
+        <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, md: 3 } }}>
+          {/* Brand & Family Selector */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 38,
+                height: 38,
+                borderRadius: 2.5,
+                background: (theme) =>
+                  theme.palette.mode === 'dark'
+                    ? 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)'
+                    : 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+              }}
             >
-              <span className="truncate max-w-[130px]">
-                {activeGroup?.name || 'Моя семья'}
-              </span>
-              <ChevronDown className="w-3 h-3 text-stone-400 shrink-0" />
-            </button>
+              <CardGiftcardIcon sx={{ fontSize: 22 }} />
+            </Box>
 
-            {/* Desktop breadcrumb */}
-            <div className="hidden md:flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400 min-w-0 truncate font-mono">
-              <span className="truncate">{activeGroup?.name || 'Круг'}</span>
-              <span>/</span>
-              <span className="font-semibold text-stone-900 dark:text-stone-100 truncate">
-                {selectedView === 'wishes'
-                  ? isOwner
-                    ? 'Мой вишлист'
-                    : selectedMember.name
-                  : 'Я подарю'}
-              </span>
-            </div>
-          </div>
-
-          {/* Right Top Controls */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Theme Toggle Button (Mobile & Desktop) */}
-            <button
-              onClick={handleToggleTheme}
-              title={currentTheme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
-              className="p-2 text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 rounded-xl hover:bg-stone-200/60 dark:hover:bg-stone-800 transition-all cursor-pointer active:scale-90"
-            >
-              {currentTheme === 'dark' ? (
-                <Sun className="w-4 h-4 text-amber-400 transition-transform rotate-0 hover:rotate-45" />
-              ) : (
-                <Moon className="w-4 h-4 text-stone-600 dark:text-stone-300 transition-transform -rotate-12 hover:rotate-0" />
-              )}
-            </button>
-
-            {/* Help / Onboarding Button */}
-            <button
-              onClick={() => setIsOnboardingOpen(true)}
-              title="Обучение"
-              className="p-2 text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 rounded-xl hover:bg-stone-200/60 dark:hover:bg-stone-800 transition-all cursor-pointer active:scale-90 hidden sm:inline-flex"
-            >
-              <HelpCircle className="w-4 h-4" />
-            </button>
-
-            {/* Mobile search toggle */}
-            <button
-              onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
-              className="p-2 text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 rounded-xl hover:bg-stone-200/60 dark:hover:bg-stone-800 sm:hidden cursor-pointer active:scale-90 transition-all"
-              title="Поиск"
-            >
-              {isMobileSearchOpen ? (
-                <X className="w-4 h-4" />
-              ) : (
-                <Search className="w-4 h-4" />
-              )}
-            </button>
-
-            {/* Desktop Search */}
-            <div className="relative hidden sm:block">
-              <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Поиск..."
-                className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-stone-100 w-32 md:w-44 transition-all"
-              />
-            </div>
-
-            {/* View Mode Switcher: Desktop only */}
-            <div className="hidden sm:flex items-center bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-0.5 shadow-2xs">
-              <button
-                onClick={() => setViewMode('grid')}
-                title="Сетка"
-                className={`p-1.5 rounded-lg transition-all cursor-pointer active:scale-90 ${
-                  viewMode === 'grid'
-                    ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-950 shadow-2xs'
-                    : 'text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
-                }`}
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                title="Компактный список"
-                className={`p-1.5 rounded-lg transition-all cursor-pointer active:scale-90 ${
-                  viewMode === 'list'
-                    ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-950 shadow-2xs'
-                    : 'text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
-                }`}
-              >
-                <List className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {/* Direct Add Wish button (Desktop) */}
-            {isOwner && (
-              <button
-                onClick={() => setIsAddOpen(true)}
-                className="hidden sm:inline-flex px-3.5 py-1.5 rounded-xl bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white text-white dark:text-stone-950 text-xs font-semibold items-center gap-1.5 transition-all cursor-pointer active:scale-95 shadow-2xs"
-              >
-                <Plus className="w-3.5 h-3.5 stroke-[2.25]" />
-                <span>Желание</span>
-              </button>
-            )}
-          </div>
-        </header>
-
-        {/* Mobile Search input dropdown */}
-        {isMobileSearchOpen && (
-          <div className="p-3 bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 sm:hidden animate-in fade-in slide-in-from-top-1 duration-150">
-            <div className="relative">
-              <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                autoFocus
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Поиск по желаниям..."
-                className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl pl-9 pr-3.5 py-2 text-base text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-900 dark:focus:border-stone-100"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Canvas Body with smooth transition when changing views or members */}
-        <main
-          key={`${selectedView}_${selectedUserId}`}
-          className="max-w-4xl w-full mx-auto p-4 sm:p-8 pb-28 md:pb-8 space-y-4 sm:space-y-6 animate-in fade-in duration-200 slide-in-from-bottom-1"
-        >
-          {selectedView === 'wishes' ? (
-            <>
-              {/* Native iOS-Style Large Header */}
-              <div className="space-y-3">
-                <div className="flex items-baseline justify-between pt-1">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-stone-950 dark:text-stone-50 tracking-tight">
-                    {isOwner ? 'Мой вишлист' : selectedMember.name}
-                  </h1>
-
-                  <span className="text-xs font-mono text-stone-400 dark:text-stone-500">
-                    {visibleWishes.length}{' '}
-                    {visibleWishes.length === 1 ? 'желание' : 'желаний'}
-                  </span>
-                </div>
-
-                {/* Mobile Relatives Pill Selector */}
-                {familyMembers.length > 1 && (
-                  <div className="md:hidden flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1 -mx-4 px-4">
-                    {familyMembers.map((member) => {
-                      const isSelected = member.id === selectedUserId;
-                      const isMe = member.id === currentUser.id;
-                      const avatarStyle = getAvatarStyle(member.name);
-                      const initials = getInitials(member.name);
-
-                      return (
-                        <button
-                          key={member.id}
-                          onClick={() => handleSelectUser(member.id)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-all cursor-pointer active:scale-95 ${
-                            isSelected
-                              ? 'bg-stone-950 dark:bg-stone-100 text-white dark:text-stone-950 shadow-xs'
-                              : 'bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 active:bg-stone-100 dark:active:bg-stone-800'
-                          }`}
-                        >
-                          <div
-                            className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-mono font-bold ${
-                              isSelected
-                                ? 'bg-stone-800 dark:bg-stone-200 text-stone-200 dark:text-stone-800'
-                                : `border ${avatarStyle}`
-                            }`}
-                          >
-                            {initials}
-                          </div>
-                          <span>{isMe ? 'Вы' : member.name}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Subtle Anti-spoiler Note */}
-                {!isOwner && (
-                  <div className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400 bg-stone-100/80 dark:bg-stone-800/80 rounded-xl px-3 py-2 border border-stone-200/60 dark:border-stone-700/60">
-                    <Lock className="w-3.5 h-3.5 text-stone-600 dark:text-stone-300 shrink-0" />
-                    <span>
-                      Анти-спойлер: {selectedMember.name} не видит ваши брони
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Inline Quick Add (for owner) */}
-              {isOwner && (
-                <InlineAddWish
-                  currentUserId={currentUser.id}
-                  onAddWish={handleAddWish}
-                  onOpenFullModal={() => setIsAddOpen(true)}
+            <Box>
+              <Typography variant="subtitle1" component="div" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
+                Вишлист
+              </Typography>
+              {activeGroup && (
+                <Chip
+                  icon={<GroupsIcon sx={{ fontSize: '14px !important' }} />}
+                  label={activeGroup.name}
+                  size="small"
+                  onClick={() => setIsFamilyModalOpen(true)}
+                  sx={{
+                    height: 20,
+                    fontSize: '0.72rem',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                  }}
                 />
               )}
+            </Box>
+          </Box>
 
-              {/* Wishes presentation: On mobile, always show clean native Inset Grouped Table! */}
-              {visibleWishes.length > 0 ? (
-                <>
-                  {/* Mobile: Inset Grouped List View */}
-                  <div className="sm:hidden bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/80 dark:border-stone-800 divide-y divide-stone-100 dark:divide-stone-800 overflow-hidden shadow-xs">
-                    {visibleWishes.map((wish) => (
-                      <WishRow
-                        key={wish.id}
-                        wish={wish}
-                        isOwner={isOwner}
-                        onToggleReserve={handleToggleReserve}
-                        onDeleteWish={handleDeleteWish}
-                      />
-                    ))}
-                  </div>
+          {/* Right Header Controls */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {/* View Mode Toggle */}
+            <ToggleButtonGroup
+              size="small"
+              value={viewMode}
+              exclusive
+              onChange={(_, val) => val && setViewMode(val)}
+              sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+            >
+              <ToggleButton value="grid" aria-label="Сетка">
+                <GridViewIcon fontSize="small" />
+              </ToggleButton>
+              <ToggleButton value="list" aria-label="Список">
+                <ViewListIcon fontSize="small" />
+              </ToggleButton>
+            </ToggleButtonGroup>
 
-                  {/* Desktop: Grid or List depending on user choice */}
-                  <div className="hidden sm:block">
-                    {viewMode === 'grid' ? (
-                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
-                        {visibleWishes.map((wish) => (
-                          <WishCard
-                            key={wish.id}
-                            wish={wish}
-                            isOwner={isOwner}
-                            onToggleReserve={handleToggleReserve}
-                            onDeleteWish={handleDeleteWish}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/80 dark:border-stone-800 divide-y divide-stone-100 dark:divide-stone-800 overflow-hidden shadow-2xs">
-                        {visibleWishes.map((wish) => (
-                          <WishRow
-                            key={wish.id}
-                            wish={wish}
-                            isOwner={isOwner}
-                            onToggleReserve={handleToggleReserve}
-                            onDeleteWish={handleDeleteWish}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className="bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 rounded-2xl p-8 sm:p-12 text-center shadow-xs">
-                  <div className="w-10 h-10 rounded-xl bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-500 flex items-center justify-center mx-auto mb-2.5">
-                    <Gift className="w-5 h-5 stroke-[1.5]" />
-                  </div>
-                  <h3 className="font-semibold text-stone-900 dark:text-stone-100 text-sm mb-1">
-                    Желания не найдены
-                  </h3>
-                  <p className="text-xs text-stone-500 dark:text-stone-400 max-w-xs mx-auto mb-4">
-                    {isOwner
-                      ? 'Вставьте ссылку на товар или нажмите кнопку ниже.'
-                      : `${selectedMember.name} пока не добавил(а) подарков.`}
-                  </p>
-                  {isOwner && (
-                    <button
-                      onClick={() => setIsAddOpen(true)}
-                      className="px-4 py-2.5 rounded-full bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white text-white dark:text-stone-950 font-semibold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
-                    >
-                      + Добавить первое желание
-                    </button>
-                  )}
-                </div>
-              )}
-            </>
-          ) : (
-            /* Dedicated "Я подарю" (My Reservations) View */
-            <div className="space-y-4 sm:space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-stone-950 dark:text-stone-50 tracking-tight flex items-center gap-2">
-                    <BookmarkCheck className="w-6 h-6 stroke-[2]" />
-                    <span>Я подарю</span>
-                  </h1>
-                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                    Секретный список подарков, которые вы пообещали подарить.
-                  </p>
-                </div>
+            {/* Theme Toggle */}
+            <Tooltip title={mode === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'}>
+              <IconButton onClick={toggleColorMode} size="small" color="inherit">
+                {mode === 'dark' ? <LightModeOutlinedIcon fontSize="small" /> : <DarkModeOutlinedIcon fontSize="small" />}
+              </IconButton>
+            </Tooltip>
 
-                {myReservations.length > 0 && totalReservedBudget > 0 && (
-                  <div className="p-3 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-left sm:text-right shrink-0 shadow-xs">
-                    <div className="text-[10px] font-mono uppercase tracking-wider text-stone-400 dark:text-stone-500">
-                      Сумма подарков
-                    </div>
-                    <div className="text-base font-bold font-mono text-stone-900 dark:text-stone-100">
-                      {formatPrice(totalReservedBudget, '₽')}
-                    </div>
-                  </div>
-                )}
-              </div>
+            {/* User Profile Avatar & Menu */}
+            <Tooltip title="Меню профиля">
+              <IconButton
+                onClick={(e) => setUserMenuAnchor(e.currentTarget)}
+                size="small"
+                sx={{ ml: 0.5 }}
+              >
+                <Avatar
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    bgcolor: 'primary.main',
+                  }}
+                >
+                  {getInitials(currentUser.name)}
+                </Avatar>
+              </IconButton>
+            </Tooltip>
 
-              {visibleWishes.length > 0 ? (
-                <>
-                  {/* Mobile Grouped Inset List */}
-                  <div className="sm:hidden bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/80 dark:border-stone-800 divide-y divide-stone-100 dark:divide-stone-800 overflow-hidden shadow-xs">
-                    {visibleWishes.map((wish) => (
-                      <div key={wish.id} className="relative">
-                        <div className="px-3.5 pt-2 text-[10px] font-mono text-stone-400 dark:text-stone-500">
-                          Для кого: {wish.owner_name}
-                        </div>
-                        <WishRow
-                          wish={wish}
-                          isOwner={false}
-                          onToggleReserve={handleToggleReserve}
-                          onDeleteWish={() => {}}
-                        />
-                      </div>
-                    ))}
-                  </div>
+            <Menu
+              anchorEl={userMenuAnchor}
+              open={Boolean(userMenuAnchor)}
+              onClose={() => setUserMenuAnchor(null)}
+              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+              slotProps={{
+                paper: {
+                  sx: { minWidth: 200, mt: 1 },
+                },
+              }}
+            >
+              <Box sx={{ px: 2, py: 1 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                  {currentUser.name}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {currentUser.email || 'Вход по коду'}
+                </Typography>
+              </Box>
+              <Divider />
+              <MenuItem
+                onClick={() => {
+                  setUserMenuAnchor(null);
+                  setActiveTab('reservations');
+                }}
+              >
+                <ListItemIcon>
+                  <BookmarkBorderIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Мои брони"
+                  secondary={`${myReservations.length} подарков`}
+                />
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setUserMenuAnchor(null);
+                  setIsFamilyModalOpen(true);
+                }}
+              >
+                <ListItemIcon>
+                  <GroupsIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary="Управление семьями" />
+              </MenuItem>
+              <Divider />
+              <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
+                <ListItemIcon sx={{ color: 'error.main' }}>
+                  <LogoutIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary="Выйти" />
+              </MenuItem>
+            </Menu>
+          </Box>
+        </Toolbar>
+      </AppBar>
 
-                  {/* Desktop view */}
-                  <div className="hidden sm:block">
-                    {viewMode === 'grid' ? (
-                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
-                        {visibleWishes.map((wish) => (
-                          <div key={wish.id} className="flex flex-col gap-1.5">
-                            <div className="text-[11px] font-mono text-stone-500 dark:text-stone-400 px-1">
-                              Для:{' '}
-                              <span className="font-semibold text-stone-900 dark:text-stone-100">
-                                {wish.owner_name}
-                              </span>
-                            </div>
-                            <WishCard
-                              wish={wish}
-                              isOwner={false}
-                              onToggleReserve={handleToggleReserve}
-                              onDeleteWish={() => {}}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/80 dark:border-stone-800 divide-y divide-stone-100 dark:divide-stone-800 overflow-hidden shadow-2xs">
-                        {visibleWishes.map((wish) => (
-                          <div key={wish.id} className="relative">
-                            <div className="px-4 pt-2 text-[10px] font-mono text-stone-400 dark:text-stone-500">
-                              Для кого: {wish.owner_name}
-                            </div>
-                            <WishRow
-                              wish={wish}
-                              isOwner={false}
-                              onToggleReserve={handleToggleReserve}
-                              onDeleteWish={() => {}}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className="bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 rounded-2xl p-8 sm:p-12 text-center shadow-xs">
-                  <div className="w-10 h-10 rounded-xl bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-500 flex items-center justify-center mx-auto mb-2.5">
-                    <BookmarkCheck className="w-5 h-5 stroke-[1.5]" />
-                  </div>
-                  <h3 className="font-semibold text-stone-900 dark:text-stone-100 text-sm mb-1">
-                    Вы пока ничего не забронировали
-                  </h3>
-                  <p className="text-xs text-stone-500 dark:text-stone-400 max-w-xs mx-auto mb-4">
-                    Перейдите в вишлист родственника и нажмите «Подарю я».
-                  </p>
-                  <button
-                    onClick={() => setSelectedView('wishes')}
-                    className="px-4 py-2.5 rounded-full bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white text-white dark:text-stone-950 font-semibold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
-                  >
-                    Перейти к желаниям семьи
-                  </button>
-                </div>
-              )}
-            </div>
+      {/* Main Container */}
+      <Container maxWidth="lg" sx={{ pt: 3 }}>
+        {/* Family Members Selector Bar */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+            overflowX: 'auto',
+            pb: 1.5,
+            mb: 2,
+            scrollbarWidth: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
+          }}
+        >
+          {familyMembers.map((member) => {
+            const isSelected = selectedUserId === member.id && activeTab === 'wishes';
+            const isMe = member.id === currentUser.id;
+
+            return (
+              <Chip
+                key={member.id}
+                avatar={
+                  <Avatar sx={{ bgcolor: isSelected ? '#ffffff' : 'primary.main', color: isSelected ? 'primary.main' : '#ffffff' }}>
+                    {getInitials(member.name)}
+                  </Avatar>
+                }
+                label={isMe ? `${member.name} (Я)` : member.name}
+                clickable
+                color={isSelected ? 'primary' : 'default'}
+                variant={isSelected ? 'filled' : 'outlined'}
+                onClick={() => handleSwitchUser(member.id)}
+                sx={{
+                  py: 2.2,
+                  px: 0.5,
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  borderRadius: 3,
+                  transition: 'all 0.18s ease',
+                  '&:active': { transform: 'scale(0.96)' },
+                }}
+              />
+            );
+          })}
+
+          {/* Tab: My Reservations */}
+          <Chip
+            icon={<BookmarkBorderIcon sx={{ fontSize: '18px !important' }} />}
+            label="Мои брони"
+            clickable
+            color={activeTab === 'reservations' ? 'secondary' : 'default'}
+            variant={activeTab === 'reservations' ? 'filled' : 'outlined'}
+            onClick={() => setActiveTab('reservations')}
+            avatar={
+              myReservations.length > 0 ? (
+                <Avatar sx={{ bgcolor: 'secondary.main', color: '#ffffff', width: 22, height: 22, fontSize: '0.72rem' }}>
+                  {myReservations.length}
+                </Avatar>
+              ) : undefined
+            }
+            sx={{
+              py: 2.2,
+              px: 0.5,
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              borderRadius: 3,
+            }}
+          />
+        </Box>
+
+        {/* Section Header with Actions */}
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'stretch', sm: 'center' },
+            gap: 2,
+            mb: 2.5,
+          }}
+        >
+          <Box>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 800 }}>
+              {activeTab === 'reservations'
+                ? 'Подарки, которые вы дарите'
+                : isOwner
+                ? 'Ваш список желаний'
+                : `Желания: ${targetMember?.name}`}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {activeTab === 'reservations'
+                ? 'Тайный список подарков, которые вы пообещали подарить близким'
+                : isOwner
+                ? 'Добавляйте то, что хотите получить в подарок'
+                : 'Выберите подарок и нажмите «Подарю я!», чтобы другие не купили то же самое'}
+            </Typography>
+          </Box>
+
+          {isOwner && activeTab === 'wishes' && (
+            <Button
+              variant="contained"
+              size="medium"
+              startIcon={<AddIcon />}
+              onClick={() => setIsAddModalOpen(true)}
+              sx={{ borderRadius: 2.5, px: 2.5, fontWeight: 700, whiteSpace: 'nowrap' }}
+            >
+              Добавить подарок
+            </Button>
           )}
-        </main>
-      </div>
+        </Box>
 
-      {/* Floating Bottom Navigation Bar for Mobile */}
-      <MobileNav
-        selectedView={selectedView}
-        onSelectView={setSelectedView}
-        myReservationsCount={myReservations.length}
-        onOpenSidebar={() => setIsMobileSidebarOpen(true)}
-        onOpenAddWish={() => setIsAddOpen(true)}
-      />
+        {/* Quick Add Bar (Only visible when viewing own wishlist) */}
+        {isOwner && activeTab === 'wishes' && (
+          <Box sx={{ mb: 3 }}>
+            <InlineAddWish
+              currentUserId={currentUser.id}
+              onAddWish={handleAddWish}
+              onOpenFullModal={() => setIsAddModalOpen(true)}
+            />
+          </Box>
+        )}
 
+        {/* Search & Filter Toolbar */}
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
+            gap: 1.5,
+            alignItems: { xs: 'stretch', md: 'center' },
+            mb: 3,
+          }}
+        >
+          {/* Search Field */}
+          <TextField
+            size="small"
+            placeholder="Поиск по названию или заметкам..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            sx={{ flex: 1 }}
+            slotProps={{ input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" color="action" />
+                </InputAdornment>
+              ),
+            }}}
+          />
+
+          {/* Priority Filter Tabs */}
+          <Tabs
+            value={priorityFilter}
+            onChange={(_, val) => setPriorityFilter(val)}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{ minHeight: 38 }}
+          >
+            <Tab label="Все" value="all" sx={{ minHeight: 38, py: 0.5, px: 1.5, fontSize: '0.8rem' }} />
+            <Tab label="Очень хочу" value="must_have" sx={{ minHeight: 38, py: 0.5, px: 1.5, fontSize: '0.8rem' }} />
+            <Tab label="Хочу" value="nice_to_have" sx={{ minHeight: 38, py: 0.5, px: 1.5, fontSize: '0.8rem' }} />
+            <Tab label="Мечта" value="dream" sx={{ minHeight: 38, py: 0.5, px: 1.5, fontSize: '0.8rem' }} />
+          </Tabs>
+        </Box>
+
+        {/* Wishes Content List / Grid */}
+        {isWishesLoading ? (
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: 'repeat(2, 1fr)',
+                md: 'repeat(3, 1fr)',
+              },
+              gap: 2.5,
+            }}
+          >
+            {[1, 2, 3, 4, 5, 6].map((idx) => (
+              <Box key={idx} sx={{ borderRadius: 3, overflow: 'hidden', p: 1 }}>
+                <Skeleton variant="rectangular" height={180} sx={{ borderRadius: 2.5, mb: 1.5 }} />
+                <Skeleton variant="text" width="80%" height={28} />
+                <Skeleton variant="text" width="50%" height={20} />
+              </Box>
+            ))}
+          </Box>
+        ) : displayedWishes.length === 0 ? (
+          <Box
+            sx={{
+              py: 8,
+              px: 2,
+              textAlign: 'center',
+              backgroundColor: 'background.paper',
+              borderRadius: 4,
+              border: (theme) =>
+                theme.palette.mode === 'dark'
+                  ? '1px dashed rgba(255,255,255,0.12)'
+                  : '1px dashed rgba(0,0,0,0.12)',
+            }}
+          >
+            <CardGiftcardIcon sx={{ fontSize: 56, color: 'text.secondary', mb: 1, opacity: 0.5 }} />
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              {activeTab === 'reservations'
+                ? 'Вы еще не забронировали ни одного подарка'
+                : searchQuery
+                ? 'Ничего не найдено'
+                : isOwner
+                ? 'Ваш вишлист пока пуст'
+                : 'У этого человека пока нет желаний'}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 2.5 }}>
+              {activeTab === 'reservations'
+                ? 'Зайдите в список родственника и нажмите кнопку «Подарю я!», чтобы подарок появился здесь.'
+                : isOwner
+                ? 'Добавьте ваше первое желание по ссылке или напишите текстом!'
+                : 'Попросите близкого добавить свои желания или зайдите позже.'}
+            </Typography>
+            {isOwner && activeTab === 'wishes' && (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setIsAddModalOpen(true)}
+              >
+                Добавить подарок
+              </Button>
+            )}
+          </Box>
+        ) : viewMode === 'grid' ? (
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: 'repeat(2, 1fr)',
+                md: 'repeat(3, 1fr)',
+              },
+              gap: 2.5,
+            }}
+          >
+            {displayedWishes.map((wish) => (
+              <WishCard
+                key={wish.id}
+                wish={wish}
+                isOwner={isOwner}
+                onToggleReserve={handleToggleReserve}
+                onDeleteWish={handleDeleteWish}
+              />
+            ))}
+          </Box>
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {displayedWishes.map((wish) => (
+              <WishRow
+                key={wish.id}
+                wish={wish}
+                isOwner={isOwner}
+                onToggleReserve={handleToggleReserve}
+                onDeleteWish={handleDeleteWish}
+              />
+            ))}
+          </Box>
+        )}
+      </Container>
+
+      {/* Mobile Floating Action Button */}
+      {isOwner && activeTab === 'wishes' && (
+        <Fab
+          color="primary"
+          aria-label="add"
+          onClick={() => setIsAddModalOpen(true)}
+          sx={{
+            position: 'fixed',
+            bottom: 24,
+            right: 24,
+            display: { sm: 'none' },
+            boxShadow: '0 8px 24px rgba(99, 102, 241, 0.4)',
+          }}
+        >
+          <AddIcon />
+        </Fab>
+      )}
+
+      {/* Add Wish Modal */}
       <AddWishModal
-        isOpen={isAddOpen}
-        currentUserId={currentUser.id}
-        onClose={() => setIsAddOpen(false)}
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
         onAddWish={handleAddWish}
+        userId={currentUser.id}
       />
 
+      {/* Family Groups Manager Modal */}
       <FamilyGroupModal
-        isOpen={isGroupsOpen}
+        isOpen={isFamilyModalOpen}
         currentUser={currentUser}
         selectedGroupId={selectedGroupId}
         onSelectGroup={handleSwitchGroup}
-        onClose={() => setIsGroupsOpen(false)}
-        onUpdate={handleGroupsUpdated}
+        onClose={() => setIsFamilyModalOpen(false)}
+        onUpdate={() => loadUserData(currentUser.id, selectedGroupId)}
       />
 
-      {/* Interactive Onboarding Tour Modal */}
-      <OnboardingModal
-        isOpen={isOnboardingOpen}
-        onClose={() => setIsOnboardingOpen(false)}
-      />
-    </div>
+      {/* Global Toast Notification */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3500}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%', borderRadius: 3 }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Box>
   );
 }
