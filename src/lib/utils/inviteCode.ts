@@ -15,13 +15,10 @@ export function normalizeInviteCode(raw: string): string {
     code = code.slice(0, 3) + '-' + code.slice(3);
   }
   const parts = code.split('-');
-  const prefix = parts[0];
-  if (/[\u0410-\u042F\u0401]/.test(prefix)) {
-    parts[0] = prefix
-      .split('')
-      .map((ch) => LATIN_TO_CYRILLIC[ch] || ch)
-      .join('');
-  }
+  parts[0] = parts[0]
+    .split('')
+    .map((ch) => LATIN_TO_CYRILLIC[ch] || ch)
+    .join('');
   return parts.join('-');
 }
 

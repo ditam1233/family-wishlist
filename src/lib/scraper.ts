@@ -35,7 +35,7 @@ export function cleanTitle(title: string): string {
     .trim();
 }
 
-function getWbBasket(vol: number): string {
+export function getWbBasket(vol: number): string {
   if (vol >= 0 && vol <= 143) return '01';
   if (vol <= 287) return '02';
   if (vol <= 431) return '03';
