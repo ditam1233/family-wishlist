@@ -348,21 +348,26 @@ export default function HomePage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default', pb: 10 }}>
+    <Box className="apple-glass-bg" sx={{ minHeight: '100vh', pb: 10 }}>
       {/* Top Navigation Bar */}
       <AppBar
         position="sticky"
         elevation={0}
         sx={{
-          backdropFilter: 'blur(16px)',
+          backdropFilter: 'blur(24px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(180%)',
           backgroundColor: (theme) =>
             theme.palette.mode === 'dark'
-              ? 'rgba(9, 9, 11, 0.85)'
-              : 'rgba(255, 255, 255, 0.85)',
+              ? 'rgba(11, 17, 30, 0.72)'
+              : 'rgba(255, 255, 255, 0.75)',
           borderBottom: (theme) =>
             theme.palette.mode === 'dark'
-              ? '1px solid rgba(255, 255, 255, 0.08)'
-              : '1px solid rgba(0, 0, 0, 0.06)',
+              ? '1px solid rgba(255, 255, 255, 0.09)'
+              : '1px solid rgba(255, 255, 255, 0.7)',
+          boxShadow: (theme) =>
+            theme.palette.mode === 'dark'
+              ? '0 4px 20px rgba(0, 0, 0, 0.4)'
+              : '0 4px 20px rgba(15, 23, 42, 0.04)',
           color: 'text.primary',
         }}
       >
@@ -515,15 +520,17 @@ export default function HomePage() {
 
       {/* Main Container */}
       <Container maxWidth="lg" sx={{ pt: 3 }}>
-        {/* Family Members Selector Bar */}
+        {/* Family Members Selector Bar (Liquid Glass Island) */}
         <Box
+          className="glass-panel"
           sx={{
             display: 'flex',
             alignItems: 'center',
             gap: 1.5,
             overflowX: 'auto',
-            pb: 1.5,
-            mb: 2,
+            p: 1.25,
+            borderRadius: 4,
+            mb: 3,
             scrollbarWidth: 'none',
             '&::-webkit-scrollbar': { display: 'none' },
           }}

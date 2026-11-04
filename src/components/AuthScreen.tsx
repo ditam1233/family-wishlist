@@ -186,17 +186,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        p: 2,
-        backgroundColor: 'background.default',
-      }}
-    >
+    <Box className="apple-glass-bg" sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 2 }}>
       {/* Top Bar with Theme Toggle */}
       <Box
         sx={{
@@ -242,7 +232,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
           </Typography>
         </Box>
 
-        <Card elevation={2}>
+        <Card className="glass-panel" elevation={0}>
           <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
             <Tabs
               value={tab}

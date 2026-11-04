@@ -68,18 +68,18 @@ export function MuiThemeProvider({ children }: { children: React.ReactNode }) {
       palette: {
         mode,
         primary: {
-          main: isDark ? '#6366f1' : '#4f46e5',
-          light: '#818cf8',
-          dark: '#3730a3',
+          main: isDark ? '#3b82f6' : '#2563eb', // Apple SF blue
+          light: '#60a5fa',
+          dark: '#1d4ed8',
           contrastText: '#ffffff',
         },
         secondary: {
-          main: isDark ? '#f43f5e' : '#e11d48',
+          main: isDark ? '#ec4899' : '#db2777',
           contrastText: '#ffffff',
         },
         background: {
-          default: isDark ? '#09090b' : '#f8fafc',
-          paper: isDark ? '#141417' : '#ffffff',
+          default: 'transparent',
+          paper: isDark ? 'rgba(17, 24, 39, 0.75)' : 'rgba(255, 255, 255, 0.8)',
         },
         text: {
           primary: isDark ? '#f8fafc' : '#0f172a',
@@ -135,20 +135,23 @@ export function MuiThemeProvider({ children }: { children: React.ReactNode }) {
         MuiCard: {
           styleOverrides: {
             root: {
-              borderRadius: 18,
+              borderRadius: 22,
+              backdropFilter: 'blur(20px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+              backgroundColor: isDark ? 'rgba(17, 24, 39, 0.72)' : 'rgba(255, 255, 255, 0.78)',
               border: isDark
-                ? '1px solid rgba(255, 255, 255, 0.07)'
-                : '1px solid rgba(0, 0, 0, 0.06)',
+                ? '1px solid rgba(255, 255, 255, 0.12)'
+                : '1px solid rgba(255, 255, 255, 0.8)',
               backgroundImage: 'none',
               boxShadow: isDark
-                ? '0 4px 20px rgba(0, 0, 0, 0.35)'
-                : '0 2px 12px rgba(15, 23, 42, 0.04)',
-              transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                ? '0 0 0 0.5px rgba(255, 255, 255, 0.06), 0 12px 32px -8px rgba(0, 0, 0, 0.5)'
+                : '0 0 0 0.5px rgba(0, 0, 0, 0.06), 0 10px 30px -8px rgba(15, 23, 42, 0.08), inset 0 0.5px 0 rgba(255, 255, 255, 1)',
+              transition: 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.24s cubic-bezier(0.16, 1, 0.3, 1)',
               '&:hover': {
-                transform: 'translateY(-2px)',
+                transform: 'translateY(-4px)',
                 boxShadow: isDark
-                  ? '0 8px 28px rgba(0, 0, 0, 0.55)'
-                  : '0 8px 24px rgba(15, 23, 42, 0.08)',
+                  ? '0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 20px 48px -10px rgba(0, 0, 0, 0.75)'
+                  : '0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 20px 40px -10px rgba(15, 23, 42, 0.14), inset 0 0.5px 0 rgba(255, 255, 255, 1)',
               },
             },
           },
@@ -156,11 +159,17 @@ export function MuiThemeProvider({ children }: { children: React.ReactNode }) {
         MuiDialog: {
           styleOverrides: {
             paper: {
-              borderRadius: 22,
+              borderRadius: 24,
               backgroundImage: 'none',
+              backdropFilter: 'blur(30px) saturate(190%)',
+              WebkitBackdropFilter: 'blur(30px) saturate(190%)',
+              backgroundColor: isDark ? 'rgba(15, 23, 42, 0.85)' : 'rgba(255, 255, 255, 0.88)',
               border: isDark
-                ? '1px solid rgba(255, 255, 255, 0.1)'
-                : '1px solid rgba(0, 0, 0, 0.08)',
+                ? '1px solid rgba(255, 255, 255, 0.14)'
+                : '1px solid rgba(255, 255, 255, 0.9)',
+              boxShadow: isDark
+                ? '0 24px 70px rgba(0, 0, 0, 0.8)'
+                : '0 24px 60px rgba(15, 23, 42, 0.16), inset 0 0.5px 0 rgba(255, 255, 255, 1)',
             },
           },
         },
