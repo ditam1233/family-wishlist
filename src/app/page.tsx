@@ -670,7 +670,7 @@ export default function HomePage() {
                   ? 'Тайный список подарков, которые вы пообещали подарить близким. Они не знают, что вы это выбрали!'
                   : isOwner
                   ? 'Добавляйте любые желанные подарки со ссылками на маркетплейсы, чтобы близким было легко порадовать вас.'
-                  : '🤫 Секретная бронь: нажмите «Подарю я!», чтобы застолбить подарок. Другие родственники увидят, что подарок занят, а виновник торжества — нет!'}
+                  : '🤫 Секретная бронь: нажмите «Подарю я!», чтобы застолбить подарок. Другие родственники увидят, что подарок занят'}
               </Typography>
             </Box>
           </Box>
@@ -790,63 +790,6 @@ export default function HomePage() {
               transition: 'opacity 0.2s ease',
             }}
           >
-            {/* Interactive Add Wish Quick Card (When viewing own wishlist) */}
-            {isOwner && activeTab === 'wishes' && (
-              <Card
-                className="glass-card"
-                onClick={() => setIsAddModalOpen(true)}
-                sx={{
-                  border: (theme: any) =>
-                    theme.palette.mode === 'dark'
-                      ? '2px dashed rgba(59, 130, 246, 0.35) !important'
-                      : '2px dashed rgba(37, 99, 235, 0.35) !important',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  p: 4,
-                  minHeight: 280,
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                  background: (theme: any) =>
-                    theme.palette.mode === 'dark'
-                      ? 'rgba(17, 24, 39, 0.4) !important'
-                      : 'rgba(255, 255, 255, 0.5) !important',
-                  '&:hover': {
-                    borderColor: 'primary.main !important',
-                    transform: 'translateY(-4px)',
-                    background: (theme: any) =>
-                      theme.palette.mode === 'dark'
-                        ? 'rgba(59, 130, 246, 0.08) !important'
-                        : 'rgba(37, 99, 235, 0.04) !important',
-                  },
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 52,
-                    height: 52,
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    bgcolor: (theme: any) =>
-                      theme.palette.mode === 'dark' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(37, 99, 235, 0.1)',
-                    color: 'primary.main',
-                    mb: 2,
-                  }}
-                >
-                  <AddIcon sx={{ fontSize: 32 }} />
-                </Box>
-                <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-                  Добавить подарок
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, maxWidth: 220 }}>
-                  Вставьте ссылку или напишите название подарка
-                </Typography>
-              </Card>
-            )}
-
             {displayedWishes.map((wish) => (
               <WishCard
                 key={wish.id}
@@ -879,24 +822,6 @@ export default function HomePage() {
           </Box>
         )}
       </Container>
-
-      {/* Mobile Floating Action Button */}
-      {isOwner && activeTab === 'wishes' && (
-        <Fab
-          color="primary"
-          aria-label="add"
-          onClick={() => setIsAddModalOpen(true)}
-          sx={{
-            position: 'fixed',
-            bottom: 24,
-            right: 24,
-            display: { sm: 'none' },
-            boxShadow: '0 8px 24px rgba(99, 102, 241, 0.4)',
-          }}
-        >
-          <AddIcon />
-        </Fab>
-      )}
 
       {/* Add Wish Modal */}
       <AddWishModal
