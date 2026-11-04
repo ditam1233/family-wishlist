@@ -7,7 +7,6 @@ import { getInitials } from '@/lib/avatar';
 import { useColorMode } from '@/components/ThemeRegistry/MuiThemeProvider';
 import { WishCard } from '@/components/WishCard';
 import { WishRow } from '@/components/WishRow';
-import { InlineAddWish } from '@/components/InlineAddWish';
 import { AddWishModal } from '@/components/AddWishModal';
 import { FamilyGroupModal } from '@/components/FamilyGroupModal';
 import { AuthScreen } from '@/components/AuthScreen';
@@ -644,16 +643,6 @@ export default function HomePage() {
           )}
         </Box>
 
-        {/* Quick Add Bar (Only visible when viewing own wishlist) */}
-        {isOwner && activeTab === 'wishes' && (
-          <Box sx={{ mb: 3 }}>
-            <InlineAddWish
-              currentUserId={currentUser.id}
-              onAddWish={handleAddWish}
-              onOpenFullModal={() => setIsAddModalOpen(true)}
-            />
-          </Box>
-        )}
 
         {/* Search & Filter Toolbar */}
         <Box
