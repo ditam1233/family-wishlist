@@ -593,7 +593,9 @@ class WishlistDataStore {
           .select('*')
           .in('id', userIds);
 
-        return profiles || [];
+        const result = profiles || [];
+        this.setCachedMembers(result);
+        return result;
       } catch (err) {
         console.error('Error fetching family members from Supabase:', err);
       }
@@ -615,7 +617,9 @@ class WishlistDataStore {
       if (targetGroupIds.includes(m.group_id)) relatedUserIds.add(m.user_id);
     });
 
-    return users.filter((u) => relatedUserIds.has(u.id));
+    const localMembers = users.filter((u) => relatedUserIds.has(u.id));
+    this.setCachedMembers(localMembers);
+    return localMembers;
   }
 
   // --- Wishes & Anti-Spoiler ---

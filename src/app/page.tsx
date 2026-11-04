@@ -173,6 +173,7 @@ export default function HomePage() {
     const cachedUser = dataStore.getCachedUser();
     if (cachedUser) {
       setCurrentUser(cachedUser);
+      setSelectedUserId(cachedUser.id);
       const cachedGroups = dataStore.getCachedGroups();
       if (cachedGroups && cachedGroups.length > 0) {
         setUserGroups(cachedGroups);
@@ -181,7 +182,6 @@ export default function HomePage() {
       const cachedMembers = dataStore.getCachedMembers();
       if (cachedMembers && cachedMembers.length > 0) {
         setFamilyMembers(cachedMembers);
-        setSelectedUserId(cachedUser.id);
       }
       const cachedWishes = dataStore.getLocalWishes(cachedUser.id, cachedUser.id);
       if (cachedWishes.length > 0) {
@@ -196,6 +196,7 @@ export default function HomePage() {
         const user = await dataStore.getCurrentUser();
         if (user) {
           setCurrentUser(user);
+          setSelectedUserId((prev) => prev || user.id);
           await loadInitialData(user);
         } else {
           setCurrentUser(null);
@@ -332,9 +333,10 @@ export default function HomePage() {
     return activeTab === 'reservations' ? myReservations : wishes;
   }, [activeTab, wishes, myReservations]);
 
+  const effectiveTargetUserId = selectedUserId || currentUser?.id || '';
   const activeGroup = userGroups.find((g) => g.id === selectedGroupId) || userGroups[0];
-  const targetMember = familyMembers.find((m) => m.id === selectedUserId) || currentUser;
-  const isOwner = currentUser?.id === selectedUserId;
+  const targetMember = familyMembers.find((m) => m.id === effectiveTargetUserId) || currentUser;
+  const isOwner = Boolean(currentUser?.id && effectiveTargetUserId === currentUser.id);
 
   if (isInitialLoading) {
     return (
@@ -556,7 +558,7 @@ export default function HomePage() {
           }}
         >
           {familyMembers.map((member) => {
-            const isSelected = selectedUserId === member.id && activeTab === 'wishes';
+            const isSelected = effectiveTargetUserId === member.id && activeTab === 'wishes';
             const isMe = member.id === currentUser.id;
 
             return (
