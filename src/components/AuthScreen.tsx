@@ -228,7 +228,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
             Семейный Вишлист
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Делитесь подарками и радуйте близких без спойлеров
+            Делитесь подарками и радуйте близких
           </Typography>
         </Box>
 
@@ -259,7 +259,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                 {/* Invite Code Input */}
                 <TextField
                   label="Код семьи"
-                  placeholder="ФЭМ-3031"
+                  placeholder="АБВ-1234"
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
                   fullWidth
@@ -383,7 +383,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
 
                     <TextField
                       label="Ваше имя"
-                      placeholder="Например: Степан, Мама, Аня"
                       value={relativeName}
                       onChange={(e) => setRelativeName(e.target.value)}
                       fullWidth
@@ -429,7 +428,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                 {isRegister && (
                   <TextField
                     label="Ваше имя"
-                    placeholder="Степан"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     fullWidth
