@@ -5,38 +5,22 @@ import { dataStore } from '@/lib/data';
 import { User } from '@/types';
 import { getInitials } from '@/lib/avatar';
 import { useColorMode } from '@/components/ThemeRegistry/MuiThemeProvider';
+import { Button } from '@heroui/react';
 import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Tabs,
-  Tab,
-  TextField,
-  Button,
-  IconButton,
-  Alert,
-  CircularProgress,
-  InputAdornment,
-  Divider,
-  Avatar,
-  Chip,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemAvatar,
-  ListItemText,
-} from '@mui/material';
-import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
-import KeyIcon from '@mui/icons-material/Key';
-import MailOutlinedIcon from '@mui/icons-material/MailOutlined';
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
-import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
-import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import GroupsIcon from '@mui/icons-material/Groups';
-import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
+  Gift,
+  Key,
+  Mail,
+  Lock,
+  User as UserIcon,
+  Sun,
+  Moon,
+  ArrowRight,
+  Users,
+  UserPlus,
+  Loader2,
+  AlertCircle,
+  ChevronRight,
+} from 'lucide-react';
 
 interface AuthScreenProps {
   onSuccess: (user: User) => void;
@@ -186,336 +170,292 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
   };
 
   return (
-    <Box className="apple-glass-bg" sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 2 }}>
-      {/* Top Bar with Theme Toggle */}
-      <Box
-        sx={{
-          position: 'fixed',
-          top: 16,
-          right: 16,
-          zIndex: 10,
-        }}
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 relative">
+      {/* Theme Toggle Button */}
+      <button
+        type="button"
+        onClick={toggleColorMode}
+        title="Сменить тему"
+        className="fixed top-4 right-4 p-2.5 rounded-full bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-xs transition-colors cursor-pointer z-10"
       >
-        <IconButton onClick={toggleColorMode} color="inherit" size="small">
-          {mode === 'dark' ? <LightModeOutlinedIcon /> : <DarkModeOutlinedIcon />}
-        </IconButton>
-      </Box>
+        {mode === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+      </button>
 
       {/* Main Container */}
-      <Box sx={{ width: '100%', maxWidth: 460 }}>
+      <div className="w-full max-w-md space-y-6">
         {/* App Logo & Title */}
-        <Box sx={{ textAlign: 'center', mb: 3 }}>
-          <Box
-            sx={{
-              width: 56,
-              height: 56,
-              borderRadius: 3,
-              background: (theme) =>
-                theme.palette.mode === 'dark'
-                  ? 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)'
-                  : 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)',
-              color: '#ffffff',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 8px 24px rgba(99, 102, 241, 0.35)',
-              mb: 1.5,
-            }}
-          >
-            <CardGiftcardIcon sx={{ fontSize: 30 }} />
-          </Box>
-          <Typography variant="h5" component="h1" sx={{ fontWeight: 800 }}>
+        <div className="text-center space-y-2">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/25">
+            <Gift className="w-7 h-7" />
+          </div>
+          <h1 className="text-2xl font-extrabold tracking-tight">
             Семейный Вишлист
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          </h1>
+          <p className="text-xs text-stone-500 dark:text-stone-400">
             Делитесь подарками и радуйте близких
-          </Typography>
-        </Box>
+          </p>
+        </div>
 
-        <Card className="glass-panel" elevation={0}>
-          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs
-              value={tab}
-              onChange={(_, val) => {
-                setTab(val);
-                setError(null);
-              }}
-              variant="fullWidth"
+        {/* Auth Card */}
+        <div className="rounded-3xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 shadow-xl overflow-hidden">
+          {/* Tab Switcher */}
+          <div className="flex border-b border-stone-100 dark:border-stone-800 p-1.5 bg-stone-50/60 dark:bg-stone-900/60">
+            <button
+              type="button"
+              onClick={() => { setTab('code'); setError(null); }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-2xl text-xs font-semibold transition-all cursor-pointer ${
+                tab === 'code'
+                  ? 'bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 shadow-xs'
+                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
+              }`}
             >
-              <Tab icon={<KeyIcon fontSize="small" />} iconPosition="start" label="По коду семьи" value="code" />
-              <Tab icon={<MailOutlinedIcon fontSize="small" />} iconPosition="start" label="Email" value="email" />
-            </Tabs>
-          </Box>
+              <Key className="w-3.5 h-3.5" />
+              <span>По коду семьи</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setTab('email'); setError(null); }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-2xl text-xs font-semibold transition-all cursor-pointer ${
+                tab === 'email'
+                  ? 'bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 shadow-xs'
+                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
+              }`}
+            >
+              <Mail className="w-3.5 h-3.5" />
+              <span>Email</span>
+            </button>
+          </div>
 
-          <CardContent sx={{ p: 3 }}>
+          <div className="p-6 space-y-4">
             {error && (
-              <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-                {error}
-              </Alert>
+              <div className="flex items-center gap-2 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{error}</span>
+              </div>
             )}
 
             {tab === 'code' ? (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+              <div className="space-y-4">
                 {/* Invite Code Input */}
-                <TextField
-                  label="Код семьи"
-                  placeholder="АБВ-1234"
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                  fullWidth
-                  required
-                  size="small"
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <KeyIcon fontSize="small" color="action" />
-                        </InputAdornment>
-                      ),
-                      endAdornment: isCheckingFamily ? (
-                        <InputAdornment position="end">
-                          <CircularProgress size={18} />
-                        </InputAdornment>
-                      ) : undefined,
-                    },
-                    htmlInput: {
-                      style: { fontFamily: 'monospace', fontWeight: 700, letterSpacing: '0.1em' },
-                    },
-                  }}
-                />
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+                    Код семьи
+                  </label>
+                  <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200/80 dark:border-stone-700 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/15 transition-all font-mono">
+                    <Key className="w-4 h-4 text-stone-400 shrink-0" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="АБВ-1234"
+                      value={inviteCode}
+                      onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                      className="w-full bg-transparent text-sm text-stone-900 dark:text-stone-100 uppercase tracking-widest placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none"
+                    />
+                    {isCheckingFamily && (
+                      <Loader2 className="w-4 h-4 text-indigo-500 animate-spin shrink-0" />
+                    )}
+                  </div>
+                </div>
 
                 {/* Found Family Banner */}
                 {foundFamily && (
-                  <Box
-                    sx={{
-                      p: 1.5,
-                      borderRadius: 2.5,
-                      backgroundColor: (theme) =>
-                        theme.palette.mode === 'dark' ? 'rgba(99, 102, 241, 0.12)' : 'rgba(79, 70, 229, 0.08)',
-                      border: (theme) =>
-                        theme.palette.mode === 'dark'
-                          ? '1px solid rgba(99, 102, 241, 0.3)'
-                          : '1px solid rgba(79, 70, 229, 0.2)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1.5,
-                    }}
-                  >
-                    <GroupsIcon color="primary" />
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  <div className="flex items-center gap-3 p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 text-xs">
+                    <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-stone-500 dark:text-stone-400 text-[10px]">
                         Семья найдена
-                      </Typography>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+                      </div>
+                      <div className="font-bold text-stone-900 dark:text-stone-100 truncate">
                         {foundFamily.name}
-                      </Typography>
-                    </Box>
-                  </Box>
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 {/* Existing Family Members Selection */}
                 {foundFamily && familyMembers.length > 0 && !isNewMemberMode && (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 700, textTransform: 'uppercase', color: 'text.secondary', letterSpacing: '0.05em' }}>
-                      Выберите себя из списка членов семьи:
-                    </Typography>
+                  <div className="space-y-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">
+                      Выберите себя из списка:
+                    </span>
 
-                    <List disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <div className="space-y-1.5">
                       {familyMembers.map((member) => (
-                        <ListItem
+                        <button
                           key={member.id}
-                          disablePadding
-                          sx={{
-                            border: (theme) =>
-                              theme.palette.mode === 'dark'
-                                ? '1px solid rgba(255, 255, 255, 0.08)'
-                                : '1px solid rgba(0, 0, 0, 0.06)',
-                            borderRadius: 2.5,
-                            overflow: 'hidden',
-                            backgroundColor: 'background.paper',
-                            '&:hover': {
-                              borderColor: 'primary.main',
-                            },
-                          }}
+                          type="button"
+                          disabled={loading}
+                          onClick={() => handleSelectExistingMember(member)}
+                          className="w-full flex items-center justify-between p-3 rounded-2xl bg-stone-50 dark:bg-stone-800/40 border border-stone-200/80 dark:border-stone-800 hover:border-indigo-500 dark:hover:border-indigo-500 transition-all cursor-pointer text-left"
                         >
-                          <ListItemButton
-                            onClick={() => handleSelectExistingMember(member)}
-                            disabled={loading}
-                          >
-                            <ListItemAvatar>
-                              <Avatar sx={{ bgcolor: 'primary.main', fontWeight: 700, fontSize: '0.85rem' }}>
-                                {getInitials(member.name)}
-                              </Avatar>
-                            </ListItemAvatar>
-                            <ListItemText
-                              primary={
-                                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                                  {member.name}
-                                </Typography>
-                              }
-                              secondary="Нажмите, чтобы войти в аккаунт"
-                            />
-                            <ArrowForwardIcon fontSize="small" color="action" />
-                          </ListItemButton>
-                        </ListItem>
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center font-mono">
+                              {getInitials(member.name)}
+                            </div>
+                            <div>
+                              <div className="text-sm font-bold text-stone-900 dark:text-stone-100">
+                                {member.name}
+                              </div>
+                              <div className="text-[11px] text-stone-400">
+                                Нажмите, чтобы войти в профиль
+                              </div>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-stone-400" />
+                        </button>
                       ))}
-                    </List>
+                    </div>
 
-                    <Box sx={{ textAlign: 'center', pt: 1 }}>
-                      <Button
-                        size="small"
-                        startIcon={<PersonAddAlt1Icon fontSize="small" />}
+                    <div className="text-center pt-2">
+                      <button
+                        type="button"
                         onClick={() => setIsNewMemberMode(true)}
-                        sx={{ textTransform: 'none' }}
+                        className="inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
                       >
-                        Меня нет в списке (Создать новый профиль)
-                      </Button>
-                    </Box>
-                  </Box>
+                        <UserPlus className="w-3.5 h-3.5" />
+                        <span>Меня нет в списке (Создать новый профиль)</span>
+                      </button>
+                    </div>
+                  </div>
                 )}
 
                 {/* Manual Name Input (for new members or if toggled) */}
                 {(!foundFamily || familyMembers.length === 0 || isNewMemberMode) && (
-                  <Box component="form" onSubmit={handleCodeSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Введите ваше имя, чтобы присоединиться к семье:
-                    </Typography>
-
-                    <TextField
-                      label="Ваше имя"
-                      value={relativeName}
-                      onChange={(e) => setRelativeName(e.target.value)}
-                      fullWidth
-                      required
-                      size="small"
-                      slotProps={{
-                        input: {
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <PersonOutlinedIcon fontSize="small" color="action" />
-                            </InputAdornment>
-                          ),
-                        },
-                      }}
-                    />
+                  <form onSubmit={handleCodeSubmit} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+                        Ваше имя, чтобы близкие узнавали вас
+                      </label>
+                      <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200/80 dark:border-stone-700 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/15 transition-all">
+                        <UserIcon className="w-4 h-4 text-stone-400 shrink-0" />
+                        <input
+                          type="text"
+                          required
+                          placeholder="Например: Мама или Алексей"
+                          value={relativeName}
+                          onChange={(e) => setRelativeName(e.target.value)}
+                          className="w-full bg-transparent text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
 
                     <Button
                       type="submit"
-                      variant="contained"
-                      size="large"
-                      fullWidth
-                      disabled={loading || !inviteCode.trim() || !relativeName.trim()}
-                      endIcon={loading ? <CircularProgress size={20} color="inherit" /> : <ArrowForwardIcon />}
+                      size="md"
+                      isDisabled={loading || !inviteCode.trim() || !relativeName.trim()}
+                      className="w-full rounded-2xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-indigo-500/25 transition-all gap-2 h-11"
                     >
-                      Присоединиться к семье
+                      {loading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <ArrowRight className="w-4 h-4" />
+                      )}
+                      <span>Присоединиться к семье</span>
                     </Button>
 
                     {foundFamily && familyMembers.length > 0 && (
-                      <Button
-                        size="small"
-                        variant="text"
-                        onClick={() => setIsNewMemberMode(false)}
-                        sx={{ textTransform: 'none' }}
-                      >
-                        ← Вернуться к выбору из списка
-                      </Button>
+                      <div className="text-center pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setIsNewMemberMode(false)}
+                          className="text-xs text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 cursor-pointer"
+                        >
+                          ← Вернуться к выбору из списка
+                        </button>
+                      </div>
                     )}
-                  </Box>
+                  </form>
                 )}
-              </Box>
+              </div>
             ) : (
-              <Box component="form" onSubmit={handleEmailSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              /* TAB 2: EMAIL AUTH */
+              <form onSubmit={handleEmailSubmit} className="space-y-4">
                 {isRegister && (
-                  <TextField
-                    label="Ваше имя"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    fullWidth
-                    required
-                    size="small"
-                    slotProps={{
-                      input: {
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <PersonOutlinedIcon fontSize="small" color="action" />
-                          </InputAdornment>
-                        ),
-                      },
-                    }}
-                  />
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+                      Ваше имя
+                    </label>
+                    <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200/80 dark:border-stone-700 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/15 transition-all">
+                      <UserIcon className="w-4 h-4 text-stone-400 shrink-0" />
+                      <input
+                        type="text"
+                        required
+                        placeholder="Например: Анна"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full bg-transparent text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
                 )}
 
-                <TextField
-                  label="Почта"
-                  placeholder="name@example.com"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  fullWidth
-                  required
-                  size="small"
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <MailOutlinedIcon fontSize="small" color="action" />
-                        </InputAdornment>
-                      ),
-                    },
-                  }}
-                />
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+                    Почта
+                  </label>
+                  <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200/80 dark:border-stone-700 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/15 transition-all">
+                    <Mail className="w-4 h-4 text-stone-400 shrink-0" />
+                    <input
+                      type="email"
+                      required
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-transparent text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
 
-                <TextField
-                  label="Пароль"
-                  placeholder="••••••••"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  fullWidth
-                  required
-                  size="small"
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <LockOutlinedIcon fontSize="small" color="action" />
-                        </InputAdornment>
-                      ),
-                    },
-                  }}
-                />
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+                    Пароль
+                  </label>
+                  <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200/80 dark:border-stone-700 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/15 transition-all">
+                    <Lock className="w-4 h-4 text-stone-400 shrink-0" />
+                    <input
+                      type="password"
+                      required
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full bg-transparent text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
 
                 <Button
                   type="submit"
-                  variant="contained"
-                  size="large"
-                  fullWidth
-                  disabled={loading}
-                  endIcon={loading ? <CircularProgress size={20} color="inherit" /> : <ArrowForwardIcon />}
-                  sx={{ mt: 1 }}
+                  size="md"
+                  isDisabled={loading}
+                  className="w-full rounded-2xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-indigo-500/25 transition-all gap-2 h-11"
                 >
-                  {isRegister ? 'Зарегистрироваться' : 'Войти'}
+                  {loading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <ArrowRight className="w-4 h-4" />
+                  )}
+                  <span>{isRegister ? 'Зарегистрироваться' : 'Войти'}</span>
                 </Button>
 
-                <Divider sx={{ my: 1 }} />
-
-                <Box sx={{ textAlign: 'center' }}>
-                  <Button
-                    variant="text"
-                    size="small"
+                <div className="pt-2 text-center border-t border-stone-100 dark:border-stone-800">
+                  <button
+                    type="button"
                     onClick={() => {
                       setIsRegister(!isRegister);
                       setError(null);
                     }}
+                    className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
                   >
-                    {isRegister ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
-                  </Button>
-                </Box>
-              </Box>
+                    {isRegister
+                      ? 'Уже есть аккаунт? Войти'
+                      : 'Нет аккаунта? Зарегистрироваться'}
+                  </button>
+                </div>
+              </form>
             )}
-          </CardContent>
-        </Card>
-      </Box>
-    </Box>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };

@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
   experimental: {
-    optimizePackageImports: ["@mui/material", "@mui/icons-material", "lucide-react"],
+    optimizePackageImports: ["@heroui/react", "lucide-react"],
   },
 };
 

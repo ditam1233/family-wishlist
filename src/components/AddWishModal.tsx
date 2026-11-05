@@ -4,27 +4,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Wish } from '@/types';
 import { normalizeUrl, extractUrlAndTitle } from '@/lib/scraper';
 import { compressImage } from '@/lib/imageCompressor';
+import { Button } from '@heroui/react';
+import { X, Link as LinkIcon, Camera, Trash2, Loader2, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  IconButton,
-  Box,
-  Typography,
-  Tabs,
-  Tab,
-  CircularProgress,
-  InputAdornment,
-  Alert,
-} from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import LinkIcon from '@mui/icons-material/Link';
-import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
-import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 
 interface AddWishModalProps {
   isOpen: boolean;
@@ -62,6 +44,19 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
       setCompressing(false);
     }
   }, [isOpen]);
+
+  // Handle Escape key to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
 
   const handleUrlChange = (val: string) => {
     const { url: extractedUrl, extractedTitle } = extractUrlAndTitle(val);
@@ -133,216 +128,215 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
   };
 
   return (
-    <Dialog
-      open={isOpen}
-      onClose={onClose}
-      maxWidth="sm"
-      fullWidth
-      slotProps={{
-        backdrop: {
-          sx: { backdropFilter: 'blur(6px)' },
-        },
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
       }}
     >
-      <DialogTitle
-        sx={{
-          m: 0,
-          p: 2.5,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          fontWeight: 700,
-        }}
-      >
-        Новое желание
-        <IconButton onClick={onClose} size="small" sx={{ color: 'text.secondary' }}>
-          <CloseIcon fontSize="small" />
-        </IconButton>
-      </DialogTitle>
+      <div className="relative w-full max-w-lg max-h-[90vh] flex flex-col rounded-3xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 dark:border-stone-800">
+          <h2 className="text-base font-bold text-stone-900 dark:text-stone-100">
+            Новое желание
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-full text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-      <form onSubmit={handleSubmit}>
-        <DialogContent dividers sx={{ p: 2.5, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
           {errorMsg && (
-            <Alert severity="error" onClose={() => setErrorMsg('')}>
-              {errorMsg}
-            </Alert>
+            <div className="flex items-center gap-2 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
           )}
 
-          {/* Link Input with URL extraction */}
-          <TextField
-            label="Ссылка на товар"
-            placeholder="Вставьте ссылку на товар или текст из магазина"
-            value={linkUrl}
-            onChange={(e) => handleUrlChange(e.target.value)}
-            onPaste={(e) => {
-              const pastedText = e.clipboardData.getData('text');
-              if (pastedText) {
-                const { url: extractedUrl, extractedTitle } = extractUrlAndTitle(pastedText);
-                if (extractedUrl) {
-                  e.preventDefault();
-                  setLinkUrl(extractedUrl);
-                  if (!title.trim() && extractedTitle) {
-                    setTitle(extractedTitle);
+          {/* Link URL Input */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+              Ссылка на товар
+            </label>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200/80 dark:border-stone-700 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/15 transition-all">
+              <LinkIcon className="w-4 h-4 text-stone-400 shrink-0" />
+              <input
+                type="text"
+                placeholder="Вставьте ссылку на товар или текст из магазина"
+                value={linkUrl}
+                onChange={(e) => handleUrlChange(e.target.value)}
+                onPaste={(e) => {
+                  const pastedText = e.clipboardData.getData('text');
+                  if (pastedText) {
+                    const { url: extractedUrl, extractedTitle } = extractUrlAndTitle(pastedText);
+                    if (extractedUrl) {
+                      e.preventDefault();
+                      setLinkUrl(extractedUrl);
+                      if (!title.trim() && extractedTitle) {
+                        setTitle(extractedTitle);
+                      }
+                    }
                   }
-                }
-              }
-            }}
-            fullWidth
-            size="small"
-            helperText="Поддерживаются любые ссылки (включая сообщения с названиями из Ozon, Wildberries и др.)"
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <LinkIcon fontSize="small" color="action" />
-                  </InputAdornment>
-                ),
-              },
-            }}
-          />
+                }}
+                className="w-full bg-transparent text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none"
+              />
+            </div>
+            <p className="text-[11px] text-stone-400 dark:text-stone-500">
+              Поддерживаются любые ссылки (включая сообщения из Ozon, Wildberries и др.)
+            </p>
+          </div>
 
           {/* Image Upload / URL Tabs */}
-          <Box
-            sx={{
-              p: 2,
-              borderRadius: 3,
-              backgroundColor: (theme) =>
-                theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-              border: (theme) =>
-                theme.palette.mode === 'dark'
-                  ? '1px dashed rgba(255,255,255,0.12)'
-                  : '1px dashed rgba(0,0,0,0.12)',
-            }}
-          >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-              <Typography variant="caption" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary' }}>
+          <div className="p-3.5 rounded-2xl bg-stone-50/70 dark:bg-stone-800/40 border border-stone-200/60 dark:border-stone-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">
                 Фотография
-              </Typography>
-              <Tabs
-                value={imageTab}
-                onChange={(_, val) => setImageTab(val)}
-                sx={{ minHeight: 28 }}
-              >
-                <Tab label="Галерея / Камера" value="upload" sx={{ minHeight: 28, py: 0, px: 1.5, fontSize: '0.75rem' }} />
-                <Tab label="Ссылка на фото" value="url" sx={{ minHeight: 28, py: 0, px: 1.5, fontSize: '0.75rem' }} />
-              </Tabs>
-            </Box>
+              </span>
+              <div className="flex items-center p-0.5 rounded-xl bg-stone-200/70 dark:bg-stone-800 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setImageTab('upload')}
+                  className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+                    imageTab === 'upload'
+                      ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs'
+                      : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
+                  }`}
+                >
+                  Галерея / Камера
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImageTab('url')}
+                  className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+                    imageTab === 'url'
+                      ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs'
+                      : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
+                  }`}
+                >
+                  Ссылка
+                </button>
+              </div>
+            </div>
 
             {imageUrl ? (
-              <Box sx={{ position: 'relative', width: '100%', height: 160, borderRadius: 2, overflow: 'hidden' }}>
-                <Box
-                  component="img"
-                  src={imageUrl}
-                  alt="Предпросмотр"
-                  sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-                <IconButton
-                  size="small"
+              <div className="relative w-full h-36 rounded-2xl overflow-hidden border border-stone-200/70 dark:border-stone-700">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imageUrl} alt="Предпросмотр" className="w-full h-full object-cover" />
+                <button
+                  type="button"
                   onClick={() => setImageUrl('')}
-                  sx={{
-                    position: 'absolute',
-                    top: 8,
-                    right: 8,
-                    backgroundColor: 'rgba(0,0,0,0.6)',
-                    color: '#ffffff',
-                    '&:hover': { backgroundColor: 'rgba(0,0,0,0.8)' },
-                  }}
+                  className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white transition-colors cursor-pointer"
                 >
-                  <DeleteOutlinedIcon fontSize="small" />
-                </IconButton>
-              </Box>
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             ) : imageTab === 'upload' ? (
-              <Box
+              <div
                 onClick={() => fileInputRef.current?.click()}
-                sx={{
-                  py: 3,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 1,
-                  cursor: 'pointer',
-                  borderRadius: 2,
-                  '&:hover': { backgroundColor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)') },
-                }}
+                className="py-6 flex flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-stone-200 dark:border-stone-700/80 hover:bg-stone-100/50 dark:hover:bg-stone-800/40 transition-colors cursor-pointer"
               >
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
                   onChange={handleFileChange}
-                  style={{ display: 'none' }}
+                  className="hidden"
                 />
                 {compressing ? (
-                  <CircularProgress size={32} />
+                  <Loader2 className="w-7 h-7 text-indigo-500 animate-spin" />
                 ) : (
                   <>
-                    <PhotoCameraIcon sx={{ fontSize: 36, color: 'text.secondary' }} />
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    <Camera className="w-7 h-7 text-stone-400 dark:text-stone-500" />
+                    <span className="text-xs font-semibold text-stone-600 dark:text-stone-300">
                       Нажмите, чтобы выбрать фото
-                    </Typography>
+                    </span>
                   </>
                 )}
-              </Box>
+              </div>
             ) : (
-              <TextField
+              <input
+                type="text"
                 placeholder="https://example.com/photo.jpg"
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
-                fullWidth
-                size="small"
+                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-stone-800 border border-stone-200/80 dark:border-stone-700 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-indigo-500"
               />
             )}
-          </Box>
+          </div>
 
-          {/* Title */}
-          <TextField
-            label="Название подарка"
-            placeholder="Например: Беспроводные наушники Sony"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            fullWidth
-            required
-            size="small"
-          />
+          {/* Title Input */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+              Название подарка <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Например: Беспроводные наушники Sony"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200/80 dark:border-stone-700 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 transition-all"
+            />
+          </div>
 
-          {/* Price */}
-          <TextField
-            label="Примерная стоимость"
-            placeholder="3500"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            fullWidth
-            size="small"
-            slotProps={{
-              input: {
-                endAdornment: <InputAdornment position="end">₽</InputAdornment>,
-              },
-            }}
-          />
+          {/* Price Input */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+              Примерная стоимость
+            </label>
+            <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200/80 dark:border-stone-700 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/15 transition-all">
+              <input
+                type="text"
+                placeholder="3500"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                className="w-full bg-transparent text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none"
+              />
+              <span className="text-sm font-semibold text-stone-400">₽</span>
+            </div>
+          </div>
 
           {/* Description */}
-          <TextField
-            label="Заметки или пожелания"
-            placeholder="Цвет черный, размер M, или артикул"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            multiline
-            rows={2}
-            fullWidth
-            size="small"
-          />
-        </DialogContent>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+              Заметки или пожелания
+            </label>
+            <textarea
+              rows={2}
+              placeholder="Цвет черный, размер M, или артикул"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200/80 dark:border-stone-700 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15 transition-all resize-none"
+            />
+          </div>
 
-        <DialogActions sx={{ p: 2.5 }}>
-          <Button onClick={onClose} color="inherit">
-            Отмена
-          </Button>
-          <Button type="submit" variant="contained" color="primary" disabled={compressing}>
-            Добавить подарок
-          </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
+          {/* Dialog Actions */}
+          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-stone-100 dark:border-stone-800">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+            >
+              Отмена
+            </button>
+            <Button
+              type="submit"
+              size="md"
+              isDisabled={compressing}
+              className="px-5 py-2 rounded-2xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-indigo-500/25 transition-all"
+            >
+              Добавить подарок
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 };

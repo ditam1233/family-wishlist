@@ -8,6 +8,23 @@ import { useColorMode } from '@/components/ThemeRegistry/MuiThemeProvider';
 import { WishCard } from '@/components/WishCard';
 import { WishRow } from '@/components/WishRow';
 import dynamic from 'next/dynamic';
+import { Button } from '@heroui/react';
+import {
+  Gift,
+  Plus,
+  LayoutGrid,
+  List as ListIcon,
+  Sun,
+  Moon,
+  Bookmark,
+  Users,
+  LogOut,
+  AlertCircle,
+  CheckCircle2,
+  Info,
+  X,
+  Sparkles,
+} from 'lucide-react';
 
 const AddWishModal = dynamic(
   () => import('@/components/AddWishModal').then((m) => m.AddWishModal),
@@ -19,50 +36,6 @@ const FamilyGroupModal = dynamic(
   { ssr: false }
 );
 import { AuthScreen } from '@/components/AuthScreen';
-
-import {
-  Card,
-  AppBar,
-  Toolbar,
-  Typography,
-  Box,
-  Container,
-  Button,
-  IconButton,
-  Avatar,
-  Chip,
-  Tabs,
-  Tab,
-  TextField,
-  InputAdornment,
-  ToggleButtonGroup,
-  ToggleButton,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  ListItemText,
-  Divider,
-  Snackbar,
-  Alert,
-  Skeleton,
-  LinearProgress,
-  Fab,
-  Tooltip,
-} from '@mui/material';
-
-import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
-import AddIcon from '@mui/icons-material/Add';
-
-
-
-
-import GridViewIcon from '@mui/icons-material/GridView';
-import ViewListIcon from '@mui/icons-material/ViewList';
-import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
-import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined';
-import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
-import GroupsIcon from '@mui/icons-material/Groups';
-import LogoutIcon from '@mui/icons-material/Logout';
 
 export default function HomePage() {
   const { mode, toggleColorMode } = useColorMode();
@@ -88,8 +61,9 @@ export default function HomePage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isFamilyModalOpen, setIsFamilyModalOpen] = useState(false);
 
-  // User Profile Menu
-  const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
+  // User Profile Dropdown Menu
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Notifications
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'info' | 'error' }>({
@@ -105,6 +79,29 @@ export default function HomePage() {
   const handleCloseSnackbar = () => {
     setSnackbar((prev) => ({ ...prev, open: false }));
   };
+
+  // Auto-dismiss notification after 3.5s
+  useEffect(() => {
+    if (snackbar.open) {
+      const timer = setTimeout(() => {
+        setSnackbar((prev) => ({ ...prev, open: false }));
+      }, 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [snackbar.open]);
+
+  // Close user menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    if (isUserMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isUserMenuOpen]);
 
   // Keep a ref to currentUser for async callbacks without triggering re-renders
   const currentUserRef = useRef<User | null>(null);
@@ -142,13 +139,10 @@ export default function HomePage() {
 
   // Complete user and family data loader (parallelized without waterfalls)
   const loadInitialData = useCallback(async (user: User) => {
-    // Immediately set selected user to self so ownership is locked instantly
     setSelectedUserId(user.id);
 
     try {
-      // Parallelize: start fetching user's reservations immediately without waiting for groups/members
       const reservationsPromise = fetchReservations(user.id);
-
       const groups = await dataStore.getUserGroups(user.id);
       setUserGroups(groups);
 
@@ -234,7 +228,6 @@ export default function HomePage() {
       const members = await dataStore.getFamilyMembers(user.id, groupId);
       setFamilyMembers(members);
 
-      // Select self if member, otherwise first member
       const nextTargetId = members.some((m) => m.id === user.id)
         ? user.id
         : members[0]?.id || user.id;
@@ -321,7 +314,7 @@ export default function HomePage() {
 
   // Logout
   const handleLogout = async () => {
-    setUserMenuAnchor(null);
+    setIsUserMenuOpen(false);
     await dataStore.logout();
     setCurrentUser(null);
     setUserGroups([]);
@@ -352,21 +345,14 @@ export default function HomePage() {
 
   if (isInitialLoading) {
     return (
-      <Box
-        sx={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 2,
-        }}
-      >
-        <CardGiftcardIcon sx={{ fontSize: 48, color: 'primary.main' }} />
-        <Typography variant="body2" color="text.secondary">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100">
+        <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30 animate-bounce">
+          <Gift className="w-6 h-6" />
+        </div>
+        <p className="text-sm font-semibold text-stone-500 dark:text-stone-400">
           Загрузка вишлиста...
-        </Typography>
-      </Box>
+        </p>
+      </div>
     );
   }
 
@@ -382,474 +368,314 @@ export default function HomePage() {
   }
 
   return (
-    <Box className="apple-glass-bg" sx={{ minHeight: '100vh', pb: 10 }}>
+    <div className="min-h-screen pb-16 bg-stone-100/70 dark:bg-stone-950 text-stone-900 dark:text-stone-100 transition-colors">
       {/* Top Navigation Bar */}
-      <AppBar
-        position="sticky"
-        elevation={0}
-        sx={{
-          backdropFilter: 'blur(24px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-          backgroundColor: (theme: any) =>
-            theme.palette.mode === 'dark'
-              ? 'rgba(11, 17, 30, 0.72)'
-              : 'rgba(255, 255, 255, 0.75)',
-          borderBottom: (theme: any) =>
-            theme.palette.mode === 'dark'
-              ? '1px solid rgba(255, 255, 255, 0.09)'
-              : '1px solid rgba(255, 255, 255, 0.7)',
-          boxShadow: (theme: any) =>
-            theme.palette.mode === 'dark'
-              ? '0 4px 20px rgba(0, 0, 0, 0.4)'
-              : '0 4px 20px rgba(15, 23, 42, 0.04)',
-          color: 'text.primary',
-        }}
-      >
-        <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, md: 3 } }}>
+      <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/80 dark:bg-stone-900/80 border-b border-stone-200/80 dark:border-stone-800 shadow-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           {/* Brand & Family Selector */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Box
-              sx={{
-                width: 38,
-                height: 38,
-                borderRadius: 2.5,
-                background: (theme: any) =>
-                  theme.palette.mode === 'dark'
-                    ? 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)'
-                    : 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)',
-                color: '#ffffff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
-              }}
-            >
-              <CardGiftcardIcon sx={{ fontSize: 22 }} />
-            </Box>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white flex items-center justify-center shadow-md shadow-indigo-500/25">
+              <Gift className="w-5 h-5" />
+            </div>
 
-            <Box>
-              <Typography variant="subtitle1" component="div" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
+            <div>
+              <div className="text-base font-extrabold tracking-tight leading-tight">
                 Вишлист
-              </Typography>
+              </div>
               {activeGroup && (
-                <Chip
-                  icon={<GroupsIcon sx={{ fontSize: '14px !important' }} />}
-                  label={activeGroup.name}
-                  size="small"
+                <button
+                  type="button"
                   onClick={() => setIsFamilyModalOpen(true)}
-                  sx={{
-                    height: 20,
-                    fontSize: '0.72rem',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                  }}
-                />
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                >
+                  <Users className="w-3 h-3" />
+                  <span>{activeGroup.name}</span>
+                </button>
               )}
-            </Box>
-          </Box>
+            </div>
+          </div>
 
           {/* Right Header Controls */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <div className="flex items-center gap-2">
             {/* View Mode Toggle */}
-            <ToggleButtonGroup
-              size="small"
-              value={viewMode}
-              exclusive
-              onChange={(_, val) => val && setViewMode(val)}
-              sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
-            >
-              <ToggleButton value="grid" aria-label="Сетка">
-                <GridViewIcon fontSize="small" />
-              </ToggleButton>
-              <ToggleButton value="list" aria-label="Список">
-                <ViewListIcon fontSize="small" />
-              </ToggleButton>
-            </ToggleButtonGroup>
+            <div className="hidden sm:flex items-center p-0.5 rounded-xl bg-stone-100 dark:bg-stone-800 border border-stone-200/60 dark:border-stone-700">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                  viewMode === 'grid'
+                    ? 'bg-white dark:bg-stone-700 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                    : 'text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
+                }`}
+                title="Сетка"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                  viewMode === 'list'
+                    ? 'bg-white dark:bg-stone-700 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                    : 'text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
+                }`}
+                title="Список"
+              >
+                <ListIcon className="w-4 h-4" />
+              </button>
+            </div>
 
             {/* Theme Toggle */}
-            <Tooltip title={mode === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'}>
-              <IconButton onClick={toggleColorMode} size="small" color="inherit">
-                {mode === 'dark' ? <LightModeOutlinedIcon fontSize="small" /> : <DarkModeOutlinedIcon fontSize="small" />}
-              </IconButton>
-            </Tooltip>
-
-            {/* User Profile Avatar & Menu */}
-            <Tooltip title="Меню профиля">
-              <IconButton
-                onClick={(e) => setUserMenuAnchor(e.currentTarget)}
-                size="small"
-                sx={{ ml: 0.5 }}
-              >
-                <Avatar
-                  sx={{
-                    width: 36,
-                    height: 36,
-                    fontWeight: 700,
-                    fontSize: '0.85rem',
-                    bgcolor: 'primary.main',
-                  }}
-                >
-                  {getInitials(currentUser.name)}
-                </Avatar>
-              </IconButton>
-            </Tooltip>
-
-            <Menu
-              anchorEl={userMenuAnchor}
-              open={Boolean(userMenuAnchor)}
-              onClose={() => setUserMenuAnchor(null)}
-              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-              slotProps={{
-                paper: {
-                  sx: { minWidth: 200, mt: 1 },
-                },
-              }}
+            <button
+              type="button"
+              onClick={toggleColorMode}
+              title={mode === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'}
+              className="p-2 rounded-xl text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer"
             >
-              <Box sx={{ px: 2, py: 1 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                  {currentUser.name}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {currentUser.email || 'Вход по коду'}
-                </Typography>
-              </Box>
-              <Divider />
-              <MenuItem
-                onClick={() => {
-                  setUserMenuAnchor(null);
-                  setActiveTab('reservations');
-                }}
+              {mode === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+
+            {/* User Profile Avatar & Dropdown */}
+            <div className="relative" ref={userMenuRef}>
+              <button
+                type="button"
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="w-9 h-9 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs ring-2 ring-indigo-500/20 hover:ring-indigo-500/40 transition-all cursor-pointer"
+                title="Меню профиля"
               >
-                <ListItemIcon>
-                  <BookmarkBorderIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText
-                  primary="Мои брони"
-                  secondary={`${myReservations.length} подарков`}
-                />
-              </MenuItem>
-              <MenuItem
-                onClick={() => {
-                  setUserMenuAnchor(null);
-                  setIsFamilyModalOpen(true);
-                }}
-              >
-                <ListItemIcon>
-                  <GroupsIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText primary="Управление семьями" />
-              </MenuItem>
-              <Divider />
-              <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
-                <ListItemIcon sx={{ color: 'error.main' }}>
-                  <LogoutIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText primary="Выйти" />
-              </MenuItem>
-            </Menu>
-          </Box>
-        </Toolbar>
-      </AppBar>
+                {getInitials(currentUser.name)}
+              </button>
+
+              {/* Dropdown Menu */}
+              {isUserMenuOpen && (
+                <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xl overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-150 z-50">
+                  <div className="px-4 py-3 border-b border-stone-100 dark:border-stone-800">
+                    <div className="font-bold text-sm text-stone-900 dark:text-stone-100 truncate">
+                      {currentUser.name}
+                    </div>
+                    <div className="text-xs text-stone-400 truncate">
+                      {currentUser.email || 'Вход по коду семьи'}
+                    </div>
+                  </div>
+
+                  <div className="py-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setActiveTab('reservations');
+                      }}
+                      className="w-full flex items-center justify-between px-4 py-2.5 text-xs text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Bookmark className="w-4 h-4 text-stone-400" />
+                        <span>Мои брони</span>
+                      </div>
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                        {myReservations.length}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setIsFamilyModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+                    >
+                      <Users className="w-4 h-4 text-stone-400" />
+                      <span>Управление семьями</span>
+                    </button>
+                  </div>
+
+                  <div className="border-t border-stone-100 dark:border-stone-800 py-1">
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Выйти</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
 
       {/* Main Container */}
-      <Container maxWidth="lg" sx={{ pt: 3 }}>
-        {/* Family Members Selector Bar (Liquid Glass Island) */}
-        <Box
-          className="glass-panel"
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.5,
-            overflowX: 'auto',
-            p: 1.25,
-            borderRadius: 4,
-            mb: 3,
-            scrollbarWidth: 'none',
-            '&::-webkit-scrollbar': { display: 'none' },
-          }}
-        >
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
+        {/* Family Members Selector Bar */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-6 scrollbar-none">
           {familyMembers.map((member) => {
             const isSelected = effectiveTargetUserId === member.id && activeTab === 'wishes';
             const isMe = member.id === currentUser.id;
 
             return (
-              <Chip
+              <button
                 key={member.id}
-                avatar={
-                  <Avatar
-                    sx={{
-                      bgcolor: isSelected ? '#ffffff' : 'primary.main',
-                      color: isSelected ? 'primary.main' : '#ffffff',
-                    }}
-                  >
-                    {getInitials(member.name)}
-                  </Avatar>
-                }
-                label={isMe ? `${member.name} (Я)` : member.name}
-                clickable
-                color={isSelected ? 'primary' : 'default'}
-                variant={isSelected ? 'filled' : 'outlined'}
+                type="button"
                 onClick={() => handleSwitchUser(member.id)}
-                sx={{
-                  py: 2.2,
-                  px: 0.5,
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  borderRadius: 3,
-                }}
-              />
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer border ${
+                  isSelected
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/25 scale-[1.02]'
+                    : 'bg-white/80 dark:bg-stone-900/80 text-stone-700 dark:text-stone-300 border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'
+                }`}
+              >
+                <div
+                  className={`w-5 h-5 rounded-full text-[10px] font-mono flex items-center justify-center ${
+                    isSelected ? 'bg-white/20 text-white' : 'bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
+                  }`}
+                >
+                  {getInitials(member.name)}
+                </div>
+                <span>{isMe ? `${member.name} (Я)` : member.name}</span>
+              </button>
             );
           })}
 
           {/* Tab: My Reservations */}
-          <Chip
-            icon={<BookmarkBorderIcon sx={{ fontSize: '18px !important' }} />}
-            label="Мои брони"
-            clickable
-            color={activeTab === 'reservations' ? 'secondary' : 'default'}
-            variant={activeTab === 'reservations' ? 'filled' : 'outlined'}
+          <button
+            type="button"
             onClick={() => setActiveTab('reservations')}
-            avatar={
-              myReservations.length > 0 ? (
-                <Avatar sx={{ bgcolor: 'secondary.main', color: '#ffffff', width: 22, height: 22, fontSize: '0.72rem' }}>
-                  {myReservations.length}
-                </Avatar>
-              ) : undefined
-            }
-            sx={{
-              py: 2.2,
-              px: 0.5,
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              borderRadius: 3,
-            }}
-          />
-        </Box>
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer border ${
+              activeTab === 'reservations'
+                ? 'bg-pink-600 text-white border-pink-600 shadow-md shadow-pink-500/25 scale-[1.02]'
+                : 'bg-white/80 dark:bg-stone-900/80 text-stone-700 dark:text-stone-300 border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'
+            }`}
+          >
+            <Bookmark className="w-3.5 h-3.5" />
+            <span>Мои брони</span>
+            {myReservations.length > 0 && (
+              <span
+                className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                  activeTab === 'reservations'
+                    ? 'bg-white/25 text-white'
+                    : 'bg-pink-100 dark:bg-pink-950/60 text-pink-600 dark:text-pink-400'
+                }`}
+              >
+                {myReservations.length}
+              </span>
+            )}
+          </button>
+        </div>
 
-        {/* Apple Bento Hero Header & Member Card */}
-        <Card
-          className="glass-panel"
-          sx={{
-            p: { xs: 2.5, sm: 3 },
-            mb: 3,
-            borderRadius: 4,
-            display: 'flex',
-            flexDirection: { xs: 'column', md: 'row' },
-            justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', md: 'center' },
-            gap: 2.5,
-            border: (theme: any) =>
-              theme.palette.mode === 'dark'
-                ? '1px solid rgba(255, 255, 255, 0.12)'
-                : '1px solid rgba(255, 255, 255, 0.85)',
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Avatar
-              sx={{
-                width: { xs: 52, sm: 60 },
-                height: { xs: 52, sm: 60 },
-                fontWeight: 800,
-                fontSize: { xs: '1.2rem', sm: '1.4rem' },
-                background: (theme: any) =>
-                  theme.palette.mode === 'dark'
-                    ? 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)'
-                    : 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
-                color: '#ffffff',
-                boxShadow: '0 8px 24px rgba(37, 99, 235, 0.3)',
-              }}
-            >
+        {/* Bento Hero Header */}
+        <div className="p-6 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 shadow-sm mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white flex items-center justify-center font-extrabold text-xl shadow-lg shadow-indigo-500/25 shrink-0">
               {activeTab === 'reservations' ? '🎁' : getInitials(targetMember?.name || currentUser.name)}
-            </Avatar>
-            <Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, flexWrap: 'wrap' }}>
-                <Typography variant="h5" component="h2" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
                   {activeTab === 'reservations'
                     ? 'Подарки, которые вы дарите'
                     : isOwner
                     ? `${currentUser.name} (Мой список)`
                     : `Список желаний: ${targetMember?.name}`}
-                </Typography>
-                <Chip
-                  size="small"
-                  label={
-                    activeTab === 'reservations'
-                      ? `${displayedWishes.length} забронировано`
-                      : `${displayedWishes.length} ${
-                          displayedWishes.length === 1
-                            ? 'желание'
-                            : displayedWishes.length >= 2 && displayedWishes.length <= 4
-                            ? 'желания'
-                            : 'желаний'
-                        }`
-                  }
-                  sx={{
-                    fontWeight: 700,
-                    height: 24,
-                    fontSize: '0.75rem',
-                    backgroundColor: (theme: any) =>
-                      theme.palette.mode === 'dark' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(37, 99, 235, 0.1)',
-                    color: 'primary.main',
-                  }}
-                />
-              </Box>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, maxWidth: 640, lineHeight: 1.5 }}>
+                </h1>
+
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60">
+                  {activeTab === 'reservations'
+                    ? `${displayedWishes.length} забронировано`
+                    : `${displayedWishes.length} ${
+                        displayedWishes.length === 1
+                          ? 'желание'
+                          : displayedWishes.length >= 2 && displayedWishes.length <= 4
+                          ? 'желания'
+                          : 'желаний'
+                      }`}
+                </span>
+              </div>
+
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 max-w-2xl leading-relaxed">
                 {activeTab === 'reservations'
                   ? 'Тайный список подарков, которые вы пообещали подарить близким. Они не знают, что вы это выбрали!'
                   : isOwner
                   ? 'Добавляйте любые желанные подарки со ссылками на маркетплейсы, чтобы близким было легко порадовать вас.'
-                  : '🤫 Секретная бронь: нажмите «Подарю я!», чтобы застолбить подарок. Другие родственники увидят, что подарок занят'}
-              </Typography>
-            </Box>
-          </Box>
+                  : '🤫 Секретная бронь: нажмите «Подарю я!», чтобы застолбить подарок. Другие родственники увидят, что подарок занят.'}
+              </p>
+            </div>
+          </div>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: { xs: '100%', md: 'auto' } }}>
-            {isOwner && activeTab === 'wishes' && (
-              <Button
-                variant="contained"
-                size="large"
-                fullWidth
-                startIcon={<AddIcon />}
-                onClick={() => setIsAddModalOpen(true)}
-                sx={{
-                  borderRadius: 3,
-                  py: 1.2,
-                  px: 3,
-                  fontWeight: 700,
-                  fontSize: '0.92rem',
-                  boxShadow: '0 8px 24px rgba(37, 99, 235, 0.35)',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                Добавить подарок
-              </Button>
-            )}
-          </Box>
-        </Card>
+          {/* Add Wish button for owner */}
+          {isOwner && activeTab === 'wishes' && (
+            <Button
+              type="button"
+              size="md"
+              onClick={() => setIsAddModalOpen(true)}
+              className="rounded-2xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-indigo-500/25 transition-all gap-2 px-5 py-2.5 shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Добавить подарок</span>
+            </Button>
+          )}
+        </div>
 
-        {/* Non-intrusive subtle background loading indicator (never jumps or unmounts the list!) */}
+        {/* Non-intrusive subtle background loading indicator */}
         {isRefreshing && (
-          <LinearProgress
-            sx={{
-              height: 3,
-              borderRadius: 1.5,
-              mb: 2,
-              backgroundColor: 'transparent',
-            }}
-          />
+          <div className="w-full h-1 bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden mb-4">
+            <div className="h-full bg-indigo-600 animate-pulse w-full" />
+          </div>
         )}
 
         {/* Wishes Content List / Grid */}
         {displayedWishes.length === 0 && isRefreshing ? (
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: '1fr',
-                sm: 'repeat(2, 1fr)',
-                md: 'repeat(3, 1fr)',
-              },
-              gap: 2.5,
-            }}
-          >
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {[1, 2, 3].map((k) => (
-              <Box
+              <div
                 key={k}
-                className="glass-card"
-                sx={{
-                  p: 2,
-                  borderRadius: 4,
-                  minHeight: 240,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 1.5,
-                }}
+                className="p-4 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 animate-pulse space-y-3"
               >
-                <Skeleton variant="rounded" height={130} sx={{ borderRadius: 3 }} animation="wave" />
-                <Skeleton variant="text" width="70%" height={26} animation="wave" />
-                <Skeleton variant="text" width="40%" height={18} animation="wave" />
-              </Box>
+                <div className="w-full h-36 bg-stone-200 dark:bg-stone-800 rounded-2xl" />
+                <div className="w-3/4 h-5 bg-stone-200 dark:bg-stone-800 rounded-lg" />
+                <div className="w-1/2 h-4 bg-stone-200 dark:bg-stone-800 rounded-lg" />
+              </div>
             ))}
-          </Box>
+          </div>
         ) : displayedWishes.length === 0 && !isRefreshing ? (
-          <Box
-            className="glass-panel"
-            sx={{
-              py: { xs: 6, sm: 8 },
-              px: { xs: 3, sm: 4 },
-              textAlign: 'center',
-              borderRadius: 4,
-              maxWidth: 600,
-              mx: 'auto',
-              border: (theme: any) =>
-                theme.palette.mode === 'dark'
-                  ? '1.5px dashed rgba(59, 130, 246, 0.3)'
-                  : '1.5px dashed rgba(37, 99, 235, 0.3)',
-            }}
-          >
-            <Box
-              sx={{
-                width: 72,
-                height: 72,
-                borderRadius: '50%',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                bgcolor: (theme: any) =>
-                  theme.palette.mode === 'dark' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(37, 99, 235, 0.08)',
-                color: 'primary.main',
-                mb: 2,
-              }}
-            >
-              <CardGiftcardIcon sx={{ fontSize: 36 }} />
-            </Box>
-            <Typography variant="h6" sx={{ fontWeight: 800, mb: 1, letterSpacing: '-0.01em' }}>
+          <div className="py-12 px-6 rounded-3xl bg-white dark:bg-stone-900 border border-dashed border-stone-300 dark:border-stone-800 text-center max-w-lg mx-auto space-y-3">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+              <Gift className="w-7 h-7" />
+            </div>
+
+            <h3 className="text-base font-extrabold text-stone-900 dark:text-stone-100">
               {activeTab === 'reservations'
                 ? 'Вы еще не выбрали подарки'
                 : isOwner
                 ? 'Ваш список пока пуст'
                 : `${targetMember?.name || 'Родственник'} еще не составил список`}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto', mb: 3, lineHeight: 1.6 }}>
+            </h3>
+
+            <p className="text-xs text-stone-500 dark:text-stone-400 max-w-sm mx-auto leading-relaxed">
               {activeTab === 'reservations'
                 ? 'Перейдите в список любого члена семьи сверху и нажмите «Подарю я!». Забронированные подарки будут видны только вам.'
                 : isOwner
                 ? 'Добавьте первое желание — просто вставьте ссылку на Ozon, Wildberries, Яндекс.Маркет или напишите текстом!'
                 : 'Напомните близкому человеку добавить желания, чтобы сделать идеальный сюрприз к празднику.'}
-            </Typography>
+            </p>
+
             {isOwner && activeTab === 'wishes' && (
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={<AddIcon />}
-                onClick={() => setIsAddModalOpen(true)}
-                sx={{
-                  borderRadius: 3,
-                  py: 1.2,
-                  px: 3.5,
-                  fontWeight: 700,
-                  boxShadow: '0 8px 24px rgba(37, 99, 235, 0.35)',
-                }}
-              >
-                Добавить первое желание
-              </Button>
+              <div className="pt-2">
+                <Button
+                  type="button"
+                  size="md"
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="rounded-2xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-indigo-500/25 transition-all gap-2 px-5 py-2.5"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Добавить первое желание</span>
+                </Button>
+              </div>
             )}
-          </Box>
+          </div>
         ) : viewMode === 'grid' ? (
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: '1fr',
-                sm: 'repeat(2, 1fr)',
-                md: 'repeat(3, 1fr)',
-              },
-              gap: 2.5,
-              opacity: isRefreshing ? 0.8 : 1,
-              transition: 'opacity 0.2s ease',
-            }}
-          >
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {displayedWishes.map((wish) => (
               <WishCard
                 key={wish.id}
@@ -859,17 +685,9 @@ export default function HomePage() {
                 onDeleteWish={handleDeleteWish}
               />
             ))}
-          </Box>
+          </div>
         ) : (
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 1.5,
-              opacity: isRefreshing ? 0.8 : 1,
-              transition: 'opacity 0.2s ease',
-            }}
-          >
+          <div className="space-y-3">
             {displayedWishes.map((wish) => (
               <WishRow
                 key={wish.id}
@@ -879,9 +697,9 @@ export default function HomePage() {
                 onDeleteWish={handleDeleteWish}
               />
             ))}
-          </Box>
+          </div>
         )}
-      </Container>
+      </main>
 
       {/* Add Wish Modal */}
       <AddWishModal
@@ -906,16 +724,31 @@ export default function HomePage() {
       />
 
       {/* Global Toast Notification */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3500}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%', borderRadius: 3 }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Box>
+      {snackbar.open && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-200">
+          <div
+            className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-xl text-xs font-semibold backdrop-blur-md border ${
+              snackbar.severity === 'error'
+                ? 'bg-rose-500/95 text-white border-rose-600 shadow-rose-500/20'
+                : 'bg-stone-900/95 dark:bg-stone-800/95 text-white border-stone-700/80 shadow-black/30'
+            }`}
+          >
+            {snackbar.severity === 'error' ? (
+              <AlertCircle className="w-4 h-4 shrink-0 text-white" />
+            ) : (
+              <Sparkles className="w-4 h-4 shrink-0 text-amber-300" />
+            )}
+            <span>{snackbar.message}</span>
+            <button
+              type="button"
+              onClick={handleCloseSnackbar}
+              className="ml-2 p-0.5 rounded-full hover:bg-white/20 transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
