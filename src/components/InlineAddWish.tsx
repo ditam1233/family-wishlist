@@ -2,19 +2,17 @@
 
 import React, { useState } from 'react';
 import { Wish } from '@/types';
-import { scrapeLink, extractUrlAndTitle } from '@/lib/scraper';
+import { extractUrlAndTitle } from '@/lib/scraper';
 import confetti from 'canvas-confetti';
 import {
   Paper,
   InputBase,
   IconButton,
   Button,
-  CircularProgress,
   Box,
   Tooltip,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import TuneIcon from '@mui/icons-material/Tune';
 
 interface InlineAddWishProps {
@@ -29,41 +27,26 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
   onOpenFullModal,
 }) => {
   const [inputVal, setInputVal] = useState('');
-  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const clean = inputVal.trim();
     if (!clean) return;
 
     const { url: detectedUrl, extractedTitle } = extractUrlAndTitle(clean);
-    const hasUrl = Boolean(detectedUrl && (detectedUrl.startsWith('http://') || detectedUrl.startsWith('https://')));
+    const hasUrl = Boolean(
+      detectedUrl &&
+        (detectedUrl.startsWith('http://') || detectedUrl.startsWith('https://'))
+    );
 
     if (hasUrl) {
-      setLoading(true);
-      try {
-        const data = await scrapeLink(detectedUrl);
-        onAddWish({
-          user_id: currentUserId,
-          title: data.title || extractedTitle || clean,
-          description: data.description || undefined,
-          link_url: detectedUrl,
-          image_url: data.image || undefined,
-          price: data.price ? Number(data.price) : undefined,
-          currency: '₽',
-          priority: 'nice_to_have',
-        });
-      } catch {
-        onAddWish({
-          user_id: currentUserId,
-          title: extractedTitle || clean,
-          link_url: detectedUrl,
-          currency: '₽',
-          priority: 'nice_to_have',
-        });
-      } finally {
-        setLoading(false);
-      }
+      onAddWish({
+        user_id: currentUserId,
+        title: extractedTitle || 'Подарок по ссылке',
+        link_url: detectedUrl,
+        currency: '₽',
+        priority: 'nice_to_have',
+      });
     } else {
       onAddWish({
         user_id: currentUserId,
@@ -86,13 +69,6 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
 
     setInputVal('');
   };
-
-  const { url: currentUrlCandidate } = extractUrlAndTitle(inputVal);
-  const isCurrentUrl = Boolean(
-    currentUrlCandidate &&
-      (currentUrlCandidate.startsWith('http://') ||
-        currentUrlCandidate.startsWith('https://'))
-  );
 
   return (
     <Paper
@@ -132,24 +108,9 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
         placeholder="Вставьте ссылку на товар или напишите название..."
         value={inputVal}
         onChange={(e) => setInputVal(e.target.value)}
-        disabled={loading}
       />
 
-      {loading ? (
-        <Box sx={{ p: 1, display: 'flex', alignItems: 'center' }}>
-          <CircularProgress size={20} />
-        </Box>
-      ) : isCurrentUrl ? (
-        <Button
-          type="submit"
-          variant="contained"
-          size="small"
-          startIcon={<AutoAwesomeIcon fontSize="small" />}
-          sx={{ borderRadius: 2, mr: 0.5, fontSize: '0.8rem', py: 0.5 }}
-        >
-          Парсинг
-        </Button>
-      ) : inputVal.trim() ? (
+      {inputVal.trim() && (
         <Button
           type="submit"
           variant="contained"
@@ -158,7 +119,7 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
         >
           Добавить
         </Button>
-      ) : null}
+      )}
 
       <Tooltip title="Подробные параметры (фото, приоритет, цена)">
         <IconButton

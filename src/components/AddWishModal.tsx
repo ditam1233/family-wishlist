@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Wish } from '@/types';
-import { scrapeLink, normalizeUrl, extractUrlAndTitle } from '@/lib/scraper';
+import { normalizeUrl, extractUrlAndTitle } from '@/lib/scraper';
 import { compressImage } from '@/lib/imageCompressor';
 import confetti from 'canvas-confetti';
 import {
@@ -15,7 +15,6 @@ import {
   IconButton,
   Box,
   Typography,
-  Chip,
   Tabs,
   Tab,
   CircularProgress,
@@ -26,7 +25,6 @@ import CloseIcon from '@mui/icons-material/Close';
 import LinkIcon from '@mui/icons-material/Link';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
-import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 
 interface AddWishModalProps {
   isOpen: boolean;
@@ -47,13 +45,11 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
   const [imageUrl, setImageUrl] = useState('');
   const [price, setPrice] = useState('');
 
-  const [loading, setLoading] = useState(false);
   const [compressing, setCompressing] = useState(false);
   const [imageTab, setImageTab] = useState<'upload' | 'url'>('upload');
   const [errorMsg, setErrorMsg] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const scrapeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -63,32 +59,9 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
       setImageUrl('');
       setPrice('');
       setErrorMsg('');
-      setLoading(false);
       setCompressing(false);
     }
   }, [isOpen]);
-
-  const executeScrape = async (targetUrl: string) => {
-    const cleanUrl = normalizeUrl(targetUrl);
-    if (!cleanUrl || !cleanUrl.startsWith('http')) return;
-
-    setLoading(true);
-    setErrorMsg('');
-    try {
-      const data = await scrapeLink(cleanUrl);
-      if (data.title && !title.trim()) setTitle(data.title);
-      if (data.description && !description.trim()) setDescription(data.description);
-      if (data.image) {
-        setImageUrl(data.image);
-        setImageTab('url');
-      }
-      if (data.price && !price) setPrice(String(data.price));
-    } catch {
-      /* ignore */
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleUrlChange = (val: string) => {
     const { url: extractedUrl, extractedTitle } = extractUrlAndTitle(val);
@@ -98,28 +71,10 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
       if (!title.trim() && extractedTitle) {
         setTitle(extractedTitle);
       }
-
-      if (scrapeTimeoutRef.current) {
-        clearTimeout(scrapeTimeoutRef.current);
-      }
-      scrapeTimeoutRef.current = setTimeout(() => {
-        executeScrape(extractedUrl);
-      }, 600);
       return;
     }
 
     setLinkUrl(val);
-    const clean = normalizeUrl(val);
-
-    if (scrapeTimeoutRef.current) {
-      clearTimeout(scrapeTimeoutRef.current);
-    }
-
-    if (clean.startsWith('http://') || clean.startsWith('https://')) {
-      scrapeTimeoutRef.current = setTimeout(() => {
-        executeScrape(clean);
-      }, 600);
-    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -213,7 +168,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
             </Alert>
           )}
 
-          {/* Link Scraper Input */}
+          {/* Link Input with URL extraction */}
           <TextField
             label="Ссылка на товар"
             placeholder="Вставьте ссылку на товар или текст из магазина"
@@ -229,12 +184,6 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
                   if (!title.trim() && extractedTitle) {
                     setTitle(extractedTitle);
                   }
-                  if (scrapeTimeoutRef.current) {
-                    clearTimeout(scrapeTimeoutRef.current);
-                  }
-                  scrapeTimeoutRef.current = setTimeout(() => {
-                    executeScrape(extractedUrl);
-                  }, 500);
                 }
               }
             }}
@@ -247,24 +196,6 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
                   <InputAdornment position="start">
                     <LinkIcon fontSize="small" color="action" />
                   </InputAdornment>
-                ),
-                endAdornment: loading ? (
-                  <InputAdornment position="end">
-                    <CircularProgress size={20} />
-                  </InputAdornment>
-                ) : (
-                  linkUrl && (
-                    <InputAdornment position="end">
-                      <Button
-                        size="small"
-                        startIcon={<AutoFixHighIcon fontSize="small" />}
-                        onClick={() => executeScrape(linkUrl)}
-                        sx={{ textTransform: 'none', px: 1, py: 0.25 }}
-                      >
-                        Заполнить
-                      </Button>
-                    </InputAdornment>
-                  )
                 ),
               },
             }}
@@ -407,7 +338,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
           <Button onClick={onClose} color="inherit">
             Отмена
           </Button>
-          <Button type="submit" variant="contained" color="primary" disabled={loading || compressing}>
+          <Button type="submit" variant="contained" color="primary" disabled={compressing}>
             Добавить подарок
           </Button>
         </DialogActions>
