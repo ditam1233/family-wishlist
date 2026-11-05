@@ -368,9 +368,15 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen pb-16 bg-stone-100/70 dark:bg-stone-950 text-stone-900 dark:text-stone-100 transition-colors">
-      {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/80 dark:bg-stone-900/80 border-b border-stone-200/80 dark:border-stone-800 shadow-xs">
+    <div
+      className="min-h-screen bg-stone-100/70 dark:bg-stone-950 text-stone-900 dark:text-stone-100 transition-colors"
+      style={{ paddingBottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}
+    >
+      {/* Top Navigation Bar with seamless iOS safe-area extension */}
+      <header
+        className="sticky top-0 z-40 backdrop-blur-xl bg-white/85 dark:bg-stone-900/85 border-b border-stone-200/80 dark:border-stone-800 shadow-xs"
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           {/* Brand & Family Selector */}
           <div className="flex items-center gap-3">

@@ -6,6 +6,11 @@ export const metadata: Metadata = {
   title: "Семейный Вишлист",
   description:
     "Список подарков для семьи — делитесь желаниями, бронируйте подарки без спойлеров",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Вишлист",
+  },
 };
 
 export const viewport: Viewport = {
@@ -15,8 +20,8 @@ export const viewport: Viewport = {
   userScalable: false,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
-    { media: "(prefers-color-scheme: dark)", color: "#09090b" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#1c1917" },
   ],
 };
 
@@ -34,7 +39,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body>
+      <body className="antialiased min-h-screen">
         <MuiThemeProvider>
           {children}
         </MuiThemeProvider>
