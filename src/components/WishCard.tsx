@@ -4,25 +4,15 @@ import React, { useState } from 'react';
 import { Wish } from '@/types';
 import { formatPrice } from '@/lib/utils';
 import { normalizeUrl } from '@/lib/scraper';
+import { Button } from '@heroui/react';
 import {
-  Card,
-  CardMedia,
-  CardContent,
-  CardActions,
-  Typography,
-  Box,
-  Chip,
-  Button,
-  IconButton,
-  Tooltip,
-  Skeleton,
-} from '@mui/material';
-import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
-import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+  Gift,
+  CheckCircle2,
+  Lock,
+  Trash2,
+  Pencil,
+  ExternalLink,
+} from 'lucide-react';
 
 interface WishCardProps {
   wish: Wish & { is_reserved?: boolean; reserved_by_me?: boolean };
@@ -42,8 +32,7 @@ export const WishCard: React.FC<WishCardProps> = React.memo(function WishCard({
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  const handleReserve = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleReserve = async () => {
     if (!wish.is_reserved) {
       try {
         const confetti = (await import('canvas-confetti')).default;
@@ -73,278 +62,181 @@ export const WishCard: React.FC<WishCardProps> = React.memo(function WishCard({
 
   const domain = getDomain(cleanLinkUrl);
 
+  const priorityLabels: Record<string, { label: string; color: string }> = {
+    must_have: {
+      label: 'Очень хочу',
+      color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
+    },
+    dream: {
+      label: 'Мечта',
+      color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
+    },
+    nice_to_have: {
+      label: 'Буду рад',
+      color: 'bg-stone-500/10 text-stone-600 dark:text-stone-400 border-stone-500/20',
+    },
+  };
+
+  const priorityInfo = wish.priority ? priorityLabels[wish.priority] : null;
+
   return (
-    <Card
-      className="glass-card"
-      sx={{
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        position: 'relative',
-        overflow: 'hidden',
-        borderRadius: '22px',
-        transition: 'all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
-      }}
-    >
-      <Box>
+    <div className="group flex flex-col justify-between h-full rounded-3xl bg-white/80 dark:bg-stone-900/80 backdrop-blur-md border border-stone-200/80 dark:border-stone-800 shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+      <div>
         {/* Card Media / Image Header */}
-        <Box
-          sx={{
-            position: 'relative',
-            width: '100%',
-            paddingTop: '62%', // 16:10 aspect ratio
-            backgroundColor: (theme) =>
-              theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-            overflow: 'hidden',
-          }}
-        >
+        <div className="relative w-full pt-[62%] bg-stone-100 dark:bg-stone-800 overflow-hidden">
           {wish.image_url && !imageError ? (
             <>
               {!imageLoaded && (
-                <Skeleton
-                  variant="rectangular"
-                  sx={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                  }}
-                  animation="wave"
-                />
+                <div className="absolute inset-0 animate-pulse bg-stone-200 dark:bg-stone-700" />
               )}
-              <CardMedia
-                component="img"
-                image={wish.image_url}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={wish.image_url}
                 alt={wish.title}
                 loading="lazy"
                 onLoad={() => setImageLoaded(true)}
                 onError={() => setImageError(true)}
-                sx={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  transition: 'transform 0.3s ease',
-                  '&:hover': {
-                    transform: 'scale(1.04)',
-                  },
-                }}
+                className={`absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${
+                  imageLoaded ? 'opacity-100' : 'opacity-0'
+                }`}
               />
             </>
           ) : (
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <CardGiftcardIcon
-                sx={{
-                  fontSize: 48,
-                  color: (theme) =>
-                    theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
-                }}
-              />
-            </Box>
+            <div className="absolute inset-0 flex items-center justify-center text-stone-300 dark:text-stone-600">
+              <Gift className="w-12 h-12 stroke-[1.2]" />
+            </div>
           )}
 
           {/* Badges Over Image */}
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 10,
-              left: 10,
-              right: 10,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              pointerEvents: 'none',
-            }}
-          >
-            <Box />
+          <div className="absolute top-3 left-3 right-3 flex justify-between items-start pointer-events-none">
+            {wish.is_reserved ? (
+              <span
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-md shadow-xs pointer-events-auto ${
+                  wish.reserved_by_me
+                    ? 'bg-emerald-600/90 text-white'
+                    : 'bg-stone-900/80 text-stone-200'
+                }`}
+              >
+                {wish.reserved_by_me ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Вы дарите
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-3 h-3" />
+                    Забронировано
+                  </>
+                )}
+              </span>
+            ) : (
+              <div />
+            )}
 
             {wish.price && wish.price > 0 && (
-              <Chip
-                label={formatPrice(wish.price, wish.currency)}
-                size="small"
-                sx={{
-                  backgroundColor: 'rgba(15, 23, 42, 0.85)',
-                  color: '#ffffff',
-                  backdropFilter: 'blur(8px)',
-                  fontWeight: 700,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                  pointerEvents: 'auto',
-                }}
-              />
+              <span className="px-2.5 py-1 rounded-full text-xs font-bold font-mono bg-stone-950/80 text-white backdrop-blur-md shadow-xs pointer-events-auto">
+                {formatPrice(wish.price, wish.currency)}
+              </span>
             )}
-          </Box>
-        </Box>
+          </div>
+        </div>
 
         {/* Content */}
-        <CardContent sx={{ p: 2, pb: 1 }}>
-          <Typography
-            variant="subtitle1"
-            component="h3"
-            sx={{
-              fontWeight: 700,
-              lineHeight: 1.3,
-              mb: 0.5,
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-            }}
-          >
+        <div className="p-4 space-y-2.5">
+          <h3 className="font-bold text-base text-stone-900 dark:text-stone-100 line-clamp-2 leading-snug">
             {wish.title}
-          </Typography>
+          </h3>
 
           {wish.description && (
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{
-                lineHeight: 1.4,
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-                mb: 1,
-              }}
-            >
+            <p className="text-xs text-stone-500 dark:text-stone-400 line-clamp-2 leading-relaxed">
               {wish.description}
-            </Typography>
+            </p>
           )}
 
-          {/* Event Tag or Store Domain */}
-          <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mt: 1 }}>
+          <div className="flex items-center gap-2 flex-wrap pt-1">
+            {priorityInfo && (
+              <span
+                className={`text-[11px] font-medium px-2 py-0.5 rounded-lg border ${priorityInfo.color}`}
+              >
+                {priorityInfo.label}
+              </span>
+            )}
+
             {domain && cleanLinkUrl && (
-              <Chip
-                component="a"
+              <a
                 href={cleanLinkUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                clickable
-                icon={<OpenInNewIcon sx={{ fontSize: '13px !important' }} />}
-                label={domain}
-                size="small"
-                variant="outlined"
-                sx={{ fontSize: '0.72rem', height: 22 }}
-              />
+                className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              >
+                <span>{domain}</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
             )}
-          </Box>
-        </CardContent>
-      </Box>
+          </div>
+        </div>
+      </div>
 
-      {/* Action Bottom Bar */}
-      <CardActions
-        sx={{
-          p: 2,
-          pt: 0,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}
-      >
+      {/* Footer Actions */}
+      <div className="p-4 pt-0">
         {isOwner ? (
-          <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="caption" color="text.secondary">
-              Ваше желание
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 0.5 }}>
-              {onEditWish && (
-                <Tooltip title="Редактировать">
-                  <IconButton
-                    size="small"
-                    onClick={() => onEditWish(wish)}
-                    sx={{ color: 'text.secondary' }}
-                  >
-                    <EditOutlinedIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              )}
-              <Tooltip title="Удалить">
-                <IconButton
-                  size="small"
-                  onClick={() => onDeleteWish(wish.id)}
-                  sx={{ color: 'error.main' }}
-                >
-                  <DeleteOutlinedIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Box>
-          </Box>
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100 dark:border-stone-800/80">
+            {onEditWish && (
+              <button
+                type="button"
+                title="Редактировать"
+                onClick={() => onEditWish(wish)}
+                className="p-2 rounded-xl text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              type="button"
+              title="Удалить"
+              onClick={() => onDeleteWish(wish.id)}
+              className="p-2 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
         ) : (
-          <Box sx={{ width: '100%' }}>
+          <div className="pt-2 border-t border-stone-100 dark:border-stone-800/80">
             {wish.is_reserved ? (
               wish.reserved_by_me ? (
                 <Button
-                  fullWidth
-                  variant="outlined"
-                  color="success"
-                  startIcon={<CheckCircleOutlinedIcon />}
-                  onClick={handleReserve}
-                  sx={{
-                    fontWeight: 700,
-                    minHeight: 44,
-                    borderRadius: 2.5,
-                    borderWidth: 1.5,
-                    fontSize: '0.86rem',
-                  }}
+                  size="md"
+                  variant="outline"
+                  onPress={handleReserve}
+                  className="w-full rounded-2xl font-semibold border-emerald-500 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 gap-2 h-11"
                 >
-                  Вы дарите (Отменить)
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  <span>Вы дарите (Отменить)</span>
                 </Button>
               ) : (
                 <Button
-                  fullWidth
-                  variant="contained"
-                  disabled
-                  startIcon={<LockOutlinedIcon />}
-                  sx={{
-                    opacity: 0.7,
-                    minHeight: 44,
-                    borderRadius: 2.5,
-                    fontSize: '0.86rem',
-                  }}
+                  size="md"
+                  isDisabled
+                  className="w-full rounded-2xl font-medium opacity-60 bg-stone-100 dark:bg-stone-800 text-stone-400 gap-2 h-11"
                 >
-                  Уже забронировано
+                  <Lock className="w-4 h-4" />
+                  <span>Уже забронировано</span>
                 </Button>
               )
             ) : (
               <Button
-                fullWidth
-                variant="contained"
-                color="primary"
-                startIcon={<CardGiftcardIcon />}
-                onClick={handleReserve}
-                sx={{
-                  fontWeight: 700,
-                  letterSpacing: '0.01em',
-                  minHeight: 44,
-                  borderRadius: 2.5,
-                  fontSize: '0.88rem',
-                  boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
-                  '&:hover': {
-                    boxShadow: '0 6px 20px rgba(37, 99, 235, 0.45)',
-                  },
-                }}
+                size="md"
+                onPress={handleReserve}
+                className="w-full rounded-2xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-indigo-500/25 gap-2 h-11 transition-all"
               >
-                Подарю я!
+                <Gift className="w-4 h-4" />
+                <span>Подарю я!</span>
               </Button>
             )}
-          </Box>
+          </div>
         )}
-      </CardActions>
-    </Card>
+      </div>
+    </div>
   );
 });
 

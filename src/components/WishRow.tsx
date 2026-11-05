@@ -4,21 +4,15 @@ import React, { useState } from 'react';
 import { Wish } from '@/types';
 import { formatPrice } from '@/lib/utils';
 import { normalizeUrl } from '@/lib/scraper';
+import { Button } from '@heroui/react';
 import {
-  Paper,
-  Box,
-  Typography,
-  Button,
-  IconButton,
-  Avatar,
-  Tooltip,
-} from '@mui/material';
-import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
-import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+  Gift,
+  CheckCircle2,
+  Lock,
+  Trash2,
+  Pencil,
+  ExternalLink,
+} from 'lucide-react';
 
 interface WishRowProps {
   wish: Wish & { is_reserved?: boolean; reserved_by_me?: boolean };
@@ -37,8 +31,7 @@ export const WishRow: React.FC<WishRowProps> = React.memo(function WishRow({
 }) {
   const [imgError, setImgError] = useState(false);
 
-  const handleReserve = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleReserve = async () => {
     if (!wish.is_reserved) {
       try {
         const confetti = (await import('canvas-confetti')).default;
@@ -69,150 +62,109 @@ export const WishRow: React.FC<WishRowProps> = React.memo(function WishRow({
   const domain = getDomain(cleanLinkUrl);
 
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        p: 1.5,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 2,
-        border: (theme) =>
-          theme.palette.mode === 'dark'
-            ? '1px solid rgba(255, 255, 255, 0.08)'
-            : '1px solid rgba(0, 0, 0, 0.06)',
-        borderRadius: 3,
-        backgroundColor: 'background.paper',
-        transition: 'all 0.18s ease',
-        '&:hover': {
-          boxShadow: (theme) =>
-            theme.palette.mode === 'dark'
-              ? '0 4px 16px rgba(0,0,0,0.4)'
-              : '0 4px 16px rgba(15,23,42,0.06)',
-        },
-      }}
-    >
-      {/* Avatar / Thumbnail */}
-      <Avatar
-        src={!imgError && wish.image_url ? wish.image_url : undefined}
-        variant="rounded"
-        onError={() => setImgError(true)}
-        sx={{
-          width: 56,
-          height: 56,
-          borderRadius: 2.5,
-          backgroundColor: (theme) =>
-            theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-          color: 'text.secondary',
-        }}
-      >
-        <CardGiftcardIcon sx={{ fontSize: 26 }} />
-      </Avatar>
+    <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/70 dark:border-stone-800 shadow-xs hover:shadow-md transition-all">
+      {/* Thumbnail */}
+      <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-stone-100 dark:bg-stone-800 flex items-center justify-center border border-stone-200/50 dark:border-stone-700/50">
+        {!imgError && wish.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={wish.image_url}
+            alt={wish.title}
+            onError={() => setImgError(true)}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <Gift className="w-6 h-6 text-stone-400 dark:text-stone-500" />
+        )}
+      </div>
 
-      {/* Wish Info */}
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}>
-          <Typography
-            variant="subtitle2"
-            component="h3"
-            sx={{
-              fontWeight: 700,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            {wish.title}
-          </Typography>
-        </Box>
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100 truncate mb-1">
+          {wish.title}
+        </h3>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+        <div className="flex items-center gap-3 flex-wrap text-xs">
           {wish.price && wish.price > 0 && (
-            <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
+            <span className="font-bold text-indigo-600 dark:text-indigo-400 font-mono">
               {formatPrice(wish.price, wish.currency)}
-            </Typography>
+            </span>
           )}
 
           {domain && cleanLinkUrl && (
-            <Box
-              component="a"
+            <a
               href={cleanLinkUrl}
               target="_blank"
               rel="noopener noreferrer"
-              sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 0.5,
-                fontSize: '0.75rem',
-                color: 'text.secondary',
-                textDecoration: 'none',
-                '&:hover': { color: 'primary.main', textDecoration: 'underline' },
-              }}
+              className="inline-flex items-center gap-1 text-stone-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
             >
-              {domain}
-              <OpenInNewIcon sx={{ fontSize: 12 }} />
-            </Box>
+              <span>{domain}</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
           )}
-        </Box>
-      </Box>
+        </div>
+      </div>
 
       {/* Actions */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <div className="flex items-center gap-1.5 shrink-0">
         {isOwner ? (
-          <Box sx={{ display: 'flex', gap: 0.5 }}>
+          <div className="flex items-center gap-1">
             {onEditWish && (
-              <Tooltip title="Редактировать">
-                <IconButton size="small" onClick={() => onEditWish(wish)} sx={{ color: 'text.secondary' }}>
-                  <EditOutlinedIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
+              <button
+                type="button"
+                title="Редактировать"
+                onClick={() => onEditWish(wish)}
+                className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
             )}
-            <Tooltip title="Удалить">
-              <IconButton size="small" onClick={() => onDeleteWish(wish.id)} sx={{ color: 'error.main' }}>
-                <DeleteOutlinedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Box>
+            <button
+              type="button"
+              title="Удалить"
+              onClick={() => onDeleteWish(wish.id)}
+              className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
         ) : (
-          <Box>
+          <div>
             {wish.is_reserved ? (
               wish.reserved_by_me ? (
                 <Button
-                  variant="outlined"
-                  color="success"
-                  size="small"
-                  startIcon={<CheckCircleOutlinedIcon />}
-                  onClick={handleReserve}
-                  sx={{ whiteSpace: 'nowrap' }}
+                  size="sm"
+                  variant="outline"
+                  onPress={handleReserve}
+                  className="rounded-xl font-semibold border-emerald-500 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 gap-1.5"
                 >
-                  Я подарю
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  <span>Я подарю</span>
                 </Button>
               ) : (
                 <Button
-                  variant="contained"
-                  disabled
-                  size="small"
-                  startIcon={<LockOutlinedIcon />}
-                  sx={{ whiteSpace: 'nowrap', opacity: 0.7 }}
+                  size="sm"
+                  isDisabled
+                  className="rounded-xl opacity-60 bg-stone-100 dark:bg-stone-800 text-stone-400 gap-1.5"
                 >
-                  Забронировано
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Забронировано</span>
                 </Button>
               )
             ) : (
               <Button
-                variant="contained"
-                color="primary"
-                size="small"
-                startIcon={<CardGiftcardIcon />}
-                onClick={handleReserve}
-                sx={{ whiteSpace: 'nowrap', fontWeight: 700 }}
+                size="sm"
+                onPress={handleReserve}
+                className="rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs gap-1.5"
               >
-                Подарю я!
+                <Gift className="w-4 h-4" />
+                <span>Подарю я!</span>
               </Button>
             )}
-          </Box>
+          </div>
         )}
-      </Box>
-    </Paper>
+      </div>
+    </div>
   );
 });
 

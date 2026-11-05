@@ -3,17 +3,9 @@
 import React, { useState } from 'react';
 import { Wish } from '@/types';
 import { extractUrlAndTitle } from '@/lib/scraper';
+import { Button } from '@heroui/react';
+import { Plus, SlidersHorizontal } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import {
-  Paper,
-  InputBase,
-  IconButton,
-  Button,
-  Box,
-  Tooltip,
-} from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import TuneIcon from '@mui/icons-material/Tune';
 
 interface InlineAddWishProps {
   currentUserId: string;
@@ -71,40 +63,17 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
   };
 
   return (
-    <Paper
-      component="form"
+    <form
       onSubmit={handleSubmit}
-      elevation={0}
-      sx={{
-        p: '4px 8px',
-        display: 'flex',
-        alignItems: 'center',
-        borderRadius: 3,
-        border: (theme) =>
-          theme.palette.mode === 'dark'
-            ? '1px solid rgba(255, 255, 255, 0.1)'
-            : '1px solid rgba(0, 0, 0, 0.08)',
-        backgroundColor: 'background.paper',
-        boxShadow: (theme) =>
-          theme.palette.mode === 'dark'
-            ? '0 2px 10px rgba(0,0,0,0.3)'
-            : '0 2px 10px rgba(15,23,42,0.04)',
-        transition: 'all 0.2s ease',
-        '&:focus-within': {
-          borderColor: 'primary.main',
-          boxShadow: (theme) =>
-            theme.palette.mode === 'dark'
-              ? '0 0 0 2px rgba(99, 102, 241, 0.25)'
-              : '0 0 0 2px rgba(79, 70, 229, 0.15)',
-        },
-      }}
+      className="flex items-center gap-2 p-1.5 pl-3.5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 shadow-xs hover:border-stone-300 dark:hover:border-stone-700 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/15 transition-all"
     >
-      <Box sx={{ p: 1, color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
-        <AddIcon fontSize="small" />
-      </Box>
+      <div className="text-stone-400 dark:text-stone-500 shrink-0">
+        <Plus className="w-4 h-4" />
+      </div>
 
-      <InputBase
-        sx={{ ml: 1, flex: 1, fontSize: '0.9rem' }}
+      <input
+        type="text"
+        className="flex-1 bg-transparent text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none"
         placeholder="Вставьте ссылку на товар или напишите название..."
         value={inputVal}
         onChange={(e) => setInputVal(e.target.value)}
@@ -113,26 +82,21 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
       {inputVal.trim() && (
         <Button
           type="submit"
-          variant="contained"
-          size="small"
-          sx={{ borderRadius: 2, mr: 0.5, fontSize: '0.8rem', py: 0.5 }}
+          size="sm"
+          className="rounded-xl px-3 py-1 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shrink-0 shadow-xs transition-all"
         >
           Добавить
         </Button>
       )}
 
-      <Tooltip title="Подробные параметры (фото, приоритет, цена)">
-        <IconButton
-          size="small"
-          onClick={onOpenFullModal}
-          sx={{
-            color: 'text.secondary',
-            '&:hover': { color: 'primary.main' },
-          }}
-        >
-          <TuneIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
-    </Paper>
+      <button
+        type="button"
+        title="Подробные параметры (фото, приоритет, цена)"
+        onClick={onOpenFullModal}
+        className="p-1.5 rounded-xl text-stone-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors shrink-0 cursor-pointer"
+      >
+        <SlidersHorizontal className="w-4 h-4" />
+      </button>
+    </form>
   );
 };
