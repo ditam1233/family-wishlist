@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Wish } from '@/types';
-import { scrapeLink, normalizeUrl } from '@/lib/scraper';
+import { scrapeLink, normalizeUrl, extractUrlAndTitle } from '@/lib/scraper';
 import { compressImage } from '@/lib/imageCompressor';
 import confetti from 'canvas-confetti';
 import {
@@ -34,7 +34,6 @@ interface AddWishModalProps {
   onAddWish: (wish: Omit<Wish, 'id' | 'created_at'>) => void;
   userId: string;
 }
-
 
 export const AddWishModal: React.FC<AddWishModalProps> = ({
   isOpen,
@@ -77,13 +76,13 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
     setErrorMsg('');
     try {
       const data = await scrapeLink(cleanUrl);
-      if (data.title) setTitle(data.title);
-      if (data.description) setDescription(data.description);
+      if (data.title && !title.trim()) setTitle(data.title);
+      if (data.description && !description.trim()) setDescription(data.description);
       if (data.image) {
         setImageUrl(data.image);
         setImageTab('url');
       }
-      if (data.price) setPrice(String(data.price));
+      if (data.price && !price) setPrice(String(data.price));
     } catch {
       /* ignore */
     } finally {
@@ -92,6 +91,23 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
   };
 
   const handleUrlChange = (val: string) => {
+    const { url: extractedUrl, extractedTitle } = extractUrlAndTitle(val);
+
+    if (extractedUrl) {
+      setLinkUrl(extractedUrl);
+      if (!title.trim() && extractedTitle) {
+        setTitle(extractedTitle);
+      }
+
+      if (scrapeTimeoutRef.current) {
+        clearTimeout(scrapeTimeoutRef.current);
+      }
+      scrapeTimeoutRef.current = setTimeout(() => {
+        executeScrape(extractedUrl);
+      }, 600);
+      return;
+    }
+
     setLinkUrl(val);
     const clean = normalizeUrl(val);
 
@@ -102,7 +118,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
     if (clean.startsWith('http://') || clean.startsWith('https://')) {
       scrapeTimeoutRef.current = setTimeout(() => {
         executeScrape(clean);
-      }, 700);
+      }, 600);
     }
   };
 
@@ -129,12 +145,17 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
     }
 
     const cleanPrice = parseFloat(price.replace(/[^\d.]/g, ''));
+    const finalCleanUrl = normalizeUrl(linkUrl);
+    const validLink =
+      finalCleanUrl.startsWith('http://') || finalCleanUrl.startsWith('https://')
+        ? finalCleanUrl
+        : undefined;
 
     onAddWish({
       user_id: userId,
       title: title.trim(),
       description: description.trim() || undefined,
-      link_url: linkUrl.trim() || undefined,
+      link_url: validLink,
       image_url: imageUrl.trim() || undefined,
       price: !isNaN(cleanPrice) && cleanPrice > 0 ? cleanPrice : undefined,
       currency: '₽',
@@ -195,36 +216,58 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
           {/* Link Scraper Input */}
           <TextField
             label="Ссылка на товар"
-            placeholder="Вставьте ссылку на товар"
+            placeholder="Вставьте ссылку на товар или текст из магазина"
             value={linkUrl}
             onChange={(e) => handleUrlChange(e.target.value)}
+            onPaste={(e) => {
+              const pastedText = e.clipboardData.getData('text');
+              if (pastedText) {
+                const { url: extractedUrl, extractedTitle } = extractUrlAndTitle(pastedText);
+                if (extractedUrl) {
+                  e.preventDefault();
+                  setLinkUrl(extractedUrl);
+                  if (!title.trim() && extractedTitle) {
+                    setTitle(extractedTitle);
+                  }
+                  if (scrapeTimeoutRef.current) {
+                    clearTimeout(scrapeTimeoutRef.current);
+                  }
+                  scrapeTimeoutRef.current = setTimeout(() => {
+                    executeScrape(extractedUrl);
+                  }, 500);
+                }
+              }
+            }}
             fullWidth
             size="small"
-            slotProps={{ input: {
-              startAdornment: (
-                <InputAdornment position="start">
-                  <LinkIcon fontSize="small" color="action" />
-                </InputAdornment>
-              ),
-              endAdornment: loading ? (
-                <InputAdornment position="end">
-                  <CircularProgress size={20} />
-                </InputAdornment>
-              ) : (
-                linkUrl && (
-                  <InputAdornment position="end">
-                    <Button
-                      size="small"
-                      startIcon={<AutoFixHighIcon fontSize="small" />}
-                      onClick={() => executeScrape(linkUrl)}
-                      sx={{ textTransform: 'none', px: 1, py: 0.25 }}
-                    >
-                      Заполнить
-                    </Button>
+            helperText="Поддерживаются любые ссылки (включая сообщения с названиями из Ozon, Wildberries и др.)"
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LinkIcon fontSize="small" color="action" />
                   </InputAdornment>
-                )
-              ),
-            }}}
+                ),
+                endAdornment: loading ? (
+                  <InputAdornment position="end">
+                    <CircularProgress size={20} />
+                  </InputAdornment>
+                ) : (
+                  linkUrl && (
+                    <InputAdornment position="end">
+                      <Button
+                        size="small"
+                        startIcon={<AutoFixHighIcon fontSize="small" />}
+                        onClick={() => executeScrape(linkUrl)}
+                        sx={{ textTransform: 'none', px: 1, py: 0.25 }}
+                      >
+                        Заполнить
+                      </Button>
+                    </InputAdornment>
+                  )
+                ),
+              },
+            }}
           />
 
           {/* Image Upload / URL Tabs */}
@@ -340,9 +383,11 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
             onChange={(e) => setPrice(e.target.value)}
             fullWidth
             size="small"
-            slotProps={{ input: {
-              endAdornment: <InputAdornment position="end">₽</InputAdornment>,
-            }}}
+            slotProps={{
+              input: {
+                endAdornment: <InputAdornment position="end">₽</InputAdornment>,
+              },
+            }}
           />
 
           {/* Description */}

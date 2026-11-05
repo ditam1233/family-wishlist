@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Wish } from '@/types';
-import { scrapeLink, normalizeUrl } from '@/lib/scraper';
+import { scrapeLink, extractUrlAndTitle } from '@/lib/scraper';
 import confetti from 'canvas-confetti';
 import {
   Paper,
@@ -36,16 +36,16 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
     const clean = inputVal.trim();
     if (!clean) return;
 
-    const detectedUrl = normalizeUrl(clean);
-    const isUrl = detectedUrl.startsWith('http://') || detectedUrl.startsWith('https://');
+    const { url: detectedUrl, extractedTitle } = extractUrlAndTitle(clean);
+    const hasUrl = Boolean(detectedUrl && (detectedUrl.startsWith('http://') || detectedUrl.startsWith('https://')));
 
-    if (isUrl) {
+    if (hasUrl) {
       setLoading(true);
       try {
         const data = await scrapeLink(detectedUrl);
         onAddWish({
           user_id: currentUserId,
-          title: data.title || clean,
+          title: data.title || extractedTitle || clean,
           description: data.description || undefined,
           link_url: detectedUrl,
           image_url: data.image || undefined,
@@ -56,7 +56,7 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
       } catch {
         onAddWish({
           user_id: currentUserId,
-          title: clean,
+          title: extractedTitle || clean,
           link_url: detectedUrl,
           currency: '₽',
           priority: 'nice_to_have',
@@ -87,10 +87,11 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
     setInputVal('');
   };
 
+  const { url: currentUrlCandidate } = extractUrlAndTitle(inputVal);
   const isCurrentUrl = Boolean(
-    inputVal.trim() &&
-      (normalizeUrl(inputVal).startsWith('http://') ||
-        normalizeUrl(inputVal).startsWith('https://'))
+    currentUrlCandidate &&
+      (currentUrlCandidate.startsWith('http://') ||
+        currentUrlCandidate.startsWith('https://'))
   );
 
   return (

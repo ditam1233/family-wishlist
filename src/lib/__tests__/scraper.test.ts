@@ -1,8 +1,47 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeUrl, cleanTitle, getWbBasket } from '../scraper';
+import { normalizeUrl, cleanTitle, getWbBasket, extractUrlAndTitle } from '../scraper';
 
 describe('Scraper & URL helpers', () => {
+  describe('extractUrlAndTitle', () => {
+    it('extracts URL and title from Ozon mobile share text', () => {
+      const input = 'Игровой набор игрушечные продукты, овощи и фрукты на липучках, в корзинке "Кухня" https://ozon.ru/t/l1Pvfzk';
+      const result = extractUrlAndTitle(input);
+      expect(result.url).toBe('https://ozon.ru/t/l1Pvfzk');
+      expect(result.extractedTitle).toBe('Игровой набор игрушечные продукты, овощи и фрукты на липучках, в корзинке "Кухня"');
+    });
+
+    it('extracts URL and cleans Wildberries share prefix', () => {
+      const input = 'Смотри, что нашлось на Wildberries: Наушники беспроводные https://www.wildberries.ru/catalog/12345/detail.aspx';
+      const result = extractUrlAndTitle(input);
+      expect(result.url).toBe('https://www.wildberries.ru/catalog/12345/detail.aspx');
+      expect(result.extractedTitle).toBe('Наушники беспроводные');
+    });
+
+    it('strips trailing punctuation from URL', () => {
+      expect(extractUrlAndTitle('Подари мне https://ozon.ru/t/abc.').url).toBe('https://ozon.ru/t/abc');
+      expect(extractUrlAndTitle('https://ozon.ru/t/abc,').url).toBe('https://ozon.ru/t/abc');
+      expect(extractUrlAndTitle('("https://ozon.ru/t/abc")').url).toBe('https://ozon.ru/t/abc');
+    });
+
+    it('handles domain without protocol in text', () => {
+      const result = extractUrlAndTitle('Конструктор Лего ozon.ru/product/123');
+      expect(result.url).toBe('https://ozon.ru/product/123');
+      expect(result.extractedTitle).toBe('Конструктор Лего');
+    });
+
+    it('returns empty url for text without links', () => {
+      const result = extractUrlAndTitle('Просто обычный подарок');
+      expect(result.url).toBe('');
+      expect(result.extractedTitle).toBeUndefined();
+    });
+  });
+
   describe('normalizeUrl', () => {
+    it('extracts clean URL from messy marketplace text', () => {
+      const input = 'Игровой набор игрушечные продукты, овощи и фрукты на липучках, в корзинке "Кухня" https://ozon.ru/t/l1Pvfzk';
+      expect(normalizeUrl(input)).toBe('https://ozon.ru/t/l1Pvfzk');
+    });
+
     it('adds https:// if protocol is missing from standard domains', () => {
       expect(normalizeUrl('wildberries.ru/catalog/12345/detail.aspx')).toBe(
         'https://wildberries.ru/catalog/12345/detail.aspx'
@@ -19,6 +58,7 @@ describe('Scraper & URL helpers', () => {
 
     it('returns empty string for blank input', () => {
       expect(normalizeUrl('   ')).toBe('');
+      expect(normalizeUrl(undefined)).toBe('');
     });
   });
 

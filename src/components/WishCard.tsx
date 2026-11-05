@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Wish } from '@/types';
 import { formatPrice } from '@/lib/utils';
+import { normalizeUrl } from '@/lib/scraper';
 import {
   Card,
   CardMedia,
@@ -59,6 +60,8 @@ export const WishCard: React.FC<WishCardProps> = React.memo(function WishCard({
     onToggleReserve(wish.id);
   };
 
+  const cleanLinkUrl = wish.link_url ? normalizeUrl(wish.link_url) : '';
+
   const getDomain = (url?: string) => {
     if (!url) return '';
     try {
@@ -68,7 +71,7 @@ export const WishCard: React.FC<WishCardProps> = React.memo(function WishCard({
     }
   };
 
-  const domain = getDomain(wish.link_url);
+  const domain = getDomain(cleanLinkUrl);
 
   return (
     <Card
@@ -224,10 +227,10 @@ export const WishCard: React.FC<WishCardProps> = React.memo(function WishCard({
 
           {/* Event Tag or Store Domain */}
           <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mt: 1 }}>
-            {domain && (
+            {domain && cleanLinkUrl && (
               <Chip
                 component="a"
-                href={wish.link_url}
+                href={cleanLinkUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 clickable

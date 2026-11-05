@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Wish } from '@/types';
 import { formatPrice } from '@/lib/utils';
+import { normalizeUrl } from '@/lib/scraper';
 import {
   Paper,
   Box,
@@ -54,6 +55,8 @@ export const WishRow: React.FC<WishRowProps> = React.memo(function WishRow({
     onToggleReserve(wish.id);
   };
 
+  const cleanLinkUrl = wish.link_url ? normalizeUrl(wish.link_url) : '';
+
   const getDomain = (url?: string) => {
     if (!url) return '';
     try {
@@ -63,7 +66,7 @@ export const WishRow: React.FC<WishRowProps> = React.memo(function WishRow({
     }
   };
 
-  const domain = getDomain(wish.link_url);
+  const domain = getDomain(cleanLinkUrl);
 
   return (
     <Paper
@@ -129,10 +132,10 @@ export const WishRow: React.FC<WishRowProps> = React.memo(function WishRow({
             </Typography>
           )}
 
-          {domain && (
+          {domain && cleanLinkUrl && (
             <Box
               component="a"
-              href={wish.link_url}
+              href={cleanLinkUrl}
               target="_blank"
               rel="noopener noreferrer"
               sx={{

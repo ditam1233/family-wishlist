@@ -7,7 +7,107 @@ export interface ScrapedLinkData {
   siteName?: string;
 }
 
-export function normalizeUrl(raw: string): string {
+export interface ExtractedUrlInfo {
+  url: string;
+  extractedTitle?: string;
+}
+
+function stripOuterQuotes(str: string): string {
+  let s = str.trim();
+  if (
+    (s.startsWith('"') && s.endsWith('"')) ||
+    (s.startsWith('«') && s.endsWith('»')) ||
+    (s.startsWith("'") && s.endsWith("'"))
+  ) {
+    s = s.slice(1, -1).trim();
+  }
+  return s;
+}
+
+export function cleanTitle(title: string): string {
+  if (!title) return '';
+  const res = title
+    .replace(/^Смотри,\s*что\s*наш(?:лось|ел)(?:\s*на\s*[^:]+)?:\s*/i, '')
+    .replace(/^(?:Посмотри|Глянь|Ссылка|Товар)(?:\s*на\s*[^:]+)?:\s*/i, '')
+    .replace(/\s*\|\s*.*$/g, '')
+    .replace(/\s*—\s*интернет-магазин.*$/gi, '')
+    .replace(/\s*—\s*купить.*$/gi, '')
+    .replace(/\s*купить по выгодной цене.*$/gi, '')
+    .replace(/\s*в интернет-магазине.*$/gi, '')
+    .replace(/\s*на OZON.*$/gi, '')
+    .replace(/\s*на Wildberries.*$/gi, '')
+    .replace(/\s*Wildberries.*$/gi, '')
+    .replace(/\s*Яндекс Маркет.*$/gi, '')
+    .replace(/^[-—–:\s]+|[-—–:\s]+$/g, '')
+    .trim();
+
+  return stripOuterQuotes(res);
+}
+
+/**
+ * Extracts clean URL and accompanying product title from messy marketplace share strings
+ * e.g. 'Игровой набор продуктов "Кухня" https://ozon.ru/t/l1Pvfzk' -> url: 'https://ozon.ru/t/l1Pvfzk'
+ */
+export function extractUrlAndTitle(raw?: string): ExtractedUrlInfo {
+  if (!raw || !raw.trim()) {
+    return { url: '' };
+  }
+
+  const text = raw.trim();
+
+  // 1. Check for explicit http:// or https:// URL anywhere in text
+  const httpRegex = /(https?:\/\/[^\s"'<>()[\]{}]+)/i;
+  const httpMatch = text.match(httpRegex);
+
+  if (httpMatch) {
+    let cleanUrl = httpMatch[1];
+    // Strip trailing punctuation often appended in messengers (. , ! ? ; : " ' ) ] })
+    cleanUrl = cleanUrl.replace(/[.,!?:;"')\]}]+$/, '');
+
+    // Extract title text surrounding the URL
+    const rawTitlePart = text
+      .replace(httpMatch[0], '')
+      .replace(/^[-—–:\s]+|[-—–:\s]+$/g, '')
+      .trim();
+
+    const titlePart = cleanTitle(rawTitlePart);
+
+    return {
+      url: cleanUrl,
+      extractedTitle: titlePart && titlePart.length > 2 ? titlePart : undefined,
+    };
+  }
+
+  // 2. Check for domain-like URLs without protocol (e.g. ozon.ru/t/..., wildberries.ru/..., market.yandex.ru/...)
+  const domainRegex = /(?:^|\s)([a-zA-Z0-9-]+\.(?:ru|com|by|kz|org|net|io|me|market|store)(?:\/[^\s"'<>()[\]{}]*)?)/i;
+  const domainMatch = text.match(domainRegex);
+
+  if (domainMatch) {
+    let cleanUrl = domainMatch[1].replace(/[.,!?:;"')\]}]+$/, '');
+    cleanUrl = 'https://' + cleanUrl;
+
+    const rawTitlePart = text
+      .replace(domainMatch[0], '')
+      .replace(/^[-—–:\s]+|[-—–:\s]+$/g, '')
+      .trim();
+
+    const titlePart = cleanTitle(rawTitlePart);
+
+    return {
+      url: cleanUrl,
+      extractedTitle: titlePart && titlePart.length > 2 ? titlePart : undefined,
+    };
+  }
+
+  return { url: '' };
+}
+
+export function normalizeUrl(raw?: string): string {
+  if (!raw) return '';
+  const extracted = extractUrlAndTitle(raw);
+  if (extracted.url) {
+    return extracted.url;
+  }
   let clean = raw.trim();
   if (!clean) return '';
   if (
@@ -18,21 +118,6 @@ export function normalizeUrl(raw: string): string {
     clean = 'https://' + clean;
   }
   return clean;
-}
-
-export function cleanTitle(title: string): string {
-  if (!title) return '';
-  return title
-    .replace(/\s*\|\s*.*$/g, '')
-    .replace(/\s*—\s*интернет-магазин.*$/gi, '')
-    .replace(/\s*—\s*купить.*$/gi, '')
-    .replace(/\s*купить по выгодной цене.*$/gi, '')
-    .replace(/\s*в интернет-магазине.*$/gi, '')
-    .replace(/\s*на OZON.*$/gi, '')
-    .replace(/\s*на Wildberries.*$/gi, '')
-    .replace(/\s*Wildberries.*$/gi, '')
-    .replace(/\s*Яндекс Маркет.*$/gi, '')
-    .trim();
 }
 
 export function getWbBasket(vol: number): string {
@@ -249,7 +334,7 @@ export async function scrapeLink(rawUrl: string): Promise<ScrapedLinkData> {
           return {
             title,
             description,
-            image: image || undefined,
+            image,
             price,
             currency: '₽',
           };
