@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Wish } from '@/types';
 import { formatPrice } from '@/lib/utils';
 import { normalizeUrl } from '@/lib/scraper';
-import { Button } from '@heroui/react';
+import { Button, Chip } from '@heroui/react';
 import {
   Gift,
   CheckCircle2,
@@ -110,8 +110,8 @@ export const WishCard: React.FC<WishCardProps> = React.memo(function WishCard({
           {/* Badges Over Image */}
           <div className="absolute top-3 left-3 right-3 flex justify-between items-start pointer-events-none">
             {wish.is_reserved ? (
-              <span
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-md shadow-xs pointer-events-auto ${
+              <Chip
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-md shadow-xs pointer-events-auto border-0 ${
                   wish.reserved_by_me
                     ? 'bg-emerald-600/90 text-white'
                     : 'bg-stone-900/80 text-stone-200'
@@ -120,23 +120,23 @@ export const WishCard: React.FC<WishCardProps> = React.memo(function WishCard({
                 {wish.reserved_by_me ? (
                   <>
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    Вы дарите
+                    <span>Вы дарите</span>
                   </>
                 ) : (
                   <>
                     <Lock className="w-3 h-3" />
-                    Забронировано
+                    <span>Забронировано</span>
                   </>
                 )}
-              </span>
+              </Chip>
             ) : (
               <div />
             )}
 
             {wish.price && wish.price > 0 && (
-              <span className="px-2.5 py-1 rounded-full text-xs font-bold font-mono bg-stone-950/80 text-white backdrop-blur-md shadow-xs pointer-events-auto">
+              <Chip className="px-2.5 py-1 rounded-full text-xs font-bold font-mono bg-stone-950/80 text-white backdrop-blur-md shadow-xs pointer-events-auto border-0">
                 {formatPrice(wish.price, wish.currency)}
-              </span>
+              </Chip>
             )}
           </div>
         </div>

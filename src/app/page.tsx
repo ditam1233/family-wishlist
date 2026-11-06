@@ -8,7 +8,7 @@ import { useColorMode } from '@/components/ThemeRegistry/MuiThemeProvider';
 import { WishCard } from '@/components/WishCard';
 import { WishRow } from '@/components/WishRow';
 import dynamic from 'next/dynamic';
-import { Button, Tabs } from '@heroui/react';
+import { Button, Tabs, Chip } from '@heroui/react';
 import {
   Gift,
   Plus,
@@ -475,9 +475,9 @@ export default function HomePage() {
                         <Bookmark className="w-4 h-4 text-stone-400" />
                         <span>Мои брони</span>
                       </div>
-                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                      <Chip className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-0">
                         {myReservations.length}
-                      </span>
+                      </Chip>
                     </button>
 
                     <button
@@ -584,7 +584,7 @@ export default function HomePage() {
                     : `Список желаний: ${targetMember?.name}`}
                 </h1>
 
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200/70 dark:border-white/[0.06]">
+                <Chip className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200/70 dark:border-white/[0.06]">
                   {activeTab === 'reservations'
                     ? `${displayedWishes.length} забронировано`
                     : `${displayedWishes.length} ${
@@ -594,7 +594,7 @@ export default function HomePage() {
                           ? 'желания'
                           : 'желаний'
                       }`}
-                </span>
+                </Chip>
               </div>
 
               <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 max-w-2xl leading-relaxed">

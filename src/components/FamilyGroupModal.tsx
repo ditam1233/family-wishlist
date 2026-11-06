@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, FamilyGroup } from '@/types';
 import { dataStore } from '@/lib/data';
-import { Button } from '@heroui/react';
+import { Button, Chip } from '@heroui/react';
 import {
   Users,
   Plus,
@@ -222,9 +222,9 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
                             {group.name}
                           </span>
                           {isSelected && (
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-600 text-white">
+                            <Chip className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-600 text-white border-0">
                               Текущая
-                            </span>
+                            </Chip>
                           )}
                         </div>
                         <div className="flex items-center gap-1.5 mt-1 text-xs text-stone-400 font-mono">
