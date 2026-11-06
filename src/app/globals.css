@@ -16,13 +16,97 @@
   --color-accent-hover: #4338ca;
 }
 
-/* Taste-Skill Design Tokens */
+/* Taste-Skill & Motion-Design-Skill Tokens */
 :root {
   --m-in: 140ms;
   --m-out: 200ms;
   --m-press: 90ms;
   --m-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --m-ease-io: cubic-bezier(0.65, 0, 0.35, 1);
+  --motion-decel: cubic-bezier(0.0, 0.0, 0.2, 1);
+  --motion-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --motion-entrance: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Keyframes for Motion-Design-Skill Choreography */
+@keyframes motion-slide-up-fade {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes motion-scale-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes motion-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes motion-success-pop {
+  0% {
+    transform: scale(0.92);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.motion-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(228, 228, 231, 0.4) 0%,
+    rgba(255, 255, 255, 0.8) 50%,
+    rgba(228, 228, 231, 0.4) 100%
+  );
+  background-size: 200% 100%;
+  animation: motion-shimmer 1.8s infinite ease-in-out;
+}
+
+html.dark .motion-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(39, 39, 42, 0.4) 0%,
+    rgba(63, 63, 70, 0.8) 50%,
+    rgba(39, 39, 42, 0.4) 100%
+  );
+  background-size: 200% 100%;
+  animation: motion-shimmer 1.8s infinite ease-in-out;
+}
+
+/* Staggered entrance item */
+.motion-entrance {
+  animation: motion-slide-up-fade 320ms var(--motion-decel) backwards;
+}
+
+/* Modal emergence */
+.motion-dialog {
+  animation: motion-scale-in 240ms var(--motion-entrance) backwards;
+}
+
+/* Success pop feedback */
+.motion-success {
+  animation: motion-success-pop 350ms var(--motion-spring);
 }
 
 * {

@@ -636,21 +636,21 @@ export default function HomePage() {
             {[1, 2, 3].map((k) => (
               <div
                 key={k}
-                className="p-4 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 animate-pulse space-y-3"
+                className="p-4 rounded-[22px] bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-white/[0.08] space-y-3"
               >
-                <div className="w-full h-36 bg-stone-200 dark:bg-stone-800 rounded-2xl" />
-                <div className="w-3/4 h-5 bg-stone-200 dark:bg-stone-800 rounded-lg" />
-                <div className="w-1/2 h-4 bg-stone-200 dark:bg-stone-800 rounded-lg" />
+                <div className="w-full h-40 rounded-xl motion-shimmer" />
+                <div className="w-3/4 h-5 rounded-lg motion-shimmer" />
+                <div className="w-1/2 h-4 rounded-lg motion-shimmer" />
               </div>
             ))}
           </div>
         ) : displayedWishes.length === 0 && !isRefreshing ? (
-          <div className="py-12 px-6 rounded-3xl bg-white dark:bg-stone-900 border border-dashed border-stone-300 dark:border-stone-800 text-center max-w-lg mx-auto space-y-3">
+          <div className="motion-entrance py-12 px-6 rounded-[22px] bg-white dark:bg-stone-900 border border-dashed border-stone-300 dark:border-stone-800 text-center max-w-lg mx-auto space-y-3">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
               <Gift className="w-7 h-7" />
             </div>
 
-            <h3 className="text-base font-extrabold text-stone-900 dark:text-stone-100">
+            <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
               {activeTab === 'reservations'
                 ? 'Вы еще не выбрали подарки'
                 : isOwner
@@ -672,7 +672,7 @@ export default function HomePage() {
                   type="button"
                   size="md"
                   onClick={() => setIsAddModalOpen(true)}
-                  className="rounded-2xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-indigo-500/25 transition-all gap-2 px-5 py-2.5"
+                  className="taste-btn rounded-xl font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs gap-2 px-5 py-2.5 cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Добавить первое желание</span>
@@ -682,26 +682,36 @@ export default function HomePage() {
           </div>
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {displayedWishes.map((wish) => (
-              <WishCard
+            {displayedWishes.map((wish, index) => (
+              <div
                 key={wish.id}
-                wish={wish}
-                isOwner={isOwner}
-                onToggleReserve={handleToggleReserve}
-                onDeleteWish={handleDeleteWish}
-              />
+                className="motion-entrance"
+                style={{ animationDelay: `${Math.min(index * 45, 360)}ms` }}
+              >
+                <WishCard
+                  wish={wish}
+                  isOwner={isOwner}
+                  onToggleReserve={handleToggleReserve}
+                  onDeleteWish={handleDeleteWish}
+                />
+              </div>
             ))}
           </div>
         ) : (
           <div className="space-y-3">
-            {displayedWishes.map((wish) => (
-              <WishRow
+            {displayedWishes.map((wish, index) => (
+              <div
                 key={wish.id}
-                wish={wish}
-                isOwner={isOwner}
-                onToggleReserve={handleToggleReserve}
-                onDeleteWish={handleDeleteWish}
-              />
+                className="motion-entrance"
+                style={{ animationDelay: `${Math.min(index * 40, 320)}ms` }}
+              >
+                <WishRow
+                  wish={wish}
+                  isOwner={isOwner}
+                  onToggleReserve={handleToggleReserve}
+                  onDeleteWish={handleDeleteWish}
+                />
+              </div>
             ))}
           </div>
         )}
