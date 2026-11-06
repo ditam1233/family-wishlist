@@ -62,16 +62,16 @@ export const WishRow: React.FC<WishRowProps> = React.memo(function WishRow({
   const domain = getDomain(cleanLinkUrl);
 
   return (
-    <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/70 dark:border-stone-800 shadow-xs hover:shadow-md transition-all">
+    <div className="group taste-card flex items-center gap-3.5 p-3 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] shadow-xs hover:shadow-md transition-all">
       {/* Thumbnail */}
-      <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-stone-100 dark:bg-stone-800 flex items-center justify-center border border-stone-200/50 dark:border-stone-700/50">
+      <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-stone-100 dark:bg-stone-800/70 flex items-center justify-center border border-stone-200/50 dark:border-white/[0.06]">
         {!imgError && wish.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={wish.image_url}
             alt={wish.title}
             onError={() => setImgError(true)}
-            className="w-full h-full object-cover"
+            className="taste-zoom w-full h-full object-cover"
           />
         ) : (
           <Gift className="w-6 h-6 text-stone-400 dark:text-stone-500" />
@@ -136,7 +136,7 @@ export const WishRow: React.FC<WishRowProps> = React.memo(function WishRow({
                   size="sm"
                   variant="outline"
                   onPress={handleReserve}
-                  className="rounded-xl font-semibold border-emerald-500 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 gap-1.5"
+                  className="taste-btn rounded-xl font-medium border-emerald-500/80 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 gap-1.5 cursor-pointer"
                 >
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                   <span>Я подарю</span>
@@ -155,7 +155,7 @@ export const WishRow: React.FC<WishRowProps> = React.memo(function WishRow({
               <Button
                 size="sm"
                 onPress={handleReserve}
-                className="rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs gap-1.5"
+                className="taste-btn rounded-xl font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs hover:shadow-indigo-500/20 gap-1.5 cursor-pointer"
               >
                 <Gift className="w-4 h-4" />
                 <span>Подарю я!</span>

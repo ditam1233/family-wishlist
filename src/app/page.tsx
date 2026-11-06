@@ -525,15 +525,15 @@ export default function HomePage() {
                 key={member.id}
                 type="button"
                 onClick={() => handleSwitchUser(member.id)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer border ${
+                className={`taste-btn flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 cursor-pointer border ${
                   isSelected
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/25 scale-[1.02]'
-                    : 'bg-white/80 dark:bg-stone-900/80 text-stone-700 dark:text-stone-300 border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                    : 'bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 border-stone-200/80 dark:border-white/[0.08] hover:border-stone-300 dark:hover:border-stone-700'
                 }`}
               >
                 <div
                   className={`w-5 h-5 rounded-full text-[10px] font-mono flex items-center justify-center ${
-                    isSelected ? 'bg-white/20 text-white' : 'bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
+                    isSelected ? 'bg-white/20 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
                   }`}
                 >
                   {getInitials(member.name)}
@@ -547,20 +547,20 @@ export default function HomePage() {
           <button
             type="button"
             onClick={() => setActiveTab('reservations')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer border ${
+            className={`taste-btn flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 cursor-pointer border ${
               activeTab === 'reservations'
-                ? 'bg-pink-600 text-white border-pink-600 shadow-md shadow-pink-500/25 scale-[1.02]'
-                : 'bg-white/80 dark:bg-stone-900/80 text-stone-700 dark:text-stone-300 border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'
+                ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                : 'bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 border-stone-200/80 dark:border-white/[0.08] hover:border-stone-300 dark:hover:border-stone-700'
             }`}
           >
             <Bookmark className="w-3.5 h-3.5" />
             <span>Мои брони</span>
             {myReservations.length > 0 && (
               <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                className={`px-1.5 py-0.2 rounded-full text-[10px] font-semibold ${
                   activeTab === 'reservations'
-                    ? 'bg-white/25 text-white'
-                    : 'bg-pink-100 dark:bg-pink-950/60 text-pink-600 dark:text-pink-400'
+                    ? 'bg-white/20 text-white'
+                    : 'bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400'
                 }`}
               >
                 {myReservations.length}
@@ -570,15 +570,15 @@ export default function HomePage() {
         </div>
 
         {/* Bento Hero Header */}
-        <div className="p-6 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 shadow-sm mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="taste-card p-5 sm:p-6 rounded-[22px] bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] shadow-xs mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white flex items-center justify-center font-extrabold text-xl shadow-lg shadow-indigo-500/25 shrink-0">
+            <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg sm:text-xl shadow-xs shrink-0">
               {activeTab === 'reservations' ? '🎁' : getInitials(targetMember?.name || currentUser.name)}
             </div>
 
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
                   {activeTab === 'reservations'
                     ? 'Подарки, которые вы дарите'
                     : isOwner
@@ -586,7 +586,7 @@ export default function HomePage() {
                     : `Список желаний: ${targetMember?.name}`}
                 </h1>
 
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200/70 dark:border-white/[0.06]">
                   {activeTab === 'reservations'
                     ? `${displayedWishes.length} забронировано`
                     : `${displayedWishes.length} ${
@@ -601,10 +601,10 @@ export default function HomePage() {
 
               <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 max-w-2xl leading-relaxed">
                 {activeTab === 'reservations'
-                  ? 'Тайный список подарков, которые вы пообещали подарить близким. Они не знают, что вы это выбрали!'
+                  ? 'Список забронированных вами подарков для близких. Другие участники видят отметку о бронировании.'
                   : isOwner
                   ? 'Добавляйте любые желанные подарки со ссылками на маркетплейсы, чтобы близким было легко порадовать вас.'
-                  : '🤫 Секретная бронь: нажмите «Подарю я!», чтобы застолбить подарок. Другие родственники увидят, что подарок занят.'}
+                  : 'Секретная бронь: нажмите «Подарю я!», чтобы застолбить подарок. Другие родственники увидят, что подарок занят.'}
               </p>
             </div>
           </div>

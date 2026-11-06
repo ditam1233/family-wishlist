@@ -12,8 +12,17 @@
   --color-ink: #171717;
   --color-ink-muted: #78716c;
   --color-ink-faint: #a8a29e;
-  --color-accent: #18181b;
-  --color-accent-hover: #27272a;
+  --color-accent: #4f46e5;
+  --color-accent-hover: #4338ca;
+}
+
+/* Taste-Skill Design Tokens */
+:root {
+  --m-in: 140ms;
+  --m-out: 200ms;
+  --m-press: 90ms;
+  --m-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --m-ease-io: cubic-bezier(0.65, 0, 0.35, 1);
 }
 
 * {
@@ -22,7 +31,7 @@
 
 html {
   scroll-behavior: smooth;
-  background-color: #fafaf9;
+  background-color: #f8fafc;
   color: #171717;
 }
 
@@ -32,7 +41,7 @@ html.dark {
 }
 
 body {
-  background-color: #fafaf9;
+  background-color: #f8fafc;
   color: #171717;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -46,13 +55,65 @@ html.dark body {
 }
 
 ::selection {
-  background-color: #18181b;
+  background-color: #4f46e5;
   color: #ffffff;
 }
 
 html.dark ::selection {
-  background-color: #f5f5f4;
+  background-color: #6366f1;
   color: #0c0a09;
+}
+
+/* Taste-Skill Motion Primitives */
+/* Lift 2px micro-interaction for cards on hover */
+.taste-card {
+  transition: transform var(--m-out) var(--m-ease), box-shadow var(--m-out) var(--m-ease), border-color var(--m-out) var(--m-ease);
+  will-change: transform, box-shadow;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .taste-card:hover {
+    transform: translateY(-2px);
+    transition: transform var(--m-in) var(--m-ease), box-shadow var(--m-in) var(--m-ease);
+  }
+}
+
+/* Tactile button press (step on hover, press 1px down & scale 0.985) */
+.taste-btn {
+  transition: transform var(--m-press) var(--m-ease), background-color var(--m-in) var(--m-ease), box-shadow var(--m-in) var(--m-ease);
+  will-change: transform;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .taste-btn:hover {
+    transform: translateY(-1px);
+  }
+}
+
+.taste-btn:active {
+  transform: translateY(1px) scale(0.985);
+  transition: transform var(--m-press) var(--m-ease);
+}
+
+/* Photo zoom 1.025 inside visual frame */
+.taste-zoom {
+  transition: transform 600ms var(--m-ease);
+  will-change: transform;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .group:hover .taste-zoom {
+    transform: scale(1.025);
+  }
+}
+
+/* Taste-Skill Precision Hairline Borders with Subtle Highlight */
+.taste-border-light {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.taste-border-dark {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 /* Minimalist scrollbars */
@@ -81,117 +142,6 @@ select:focus {
   outline: none;
 }
 
-
-/* Apple Liquid Glass Background Effects */
-.apple-glass-bg {
-  min-height: 100vh;
-  background: 
-    radial-gradient(110% 80% at 10% 0%, rgba(207, 224, 247, 0.45) 0%, rgba(207, 224, 247, 0) 65%),
-    radial-gradient(90% 110% at 100% 100%, rgba(165, 180, 252, 0.3) 0%, rgba(165, 180, 252, 0) 70%),
-    linear-gradient(180deg, #f8fafc 0%, #eef2f6 100%);
-  background-attachment: fixed;
-}
-
-html.dark .apple-glass-bg {
-  background:
-    radial-gradient(100% 70% at 15% 0%, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0) 60%),
-    radial-gradient(80% 90% at 90% 90%, rgba(49, 46, 129, 0.35) 0%, rgba(15, 23, 42, 0) 65%),
-    linear-gradient(180deg, #090d16 0%, #030712 100%);
-  background-attachment: fixed;
-}
-
-/* Glass Floating Surfaces */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.72) !important;
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.8) !important;
-  box-shadow: 
-    0 0 0 0.5px rgba(0, 0, 0, 0.05),
-    0 10px 30px -10px rgba(15, 23, 42, 0.08),
-    0 20px 40px -15px rgba(15, 23, 42, 0.05) !important;
-}
-
-html.dark .glass-panel {
-  background: rgba(18, 24, 38, 0.65) !important;
-  backdrop-filter: blur(24px) saturate(190%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(190%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  box-shadow: 
-    0 0 0 0.5px rgba(255, 255, 255, 0.05),
-    0 16px 40px -10px rgba(0, 0, 0, 0.6),
-    0 24px 60px -15px rgba(0, 0, 0, 0.4) !important;
-}
-
-/* Glass Card */
-.glass-card {
-  background: rgba(255, 255, 255, 0.78) !important;
-  backdrop-filter: blur(16px) saturate(160%) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.7) !important;
-  border-radius: 20px !important;
-  box-shadow:
-    0 0 0 0.5px rgba(0, 0, 0, 0.06),
-    0 8px 24px -6px rgba(15, 23, 42, 0.07),
-    0 2px 6px -2px rgba(15, 23, 42, 0.04) !important;
-  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
-
-.glass-card:hover {
-  transform: translateY(-4px) !important;
-  box-shadow:
-    0 0 0 0.5px rgba(0, 0, 0, 0.08),
-    0 18px 36px -10px rgba(15, 23, 42, 0.14),
-    0 4px 12px -2px rgba(15, 23, 42, 0.06) !important;
-}
-
-html.dark .glass-card {
-  background: rgba(17, 24, 39, 0.7) !important;
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  box-shadow:
-    0 0 0 0.5px rgba(255, 255, 255, 0.06),
-    0 12px 32px -8px rgba(0, 0, 0, 0.5),
-    0 4px 12px -4px rgba(0, 0, 0, 0.3) !important;
-}
-
-html.dark .glass-card:hover {
-  box-shadow:
-    0 0 0 0.5px rgba(255, 255, 255, 0.12),
-    0 20px 48px -10px rgba(0, 0, 0, 0.75),
-    0 6px 16px -4px rgba(0, 0, 0, 0.4) !important;
-}
-
-/* Glass Pill / Island */
-.glass-pill {
-  background: rgba(255, 255, 255, 0.8) !important;
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.85) !important;
-  box-shadow: 
-    0 0 0 0.5px rgba(0, 0, 0, 0.06),
-    0 4px 16px -2px rgba(15, 23, 42, 0.08) !important;
-}
-
-html.dark .glass-pill {
-  background: rgba(20, 27, 45, 0.75) !important;
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.14) !important;
-  box-shadow: 
-    0 0 0 0.5px rgba(255, 255, 255, 0.06),
-    0 8px 24px -4px rgba(0, 0, 0, 0.5) !important;
-}
-
-/* UI/UX Pro Max: Mobile touch target optimization & smooth kinetic feel */
 button, a, input, select, textarea {
   -webkit-tap-highlight-color: transparent;
-}
-
-@media (max-width: 600px) {
-  /* Ensure comfortable thumb reach on smaller screens */
-  .MuiButton-root {
-    min-height: 44px;
-  }
 }

@@ -80,14 +80,14 @@ export const WishCard: React.FC<WishCardProps> = React.memo(function WishCard({
   const priorityInfo = wish.priority ? priorityLabels[wish.priority] : null;
 
   return (
-    <div className="group flex flex-col justify-between h-full rounded-3xl bg-white/80 dark:bg-stone-900/80 backdrop-blur-md border border-stone-200/80 dark:border-stone-800 shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+    <div className="group taste-card flex flex-col justify-between h-full rounded-[22px] bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] shadow-xs hover:shadow-lg transition-all overflow-hidden">
       <div>
         {/* Card Media / Image Header */}
-        <div className="relative w-full pt-[62%] bg-stone-100 dark:bg-stone-800 overflow-hidden">
+        <div className="relative w-full pt-[62%] bg-stone-100 dark:bg-stone-800/60 overflow-hidden">
           {wish.image_url && !imageError ? (
             <>
               {!imageLoaded && (
-                <div className="absolute inset-0 animate-pulse bg-stone-200 dark:bg-stone-700" />
+                <div className="absolute inset-0 animate-pulse bg-stone-200 dark:bg-stone-800" />
               )}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -96,7 +96,7 @@ export const WishCard: React.FC<WishCardProps> = React.memo(function WishCard({
                 loading="lazy"
                 onLoad={() => setImageLoaded(true)}
                 onError={() => setImageError(true)}
-                className={`absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${
+                className={`taste-zoom absolute inset-0 w-full h-full object-cover ${
                   imageLoaded ? 'opacity-100' : 'opacity-0'
                 }`}
               />
@@ -208,7 +208,7 @@ export const WishCard: React.FC<WishCardProps> = React.memo(function WishCard({
                   size="md"
                   variant="outline"
                   onPress={handleReserve}
-                  className="w-full rounded-2xl font-semibold border-emerald-500 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 gap-2 h-11"
+                  className="taste-btn w-full rounded-xl font-medium border-emerald-500/80 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 gap-2 h-10 cursor-pointer"
                 >
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                   <span>Вы дарите (Отменить)</span>
@@ -217,17 +217,17 @@ export const WishCard: React.FC<WishCardProps> = React.memo(function WishCard({
                 <Button
                   size="md"
                   isDisabled
-                  className="w-full rounded-2xl font-medium opacity-60 bg-stone-100 dark:bg-stone-800 text-stone-400 gap-2 h-11"
+                  className="w-full rounded-xl font-medium opacity-60 bg-stone-100 dark:bg-stone-800/80 text-stone-400 gap-2 h-10"
                 >
                   <Lock className="w-4 h-4" />
-                  <span>Уже забронировано</span>
+                  <span>Забронировано</span>
                 </Button>
               )
             ) : (
               <Button
                 size="md"
                 onPress={handleReserve}
-                className="w-full rounded-2xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-indigo-500/25 gap-2 h-11 transition-all"
+                className="taste-btn w-full rounded-xl font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs hover:shadow-indigo-500/20 gap-2 h-10 cursor-pointer"
               >
                 <Gift className="w-4 h-4" />
                 <span>Подарю я!</span>
