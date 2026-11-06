@@ -1,7 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://hvnxspbltdmctugcsnmn.supabase.co';
-const supabaseAnonKey = 'sb_publishable_eA3CdeXBbog9iS2sBETpuQ_wBIHRXIe';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hvnxspbltdmctugcsnmn.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+if (!supabaseAnonKey) {
+  console.error('NEXT_PUBLIC_SUPABASE_ANON_KEY is required to run this script');
+  process.exit(1);
+}
+
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function testJoinByCode(inviteCode, name) {
