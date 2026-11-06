@@ -500,61 +500,72 @@ export default function HomePage() {
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
-        {/* Family Members Selector Bar */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-6 scrollbar-none">
-          {familyMembers.map((member) => {
-            const isSelected = effectiveTargetUserId === member.id && activeTab === 'wishes';
-            const isMe = member.id === currentUser.id;
-
-            return (
-              <button
-                key={member.id}
-                type="button"
-                onClick={() => handleSwitchUser(member.id)}
-                className={`taste-btn flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 cursor-pointer border ${
-                  isSelected
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                    : 'bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 border-stone-200/80 dark:border-white/[0.08] hover:border-stone-300 dark:hover:border-stone-700'
-                }`}
-              >
-                <Avatar
-                  className={`w-5 h-5 rounded-full text-[10px] font-mono flex items-center justify-center shrink-0 ${
-                    isSelected ? 'bg-white/20 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
-                  }`}
-                >
-                  <AvatarFallback className="bg-transparent text-[10px] font-mono">
-                    {getInitials(member.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <span>{isMe ? `${member.name} (Я)` : member.name}</span>
-              </button>
-            );
-          })}
-
-          {/* Tab: My Reservations */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('reservations')}
-            className={`taste-btn flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 cursor-pointer border ${
-              activeTab === 'reservations'
-                ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                : 'bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 border-stone-200/80 dark:border-white/[0.08] hover:border-stone-300 dark:hover:border-stone-700'
-            }`}
+        {/* Family Members & Reservations Segmented Controller via HeroUI Tabs */}
+        <div className="flex items-center overflow-x-auto pb-2 mb-6 scrollbar-none">
+          <Tabs
+            selectedKey={activeTab === 'reservations' ? 'reservations' : effectiveTargetUserId}
+            onSelectionChange={(key) => {
+              const k = String(key);
+              if (k === 'reservations') {
+                setActiveTab('reservations');
+              } else {
+                handleSwitchUser(k);
+              }
+            }}
+            className="w-auto family-nav-tabs"
           >
-            <Bookmark className="w-3.5 h-3.5" />
-            <span>Мои брони</span>
-            {myReservations.length > 0 && (
-              <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] font-semibold ${
-                  activeTab === 'reservations'
-                    ? 'bg-white/20 text-white'
-                    : 'bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400'
-                }`}
-              >
-                {myReservations.length}
-              </span>
-            )}
-          </button>
+            <Tabs.ListContainer>
+              <Tabs.List aria-label="Семья и бронирования">
+                {familyMembers.map((member) => {
+                  const isSelected = effectiveTargetUserId === member.id && activeTab === 'wishes';
+                  const isMe = member.id === currentUser.id;
+
+                  return (
+                    <Tabs.Tab
+                      key={member.id}
+                      id={member.id}
+                      aria-label={member.name}
+                    >
+                      <Avatar
+                        className={`w-5 h-5 rounded-full text-[10px] font-mono flex items-center justify-center shrink-0 transition-colors ${
+                          isSelected
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-stone-200/80 dark:bg-stone-800 text-stone-600 dark:text-stone-400'
+                        }`}
+                      >
+                        <AvatarFallback className="bg-transparent text-[10px] font-mono">
+                          {getInitials(member.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span>{isMe ? `${member.name} (Я)` : member.name}</span>
+                      <Tabs.Indicator />
+                    </Tabs.Tab>
+                  );
+                })}
+
+                <Tabs.Tab
+                  id="reservations"
+                  aria-label="Мои брони"
+                  className="flex items-center gap-1.5"
+                >
+                  <Bookmark className="w-3.5 h-3.5" />
+                  <span>Мои брони</span>
+                  {myReservations.length > 0 && (
+                    <Chip
+                      className={`h-4.5 min-w-4.5 px-1.5 rounded-full text-[10px] font-bold ${
+                        activeTab === 'reservations'
+                          ? 'bg-rose-600 text-white'
+                          : 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+                      }`}
+                    >
+                      {myReservations.length}
+                    </Chip>
+                  )}
+                  <Tabs.Indicator />
+                </Tabs.Tab>
+              </Tabs.List>
+            </Tabs.ListContainer>
+          </Tabs>
         </div>
 
         {/* Bento Hero Header via HeroUI Card */}
