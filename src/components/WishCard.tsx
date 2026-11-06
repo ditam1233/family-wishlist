@@ -62,23 +62,6 @@ export const WishCard: React.FC<WishCardProps> = React.memo(function WishCard({
 
   const domain = getDomain(cleanLinkUrl);
 
-  const priorityLabels: Record<string, { label: string; color: string }> = {
-    must_have: {
-      label: 'Очень хочу',
-      color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
-    },
-    dream: {
-      label: 'Мечта',
-      color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
-    },
-    nice_to_have: {
-      label: 'Буду рад',
-      color: 'bg-stone-500/10 text-stone-600 dark:text-stone-400 border-stone-500/20',
-    },
-  };
-
-  const priorityInfo = wish.priority ? priorityLabels[wish.priority] : null;
-
   return (
     <Card className="group taste-card flex flex-col justify-between h-full rounded-[22px] bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] shadow-xs hover:shadow-lg transition-all overflow-hidden p-0 gap-0">
       <div>
@@ -153,16 +136,8 @@ export const WishCard: React.FC<WishCardProps> = React.memo(function WishCard({
             </p>
           )}
 
-          <div className="flex items-center gap-2 flex-wrap pt-1">
-            {priorityInfo && (
-              <span
-                className={`text-[11px] font-medium px-2 py-0.5 rounded-lg border ${priorityInfo.color}`}
-              >
-                {priorityInfo.label}
-              </span>
-            )}
-
-            {domain && cleanLinkUrl && (
+          {domain && cleanLinkUrl && (
+            <div className="flex items-center gap-2 flex-wrap pt-1">
               <a
                 href={cleanLinkUrl}
                 target="_blank"
@@ -172,8 +147,8 @@ export const WishCard: React.FC<WishCardProps> = React.memo(function WishCard({
                 <span>{domain}</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
