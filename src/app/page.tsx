@@ -412,42 +412,15 @@ export default function HomePage() {
               <Tabs
                 selectedKey={viewMode}
                 onSelectionChange={(key) => setViewMode(key as 'grid' | 'list')}
-                className="w-auto"
+                className="w-auto view-mode-tabs"
               >
-                <Tabs.ListContainer className="rounded-none bg-transparent p-0">
-                  <Tabs.List
-                    aria-label="Режим отображения"
-                    className={[
-                      'rounded-xl border border-stone-200/80 dark:border-white/[0.08] bg-stone-100/90 dark:bg-stone-850 p-0.5',
-                      '**:data-[slot=tabs-tab]:rounded-lg',
-                      '**:data-[slot=tabs-tab]:bg-transparent',
-                      '**:data-[slot=tabs-tab]:text-stone-400 dark:**:data-[slot=tabs-tab]:text-stone-400',
-                      '**:data-[slot=tabs-tab]:opacity-100',
-                      '**:data-[slot=tabs-tab]:transition-colors',
-                      '**:data-[slot=tabs-tab]:data-[hovered=true]:not-data-[selected=true]:text-stone-700 dark:**:data-[slot=tabs-tab]:data-[hovered=true]:not-data-[selected=true]:text-stone-200',
-                      '**:data-[slot=tabs-tab]:data-[focus-visible=true]:ring-2',
-                      '**:data-[slot=tabs-tab]:data-[focus-visible=true]:ring-indigo-500/20',
-                      '**:data-[slot=tabs-tab]:data-[selected=true]:font-medium',
-                      '**:data-[slot=tabs-tab]:data-[selected=true]:text-indigo-600 dark:**:data-[slot=tabs-tab]:data-[selected=true]:text-indigo-400',
-                      '**:data-[slot=tabs-tab]:shadow-none',
-                      '**:data-[slot=tabs-indicator]:rounded-lg',
-                      '**:data-[slot=tabs-indicator]:bg-white dark:**:data-[slot=tabs-indicator]:bg-stone-700',
-                      '**:data-[slot=tabs-indicator]:shadow-xs',
-                    ].join(' ')}
-                  >
-                    <Tabs.Tab
-                      id="grid"
-                      aria-label="Сетка"
-                      className="p-1.5 flex items-center justify-center cursor-pointer"
-                    >
+                <Tabs.ListContainer className="rounded-xl">
+                  <Tabs.List aria-label="Режим отображения">
+                    <Tabs.Tab id="grid" aria-label="Сетка">
                       <LayoutGrid className="w-4 h-4" />
                       <Tabs.Indicator />
                     </Tabs.Tab>
-                    <Tabs.Tab
-                      id="list"
-                      aria-label="Список"
-                      className="p-1.5 flex items-center justify-center cursor-pointer"
-                    >
+                    <Tabs.Tab id="list" aria-label="Список">
                       <ListIcon className="w-4 h-4" />
                       <Tabs.Indicator />
                     </Tabs.Tab>

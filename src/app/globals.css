@@ -226,6 +226,77 @@ select:focus {
   outline: none;
 }
 
+/* HeroUI Tabs View Mode Overrides */
+.view-mode-tabs .tabs__list-container {
+  background-color: #f5f5f4 !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  padding: 2px !important;
+}
+
+html.dark .view-mode-tabs .tabs__list-container {
+  background-color: #1c1917 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+}
+
+.view-mode-tabs .tabs__list {
+  display: flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  min-width: 0 !important;
+  width: auto !important;
+}
+
+.view-mode-tabs .tabs__tab {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: transparent !important;
+  color: #a8a29e !important;
+  transition: color 150ms cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+html.dark .view-mode-tabs .tabs__tab {
+  color: #78716c !important;
+}
+
+.view-mode-tabs .tabs__tab:hover {
+  color: #44403c !important;
+}
+
+html.dark .view-mode-tabs .tabs__tab:hover {
+  color: #d6d3d1 !important;
+}
+
+.view-mode-tabs .tabs__tab[data-selected="true"] {
+  color: #4f46e5 !important;
+}
+
+html.dark .view-mode-tabs .tabs__tab[data-selected="true"] {
+  color: #818cf8 !important;
+}
+
+.view-mode-tabs .tabs__indicator {
+  border-radius: 8px !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.06), 0 1px 1px 0 rgba(0, 0, 0, 0.04) !important;
+}
+
+html.dark .view-mode-tabs .tabs__indicator {
+  background-color: #292524 !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
 button, a, input, select, textarea {
   -webkit-tap-highlight-color: transparent;
 }
