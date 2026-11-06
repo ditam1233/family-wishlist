@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, FamilyGroup } from '@/types';
 import { dataStore } from '@/lib/data';
-import { Button, Chip, Input, Tabs } from '@heroui/react';
+import { Button, Chip, Input, Tabs, Modal, ModalBackdrop, ModalContainer, ModalDialog, ModalCloseTrigger } from '@heroui/react';
 import {
   Users,
   Plus,
@@ -118,31 +118,25 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="relative w-full max-w-md max-h-[90vh] flex flex-col rounded-3xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 dark:border-stone-800">
-          <div className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            <h2 className="text-base font-bold text-stone-900 dark:text-stone-100">
-              Семейные круги
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-full text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Modal isOpen={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <ModalBackdrop className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <ModalContainer className="w-full flex items-center justify-center p-0">
+          <ModalDialog className="relative w-full max-w-md max-h-[90vh] flex flex-col rounded-3xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-2xl overflow-hidden outline-none">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 dark:border-stone-800">
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                <h2 className="text-base font-bold text-stone-900 dark:text-stone-100">
+                  Семейные круги
+                </h2>
+              </div>
+              <ModalCloseTrigger
+                onClick={onClose}
+                className="p-1.5 rounded-full text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer outline-none"
+              >
+                <X className="w-5 h-5" />
+              </ModalCloseTrigger>
+            </div>
 
         {/* Tab Switcher via HeroUI Tabs */}
         <div className="px-6 pt-3">
@@ -334,7 +328,9 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
             </form>
           )}
         </div>
-      </div>
-    </div>
+          </ModalDialog>
+        </ModalContainer>
+      </ModalBackdrop>
+    </Modal>
   );
 };

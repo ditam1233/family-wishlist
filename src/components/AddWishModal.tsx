@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Wish } from '@/types';
 import { normalizeUrl, extractUrlAndTitle } from '@/lib/scraper';
 import { compressImage } from '@/lib/imageCompressor';
-import { Button, Input, TextArea, Tabs } from '@heroui/react';
+import { Button, Input, TextArea, Tabs, Modal, ModalBackdrop, ModalContainer, ModalDialog, ModalCloseTrigger } from '@heroui/react';
 import { X, Link as LinkIcon, Camera, Trash2, Loader2, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -128,28 +128,22 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="motion-dialog relative w-full max-w-lg max-h-[90vh] flex flex-col rounded-[22px] bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 dark:border-stone-800">
-          <h2 className="text-base font-bold text-stone-900 dark:text-stone-100">
-            Новое желание
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-full text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Modal isOpen={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <ModalBackdrop className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <ModalContainer className="w-full flex items-center justify-center p-0">
+          <ModalDialog className="motion-dialog relative w-full max-w-lg max-h-[90vh] flex flex-col rounded-[22px] bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] shadow-2xl overflow-hidden outline-none">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 dark:border-stone-800">
+              <h2 className="text-base font-bold text-stone-900 dark:text-stone-100">
+                Новое желание
+              </h2>
+              <ModalCloseTrigger
+                onClick={onClose}
+                className="p-1.5 rounded-full text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer outline-none"
+              >
+                <X className="w-5 h-5" />
+              </ModalCloseTrigger>
+            </div>
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -338,7 +332,9 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+          </ModalDialog>
+        </ModalContainer>
+      </ModalBackdrop>
+    </Modal>
   );
 };

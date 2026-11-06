@@ -8,7 +8,7 @@ import { useColorMode } from '@/components/ThemeRegistry/MuiThemeProvider';
 import { WishCard } from '@/components/WishCard';
 import { WishRow } from '@/components/WishRow';
 import dynamic from 'next/dynamic';
-import { Button, Tabs, Chip } from '@heroui/react';
+import { Button, Tabs, Chip, Dropdown, DropdownTrigger, DropdownPopover, DropdownMenu, DropdownItem } from '@heroui/react';
 import {
   Gift,
   Plus,
@@ -62,10 +62,6 @@ export default function HomePage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isFamilyModalOpen, setIsFamilyModalOpen] = useState(false);
 
-  // User Profile Dropdown Menu
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const userMenuRef = useRef<HTMLDivElement>(null);
-
   // Notifications
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'info' | 'error' }>({
     open: false,
@@ -90,19 +86,6 @@ export default function HomePage() {
       return () => clearTimeout(timer);
     }
   }, [snackbar.open]);
-
-  // Close user menu on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setIsUserMenuOpen(false);
-      }
-    };
-    if (isUserMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isUserMenuOpen]);
 
   // Keep a ref to currentUser for async callbacks without triggering re-renders
   const currentUserRef = useRef<User | null>(null);
@@ -318,7 +301,6 @@ export default function HomePage() {
 
   // Logout
   const handleLogout = async () => {
-    setIsUserMenuOpen(false);
     await dataStore.logout();
     setCurrentUser(null);
     setUserGroups([]);
@@ -439,73 +421,75 @@ export default function HomePage() {
               {mode === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
 
-            {/* User Profile Avatar & Dropdown */}
-            <div className="relative" ref={userMenuRef}>
-              <button
-                type="button"
-                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+            {/* User Profile Avatar & Dropdown via HeroUI Dropdown */}
+            <Dropdown>
+              <DropdownTrigger
                 className="w-9 h-9 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs ring-2 ring-indigo-500/20 hover:ring-indigo-500/40 transition-all cursor-pointer"
-                title="Меню профиля"
+                aria-label="Меню профиля"
               >
                 {getInitials(currentUser.name)}
-              </button>
+              </DropdownTrigger>
 
-              {/* Dropdown Menu */}
-              {isUserMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xl overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-150 z-50">
-                  <div className="px-4 py-3 border-b border-stone-100 dark:border-stone-800">
-                    <div className="font-bold text-sm text-stone-900 dark:text-stone-100 truncate">
-                      {currentUser.name}
-                    </div>
-                    <div className="text-xs text-stone-400 truncate">
-                      {currentUser.email || 'Вход по коду семьи'}
-                    </div>
+              <DropdownPopover
+                placement="bottom end"
+                className="w-56 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xl overflow-hidden p-0"
+              >
+                <div className="px-4 py-3 border-b border-stone-100 dark:border-stone-800">
+                  <div className="font-bold text-sm text-stone-900 dark:text-stone-100 truncate">
+                    {currentUser.name}
                   </div>
-
-                  <div className="py-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                        setActiveTab('reservations');
-                      }}
-                      className="w-full flex items-center justify-between px-4 py-2.5 text-xs text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Bookmark className="w-4 h-4 text-stone-400" />
-                        <span>Мои брони</span>
-                      </div>
-                      <Chip className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-0">
-                        {myReservations.length}
-                      </Chip>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                        setIsFamilyModalOpen(true);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors cursor-pointer"
-                    >
-                      <Users className="w-4 h-4 text-stone-400" />
-                      <span>Управление семьями</span>
-                    </button>
-                  </div>
-
-                  <div className="border-t border-stone-100 dark:border-stone-800 py-1">
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span>Выйти</span>
-                    </button>
+                  <div className="text-xs text-stone-400 truncate">
+                    {currentUser.email || 'Вход по коду семьи'}
                   </div>
                 </div>
-              )}
-            </div>
+
+                <DropdownMenu
+                  aria-label="Меню пользователя"
+                  className="p-1 outline-none space-y-0.5"
+                  onAction={(key) => {
+                    if (key === 'reservations') {
+                      setActiveTab('reservations');
+                    } else if (key === 'families') {
+                      setIsFamilyModalOpen(true);
+                    } else if (key === 'logout') {
+                      handleLogout();
+                    }
+                  }}
+                >
+                  <DropdownItem
+                    id="reservations"
+                    textValue="Мои брони"
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer outline-none"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Bookmark className="w-4 h-4 text-stone-400" />
+                      <span>Мои брони</span>
+                    </div>
+                    <Chip className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-0">
+                      {myReservations.length}
+                    </Chip>
+                  </DropdownItem>
+
+                  <DropdownItem
+                    id="families"
+                    textValue="Управление семьями"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer outline-none"
+                  >
+                    <Users className="w-4 h-4 text-stone-400" />
+                    <span>Управление семьями</span>
+                  </DropdownItem>
+
+                  <DropdownItem
+                    id="logout"
+                    textValue="Выйти"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer outline-none border-t border-stone-100 dark:border-stone-800 mt-1 pt-1.5"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Выйти</span>
+                  </DropdownItem>
+                </DropdownMenu>
+              </DropdownPopover>
+            </Dropdown>
           </div>
         </div>
       </header>
