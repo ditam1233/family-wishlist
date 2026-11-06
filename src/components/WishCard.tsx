@@ -211,7 +211,7 @@ export const WishCard: React.FC<WishCardProps> = React.memo(function WishCard({
                   className="taste-btn w-full rounded-xl font-medium border-emerald-500/80 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 gap-2 h-10 cursor-pointer"
                 >
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  <span>Вы дарите (Отменить)</span>
+                  <span>Отменить</span>
                 </Button>
               ) : (
                 <Button
