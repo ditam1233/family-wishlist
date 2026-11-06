@@ -55,6 +55,7 @@ export default function HomePage() {
   const [wishes, setWishes] = useState<(Wish & { is_reserved?: boolean; reserved_by_me?: boolean })[]>([]);
   const [myReservations, setMyReservations] = useState<(Wish & { is_reserved?: boolean; reserved_by_me?: boolean })[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isWishesLoaded, setIsWishesLoaded] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Modals
@@ -113,6 +114,7 @@ export default function HomePage() {
     const local = dataStore.getLocalWishes(targetId, viewerId);
     if (local.length > 0) {
       setWishes(local);
+      setIsWishesLoaded(true);
     }
 
     // 2. Background remote sync
@@ -124,6 +126,7 @@ export default function HomePage() {
       console.error('Error fetching wishes:', err);
     } finally {
       setIsRefreshing(false);
+      setIsWishesLoaded(true);
     }
   }, []);
 
@@ -182,6 +185,7 @@ export default function HomePage() {
       const cachedWishes = dataStore.getLocalWishes(cachedUser.id, cachedUser.id);
       if (cachedWishes.length > 0) {
         setWishes(cachedWishes);
+        setIsWishesLoaded(true);
       }
       setIsInitialLoading(false);
     }
@@ -631,7 +635,7 @@ export default function HomePage() {
         )}
 
         {/* Wishes Content List / Grid */}
-        {displayedWishes.length === 0 && isRefreshing ? (
+        {displayedWishes.length === 0 && (!isWishesLoaded || isRefreshing) ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {[1, 2, 3].map((k) => (
               <div
@@ -644,7 +648,7 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-        ) : displayedWishes.length === 0 && !isRefreshing ? (
+        ) : displayedWishes.length === 0 && isWishesLoaded && !isRefreshing ? (
           <div className="motion-entrance py-12 px-6 rounded-[22px] bg-white dark:bg-stone-900 border border-dashed border-stone-300 dark:border-stone-800 text-center max-w-lg mx-auto space-y-3">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
               <Gift className="w-7 h-7" />
