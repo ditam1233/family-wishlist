@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, FamilyGroup } from '@/types';
 import { dataStore } from '@/lib/data';
-import { Button, Chip } from '@heroui/react';
+import { Button, Chip, Input, Tabs } from '@heroui/react';
 import {
   Users,
   Plus,
@@ -144,43 +144,45 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
           </button>
         </div>
 
-        {/* Tab Switcher */}
+        {/* Tab Switcher via HeroUI Tabs */}
         <div className="px-6 pt-3">
-          <div className="flex p-1 rounded-2xl bg-stone-100 dark:bg-stone-800 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => { setTab('list'); setError(null); }}
-              className={`flex-1 py-1.5 rounded-xl transition-all cursor-pointer ${
-                tab === 'list'
-                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs'
-                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
-              }`}
-            >
-              Мои семьи ({userGroups.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => { setTab('create'); setError(null); }}
-              className={`flex-1 py-1.5 rounded-xl transition-all cursor-pointer ${
-                tab === 'create'
-                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs'
-                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
-              }`}
-            >
-              Создать
-            </button>
-            <button
-              type="button"
-              onClick={() => { setTab('join'); setError(null); }}
-              className={`flex-1 py-1.5 rounded-xl transition-all cursor-pointer ${
-                tab === 'join'
-                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs'
-                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
-              }`}
-            >
-              Войти по коду
-            </button>
-          </div>
+          <Tabs
+            selectedKey={tab}
+            onSelectionChange={(key) => {
+              setTab(key as 'list' | 'create' | 'join');
+              setError(null);
+            }}
+            className="w-full"
+          >
+            <Tabs.ListContainer className="w-full rounded-2xl bg-stone-100 dark:bg-stone-800 p-1">
+              <Tabs.List aria-label="Вкладки семейных групп" className="w-full flex">
+                <Tabs.Tab
+                  id="list"
+                  aria-label="Мои семьи"
+                  className="flex-1 py-1.5 text-xs font-semibold rounded-xl text-center text-stone-600 dark:text-stone-300 transition-colors"
+                >
+                  <span>Мои семьи ({userGroups.length})</span>
+                  <Tabs.Indicator className="rounded-xl bg-white dark:bg-stone-700 shadow-xs" />
+                </Tabs.Tab>
+                <Tabs.Tab
+                  id="create"
+                  aria-label="Создать"
+                  className="flex-1 py-1.5 text-xs font-semibold rounded-xl text-center text-stone-600 dark:text-stone-300 transition-colors"
+                >
+                  <span>Создать</span>
+                  <Tabs.Indicator className="rounded-xl bg-white dark:bg-stone-700 shadow-xs" />
+                </Tabs.Tab>
+                <Tabs.Tab
+                  id="join"
+                  aria-label="Войти по коду"
+                  className="flex-1 py-1.5 text-xs font-semibold rounded-xl text-center text-stone-600 dark:text-stone-300 transition-colors"
+                >
+                  <span>Войти по коду</span>
+                  <Tabs.Indicator className="rounded-xl bg-white dark:bg-stone-700 shadow-xs" />
+                </Tabs.Tab>
+              </Tabs.List>
+            </Tabs.ListContainer>
+          </Tabs>
         </div>
 
         {/* Body Content */}
@@ -266,7 +268,7 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
                 <label className="text-xs font-semibold text-stone-700 dark:text-stone-300">
                   Название нового круга
                 </label>
-                <input
+                <Input
                   type="text"
                   required
                   placeholder="Например: Семья Ивановых или Друзья"

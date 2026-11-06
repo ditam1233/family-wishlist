@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Wish } from '@/types';
 import { extractUrlAndTitle } from '@/lib/scraper';
-import { Button } from '@heroui/react';
+import { Button, Input } from '@heroui/react';
 import { Plus, SlidersHorizontal } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -71,7 +71,7 @@ export const InlineAddWish: React.FC<InlineAddWishProps> = ({
         <Plus className="w-4 h-4" />
       </div>
 
-      <input
+      <Input
         type="text"
         className="flex-1 bg-transparent text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none"
         placeholder="Вставьте ссылку на товар или напишите название..."

@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Wish } from '@/types';
 import { normalizeUrl, extractUrlAndTitle } from '@/lib/scraper';
 import { compressImage } from '@/lib/imageCompressor';
-import { Button } from '@heroui/react';
+import { Button, Input, TextArea, Tabs } from '@heroui/react';
 import { X, Link as LinkIcon, Camera, Trash2, Loader2, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -193,36 +193,38 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
             </p>
           </div>
 
-          {/* Image Upload / URL Tabs */}
+          {/* Image Upload / URL Tabs via HeroUI Tabs */}
           <div className="p-3.5 rounded-2xl bg-stone-50/70 dark:bg-stone-800/40 border border-stone-200/60 dark:border-stone-800 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">
                 Фотография
               </span>
-              <div className="flex items-center p-0.5 rounded-xl bg-stone-200/70 dark:bg-stone-800 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setImageTab('upload')}
-                  className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
-                    imageTab === 'upload'
-                      ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs'
-                      : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
-                  }`}
-                >
-                  Галерея / Камера
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setImageTab('url')}
-                  className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
-                    imageTab === 'url'
-                      ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs'
-                      : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
-                  }`}
-                >
-                  Ссылка
-                </button>
-              </div>
+              <Tabs
+                selectedKey={imageTab}
+                onSelectionChange={(key) => setImageTab(key as 'upload' | 'url')}
+                className="w-auto"
+              >
+                <Tabs.ListContainer className="rounded-xl bg-stone-200/70 dark:bg-stone-800 p-0.5">
+                  <Tabs.List aria-label="Источник фото" className="flex">
+                    <Tabs.Tab
+                      id="upload"
+                      aria-label="Галерея / Камера"
+                      className="px-2.5 py-1 text-xs font-medium rounded-lg text-stone-600 dark:text-stone-300 transition-colors"
+                    >
+                      <span>Галерея / Камера</span>
+                      <Tabs.Indicator className="rounded-lg bg-white dark:bg-stone-700 shadow-xs" />
+                    </Tabs.Tab>
+                    <Tabs.Tab
+                      id="url"
+                      aria-label="Ссылка"
+                      className="px-2.5 py-1 text-xs font-medium rounded-lg text-stone-600 dark:text-stone-300 transition-colors"
+                    >
+                      <span>Ссылка</span>
+                      <Tabs.Indicator className="rounded-lg bg-white dark:bg-stone-700 shadow-xs" />
+                    </Tabs.Tab>
+                  </Tabs.List>
+                </Tabs.ListContainer>
+              </Tabs>
             </div>
 
             {imageUrl ? (
@@ -276,7 +278,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
             <label className="text-xs font-semibold text-stone-700 dark:text-stone-300">
               Название подарка <span className="text-rose-500">*</span>
             </label>
-            <input
+            <Input
               type="text"
               required
               placeholder="Например: Беспроводные наушники Sony"
@@ -308,7 +310,7 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
             <label className="text-xs font-semibold text-stone-700 dark:text-stone-300">
               Заметки или пожелания
             </label>
-            <textarea
+            <TextArea
               rows={2}
               placeholder="Цвет черный, размер M, или артикул"
               value={description}
