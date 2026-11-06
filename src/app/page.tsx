@@ -389,6 +389,20 @@ export default function HomePage() {
 
           {/* Right Header Controls */}
           <div className="flex items-center gap-2">
+            {/* Add Wish button in header when viewing own wishlist */}
+            {isOwner && activeTab === 'wishes' && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setIsAddModalOpen(true)}
+                className="rounded-xl font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-all gap-1.5 px-3 h-9 shrink-0 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Добавить подарок</span>
+                <span className="sm:hidden">Добавить</span>
+              </Button>
+            )}
+
             {/* View Mode Toggle via HeroUI Tabs with Animated Sliding Indicator */}
             <div className="hidden sm:flex items-center">
               <Tabs
@@ -538,6 +552,16 @@ export default function HomePage() {
                         </AvatarFallback>
                       </Avatar>
                       <span>{isMe ? `${member.name} (Я)` : member.name}</span>
+
+                      {/* Display count badge ONLY when this member is selected */}
+                      {isSelected && isWishesLoaded && (
+                        <Chip
+                          className="h-4.5 min-w-4.5 px-1.5 rounded-full text-[10px] font-bold bg-indigo-600 text-white transition-all animate-in fade-in zoom-in-95 duration-150"
+                        >
+                          {displayedWishes.length}
+                        </Chip>
+                      )}
+
                       <Tabs.Indicator />
                     </Tabs.Tab>
                   );
@@ -552,7 +576,7 @@ export default function HomePage() {
                   <span>Мои брони</span>
                   {myReservations.length > 0 && (
                     <Chip
-                      className={`h-4.5 min-w-4.5 px-1.5 rounded-full text-[10px] font-bold ${
+                      className={`h-4.5 min-w-4.5 px-1.5 rounded-full text-[10px] font-bold transition-colors ${
                         activeTab === 'reservations'
                           ? 'bg-rose-600 text-white'
                           : 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
@@ -567,62 +591,6 @@ export default function HomePage() {
             </Tabs.ListContainer>
           </Tabs>
         </div>
-
-        {/* Bento Hero Header via HeroUI Card */}
-        <Card className="taste-card p-5 sm:p-6 rounded-[22px] bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] shadow-xs mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Avatar className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg sm:text-xl shadow-xs shrink-0">
-              <AvatarFallback className="bg-indigo-600 text-white font-bold text-lg sm:text-xl rounded-2xl">
-                {activeTab === 'reservations' ? '🎁' : getInitials(targetMember?.name || currentUser.name)}
-              </AvatarFallback>
-            </Avatar>
-
-            <div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
-                  {activeTab === 'reservations'
-                    ? 'Подарки, которые вы дарите'
-                    : isOwner
-                    ? `${currentUser.name} (Мой список)`
-                    : `Список желаний: ${targetMember?.name}`}
-                </h1>
-
-                <Chip className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200/70 dark:border-white/[0.06]">
-                  {activeTab === 'reservations'
-                    ? `${displayedWishes.length} забронировано`
-                    : `${displayedWishes.length} ${
-                        displayedWishes.length === 1
-                          ? 'желание'
-                          : displayedWishes.length >= 2 && displayedWishes.length <= 4
-                          ? 'желания'
-                          : 'желаний'
-                      }`}
-                </Chip>
-              </div>
-
-              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 max-w-2xl leading-relaxed">
-                {activeTab === 'reservations'
-                  ? 'Список забронированных вами подарков для близких. Другие участники видят отметку о бронировании.'
-                  : isOwner
-                  ? 'Добавляйте любые желанные подарки со ссылками на маркетплейсы, чтобы близким было легко порадовать вас.'
-                  : 'Секретная бронь: нажмите «Подарю я!», чтобы застолбить подарок. Другие родственники увидят, что подарок занят.'}
-              </p>
-            </div>
-          </div>
-
-          {/* Add Wish button for owner */}
-          {isOwner && activeTab === 'wishes' && (
-            <Button
-              type="button"
-              size="md"
-              onClick={() => setIsAddModalOpen(true)}
-              className="rounded-2xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-indigo-500/25 transition-all gap-2 px-5 py-2.5 shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Добавить подарок</span>
-            </Button>
-          )}
-        </Card>
 
         {/* Non-intrusive subtle background loading indicator */}
         {isRefreshing && (
