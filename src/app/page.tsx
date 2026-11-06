@@ -8,7 +8,7 @@ import { useColorMode } from '@/components/ThemeRegistry/MuiThemeProvider';
 import { WishCard } from '@/components/WishCard';
 import { WishRow } from '@/components/WishRow';
 import dynamic from 'next/dynamic';
-import { Button } from '@heroui/react';
+import { Button, Tabs } from '@heroui/react';
 import {
   Gift,
   Plus,
@@ -407,32 +407,53 @@ export default function HomePage() {
 
           {/* Right Header Controls */}
           <div className="flex items-center gap-2">
-            {/* View Mode Toggle */}
-            <div className="hidden sm:flex items-center p-0.5 rounded-xl bg-stone-100 dark:bg-stone-800 border border-stone-200/60 dark:border-stone-700">
-              <button
-                type="button"
-                onClick={() => setViewMode('grid')}
-                className={`p-1.5 rounded-lg transition-all cursor-pointer ${
-                  viewMode === 'grid'
-                    ? 'bg-white dark:bg-stone-700 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                    : 'text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
-                }`}
-                title="Сетка"
+            {/* View Mode Toggle via HeroUI Tabs with Animated Sliding Indicator */}
+            <div className="hidden sm:flex items-center">
+              <Tabs
+                selectedKey={viewMode}
+                onSelectionChange={(key) => setViewMode(key as 'grid' | 'list')}
+                className="w-auto"
               >
-                <LayoutGrid className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('list')}
-                className={`p-1.5 rounded-lg transition-all cursor-pointer ${
-                  viewMode === 'list'
-                    ? 'bg-white dark:bg-stone-700 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                    : 'text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
-                }`}
-                title="Список"
-              >
-                <ListIcon className="w-4 h-4" />
-              </button>
+                <Tabs.ListContainer className="rounded-none bg-transparent p-0">
+                  <Tabs.List
+                    aria-label="Режим отображения"
+                    className={[
+                      'rounded-xl border border-stone-200/80 dark:border-white/[0.08] bg-stone-100/90 dark:bg-stone-850 p-0.5',
+                      '**:data-[slot=tabs-tab]:rounded-lg',
+                      '**:data-[slot=tabs-tab]:bg-transparent',
+                      '**:data-[slot=tabs-tab]:text-stone-400 dark:**:data-[slot=tabs-tab]:text-stone-400',
+                      '**:data-[slot=tabs-tab]:opacity-100',
+                      '**:data-[slot=tabs-tab]:transition-colors',
+                      '**:data-[slot=tabs-tab]:data-[hovered=true]:not-data-[selected=true]:text-stone-700 dark:**:data-[slot=tabs-tab]:data-[hovered=true]:not-data-[selected=true]:text-stone-200',
+                      '**:data-[slot=tabs-tab]:data-[focus-visible=true]:ring-2',
+                      '**:data-[slot=tabs-tab]:data-[focus-visible=true]:ring-indigo-500/20',
+                      '**:data-[slot=tabs-tab]:data-[selected=true]:font-medium',
+                      '**:data-[slot=tabs-tab]:data-[selected=true]:text-indigo-600 dark:**:data-[slot=tabs-tab]:data-[selected=true]:text-indigo-400',
+                      '**:data-[slot=tabs-tab]:shadow-none',
+                      '**:data-[slot=tabs-indicator]:rounded-lg',
+                      '**:data-[slot=tabs-indicator]:bg-white dark:**:data-[slot=tabs-indicator]:bg-stone-700',
+                      '**:data-[slot=tabs-indicator]:shadow-xs',
+                    ].join(' ')}
+                  >
+                    <Tabs.Tab
+                      id="grid"
+                      aria-label="Сетка"
+                      className="p-1.5 flex items-center justify-center cursor-pointer"
+                    >
+                      <LayoutGrid className="w-4 h-4" />
+                      <Tabs.Indicator />
+                    </Tabs.Tab>
+                    <Tabs.Tab
+                      id="list"
+                      aria-label="Список"
+                      className="p-1.5 flex items-center justify-center cursor-pointer"
+                    >
+                      <ListIcon className="w-4 h-4" />
+                      <Tabs.Indicator />
+                    </Tabs.Tab>
+                  </Tabs.List>
+                </Tabs.ListContainer>
+              </Tabs>
             </div>
 
             {/* Theme Toggle */}
