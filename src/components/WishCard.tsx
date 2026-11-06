@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Wish } from '@/types';
 import { formatPrice } from '@/lib/utils';
 import { normalizeUrl } from '@/lib/scraper';
-import { Button, Chip } from '@heroui/react';
+import { Button, Chip, Card } from '@heroui/react';
 import {
   Gift,
   CheckCircle2,
@@ -80,7 +80,7 @@ export const WishCard: React.FC<WishCardProps> = React.memo(function WishCard({
   const priorityInfo = wish.priority ? priorityLabels[wish.priority] : null;
 
   return (
-    <div className="group taste-card flex flex-col justify-between h-full rounded-[22px] bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] shadow-xs hover:shadow-lg transition-all overflow-hidden">
+    <Card className="group taste-card flex flex-col justify-between h-full rounded-[22px] bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] shadow-xs hover:shadow-lg transition-all overflow-hidden p-0 gap-0">
       <div>
         {/* Card Media / Image Header */}
         <div className="relative w-full pt-[62%] bg-stone-100 dark:bg-stone-800/60 overflow-hidden">
@@ -236,7 +236,7 @@ export const WishCard: React.FC<WishCardProps> = React.memo(function WishCard({
           </div>
         )}
       </div>
-    </div>
+    </Card>
   );
 });
 

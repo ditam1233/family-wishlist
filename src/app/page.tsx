@@ -8,7 +8,7 @@ import { useColorMode } from '@/components/ThemeRegistry/MuiThemeProvider';
 import { WishCard } from '@/components/WishCard';
 import { WishRow } from '@/components/WishRow';
 import dynamic from 'next/dynamic';
-import { Button, Tabs, Chip, Dropdown, DropdownTrigger, DropdownPopover, DropdownMenu, DropdownItem } from '@heroui/react';
+import { Button, Tabs, Chip, Card, Avatar, AvatarFallback, Dropdown, DropdownTrigger, DropdownPopover, DropdownMenu, DropdownItem } from '@heroui/react';
 import {
   Gift,
   Plus,
@@ -424,10 +424,14 @@ export default function HomePage() {
             {/* User Profile Avatar & Dropdown via HeroUI Dropdown */}
             <Dropdown>
               <DropdownTrigger
-                className="w-9 h-9 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs ring-2 ring-indigo-500/20 hover:ring-indigo-500/40 transition-all cursor-pointer"
+                className="w-9 h-9 rounded-full bg-transparent p-0 border-0 flex items-center justify-center cursor-pointer outline-none ring-2 ring-indigo-500/20 hover:ring-indigo-500/40 transition-all"
                 aria-label="Меню профиля"
               >
-                {getInitials(currentUser.name)}
+                <Avatar className="w-9 h-9 rounded-full bg-indigo-600 text-white font-bold text-xs">
+                  <AvatarFallback className="bg-indigo-600 text-white font-bold text-xs">
+                    {getInitials(currentUser.name)}
+                  </AvatarFallback>
+                </Avatar>
               </DropdownTrigger>
 
               <DropdownPopover
@@ -513,13 +517,15 @@ export default function HomePage() {
                     : 'bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 border-stone-200/80 dark:border-white/[0.08] hover:border-stone-300 dark:hover:border-stone-700'
                 }`}
               >
-                <div
-                  className={`w-5 h-5 rounded-full text-[10px] font-mono flex items-center justify-center ${
+                <Avatar
+                  className={`w-5 h-5 rounded-full text-[10px] font-mono flex items-center justify-center shrink-0 ${
                     isSelected ? 'bg-white/20 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
                   }`}
                 >
-                  {getInitials(member.name)}
-                </div>
+                  <AvatarFallback className="bg-transparent text-[10px] font-mono">
+                    {getInitials(member.name)}
+                  </AvatarFallback>
+                </Avatar>
                 <span>{isMe ? `${member.name} (Я)` : member.name}</span>
               </button>
             );
@@ -551,12 +557,14 @@ export default function HomePage() {
           </button>
         </div>
 
-        {/* Bento Hero Header */}
-        <div className="taste-card p-5 sm:p-6 rounded-[22px] bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] shadow-xs mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Bento Hero Header via HeroUI Card */}
+        <Card className="taste-card p-5 sm:p-6 rounded-[22px] bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] shadow-xs mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg sm:text-xl shadow-xs shrink-0">
-              {activeTab === 'reservations' ? '🎁' : getInitials(targetMember?.name || currentUser.name)}
-            </div>
+            <Avatar className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg sm:text-xl shadow-xs shrink-0">
+              <AvatarFallback className="bg-indigo-600 text-white font-bold text-lg sm:text-xl rounded-2xl">
+                {activeTab === 'reservations' ? '🎁' : getInitials(targetMember?.name || currentUser.name)}
+              </AvatarFallback>
+            </Avatar>
 
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
@@ -603,7 +611,7 @@ export default function HomePage() {
               <span>Добавить подарок</span>
             </Button>
           )}
-        </div>
+        </Card>
 
         {/* Non-intrusive subtle background loading indicator */}
         {isRefreshing && (

@@ -5,7 +5,7 @@ import { dataStore } from '@/lib/data';
 import { User } from '@/types';
 import { getInitials } from '@/lib/avatar';
 import { useColorMode } from '@/components/ThemeRegistry/MuiThemeProvider';
-import { Button, Tabs, Input } from '@heroui/react';
+import { Button, Tabs, Input, Avatar, AvatarFallback } from '@heroui/react';
 import {
   Gift,
   Key,
@@ -296,9 +296,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                           className="w-full flex items-center justify-between p-3 rounded-2xl bg-stone-50 dark:bg-stone-800/40 border border-stone-200/80 dark:border-stone-800 hover:border-indigo-500 dark:hover:border-indigo-500 transition-all cursor-pointer text-left"
                         >
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center font-mono">
-                              {getInitials(member.name)}
-                            </div>
+                            <Avatar className="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center font-mono">
+                              <AvatarFallback className="bg-indigo-600 text-white font-bold text-xs font-mono">
+                                {getInitials(member.name)}
+                              </AvatarFallback>
+                            </Avatar>
                             <div>
                               <div className="text-sm font-bold text-stone-900 dark:text-stone-100">
                                 {member.name}
