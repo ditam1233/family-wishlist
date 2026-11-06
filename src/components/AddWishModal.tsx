@@ -131,9 +131,9 @@ export const AddWishModal: React.FC<AddWishModalProps> = ({
     <Modal isOpen={isOpen} onOpenChange={(open) => !open && onClose()}>
       <ModalBackdrop className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
         <ModalContainer className="w-full flex items-center justify-center p-0">
-          <ModalDialog className="motion-dialog relative w-full max-w-lg max-h-[90vh] flex flex-col rounded-[22px] bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] shadow-2xl overflow-hidden outline-none">
+          <ModalDialog className="motion-dialog relative w-full max-w-lg max-h-[90vh] flex flex-col rounded-[22px] bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] shadow-2xl overflow-hidden outline-none p-0">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 dark:border-stone-800">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 dark:border-stone-800 shrink-0">
               <h2 className="text-base font-bold text-stone-900 dark:text-stone-100">
                 Новое желание
               </h2>

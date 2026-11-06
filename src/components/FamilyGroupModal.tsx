@@ -121,9 +121,9 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
     <Modal isOpen={isOpen} onOpenChange={(open) => !open && onClose()}>
       <ModalBackdrop className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
         <ModalContainer className="w-full flex items-center justify-center p-0">
-          <ModalDialog className="relative w-full max-w-md max-h-[90vh] flex flex-col rounded-3xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-2xl overflow-hidden outline-none">
+          <ModalDialog className="relative w-full max-w-md max-h-[90vh] flex flex-col rounded-3xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-2xl overflow-hidden outline-none p-0">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 dark:border-stone-800">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 dark:border-stone-800 shrink-0">
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                 <h2 className="text-base font-bold text-stone-900 dark:text-stone-100">

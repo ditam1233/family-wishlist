@@ -375,6 +375,21 @@ html.dark .family-nav-tabs .tabs__indicator {
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
+/* Modal Dialog Reset to prevent compressed inner content */
+.modal__dialog {
+  padding: 0 !important;
+}
+
+.modal__container {
+  padding: 16px !important;
+}
+
+@media (min-width: 640px) {
+  .modal__container {
+    padding: 24px !important;
+  }
+}
+
 button, a, input, select, textarea {
   -webkit-tap-highlight-color: transparent;
 }
