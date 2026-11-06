@@ -1,4 +1,4 @@
-import { User, FamilyGroup, Wish, Reservation } from '@/types';
+import { User, FamilyGroup } from '@/types';
 
 export const STORAGE_USERS = 'fw_users';
 export const STORAGE_GROUPS = 'fw_groups';

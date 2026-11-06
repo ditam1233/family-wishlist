@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { User, FamilyGroup } from '@/types';
 import { dataStore } from '@/lib/data';
 import { Button, Chip, Input, Tabs, Modal, ModalBackdrop, ModalContainer, ModalDialog, ModalCloseTrigger } from '@heroui/react';
@@ -40,11 +40,16 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const loadGroups = useCallback(async () => {
+    const groups = await dataStore.getUserGroups(currentUser.id);
+    setUserGroups(groups);
+  }, [currentUser.id]);
+
   useEffect(() => {
     if (isOpen) {
       loadGroups();
     }
-  }, [isOpen, currentUser.id]);
+  }, [isOpen, loadGroups]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -57,11 +62,6 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
-
-  const loadGroups = async () => {
-    const groups = await dataStore.getUserGroups(currentUser.id);
-    setUserGroups(groups);
-  };
 
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code);

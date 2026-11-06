@@ -8,7 +8,7 @@ import { useColorMode } from '@/components/ThemeRegistry/MuiThemeProvider';
 import { WishCard } from '@/components/WishCard';
 import { WishRow } from '@/components/WishRow';
 import dynamic from 'next/dynamic';
-import { Button, Tabs, Chip, Card, Avatar, AvatarFallback, Dropdown, DropdownTrigger, DropdownPopover, DropdownMenu, DropdownItem } from '@heroui/react';
+import { Button, Tabs, Chip, Avatar, AvatarFallback, Dropdown, DropdownTrigger, DropdownPopover, DropdownMenu, DropdownItem } from '@heroui/react';
 import {
   Gift,
   Plus,
@@ -20,8 +20,6 @@ import {
   Users,
   LogOut,
   AlertCircle,
-  CheckCircle2,
-  Info,
   X,
   Sparkles,
 } from 'lucide-react';
@@ -89,7 +87,9 @@ export default function HomePage() {
 
   // Keep a ref to currentUser for async callbacks without triggering re-renders
   const currentUserRef = useRef<User | null>(null);
-  currentUserRef.current = currentUser;
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
 
   // Load wishes: first show local cache instantly, then sync remote in background
   const fetchWishes = useCallback(async (targetId: string, viewerId: string) => {

@@ -5,7 +5,7 @@ import { dataStore } from '@/lib/data';
 import { User } from '@/types';
 import { getInitials } from '@/lib/avatar';
 import { useColorMode } from '@/components/ThemeRegistry/MuiThemeProvider';
-import { Button, Tabs, Input, Avatar, AvatarFallback } from '@heroui/react';
+import { Button, Tabs, Avatar, AvatarFallback } from '@heroui/react';
 import {
   Gift,
   Key,

@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Поиск цены
-    let priceStr =
+    const priceStr =
       $('meta[property="product:price:amount"]').attr('content') ||
       $('meta[property="og:price:amount"]').attr('content') ||
       $('meta[itemprop="price"]').attr('content') ||
