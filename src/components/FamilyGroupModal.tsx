@@ -119,11 +119,16 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
 
   return (
     <Modal isOpen={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <ModalBackdrop className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-        <ModalContainer className="w-full flex items-center justify-center p-0">
-          <ModalDialog className="relative w-full max-w-md max-h-[90vh] flex flex-col rounded-3xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-2xl overflow-hidden outline-none p-0">
+      <ModalBackdrop className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+        <ModalContainer className="w-full flex items-center justify-end sm:justify-center p-0">
+          <ModalDialog className="relative w-full sm:max-w-md max-h-[92vh] sm:max-h-[88vh] flex flex-col rounded-t-[28px] sm:rounded-[24px] rounded-b-none sm:rounded-b-[24px] bg-white dark:bg-stone-900 border-t border-x sm:border border-stone-200 dark:border-stone-800 shadow-2xl overflow-hidden outline-none p-0">
+            {/* iOS Pull Handle Bar */}
+            <div className="flex sm:hidden justify-center pt-2.5 pb-1 shrink-0">
+              <div className="w-9 h-1 rounded-full bg-stone-300 dark:bg-stone-700" />
+            </div>
+
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 dark:border-stone-800 shrink-0">
+            <div className="flex items-center justify-between px-5 sm:px-6 py-3.5 sm:py-4 border-b border-stone-100 dark:border-stone-800 shrink-0">
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                 <h2 className="text-base font-bold text-stone-900 dark:text-stone-100">
@@ -139,7 +144,7 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
             </div>
 
         {/* Tab Switcher via HeroUI Tabs */}
-        <div className="px-6 pt-3">
+        <div className="px-5 sm:px-6 pt-3 shrink-0">
           <Tabs
             selectedKey={tab}
             onSelectionChange={(key) => {
@@ -180,7 +185,7 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
         </div>
 
         {/* Body Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6 pb-[max(1.5rem,calc(env(safe-area-inset-bottom)+1rem))] space-y-4">
           {error && (
             <div className="flex items-center gap-2 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs">
               <AlertCircle className="w-4 h-4 shrink-0" />
