@@ -67,7 +67,42 @@ export function isTelegramWebApp(): boolean {
  */
 export function getTelegramUser(): TelegramUser | null {
   const tg = getTelegramWebApp();
-  return tg?.initDataUnsafe?.user || null;
+  if (tg?.initDataUnsafe?.user) {
+    return tg.initDataUnsafe.user;
+  }
+
+  // Fallback: parse raw initData query string if unsafe object is empty
+  if (tg?.initData && typeof window !== 'undefined') {
+    try {
+      const searchParams = new URLSearchParams(tg.initData);
+      const userRaw = searchParams.get('user');
+      if (userRaw) {
+        return JSON.parse(userRaw) as TelegramUser;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // Fallback 2: check if passed via window.location.hash (#tgWebAppData=...)
+  if (typeof window !== 'undefined' && window.location.hash) {
+    try {
+      const hash = window.location.hash.substring(1);
+      const hashParams = new URLSearchParams(hash);
+      const tgWebAppData = hashParams.get('tgWebAppData');
+      if (tgWebAppData) {
+        const innerParams = new URLSearchParams(tgWebAppData);
+        const userRaw = innerParams.get('user');
+        if (userRaw) {
+          return JSON.parse(userRaw) as TelegramUser;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return null;
 }
 
 /**

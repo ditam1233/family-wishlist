@@ -235,11 +235,25 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
         : await dataStore.login(email.trim(), password);
 
       if (res.success && res.user) {
+        // If opened inside Telegram, automatically bind this account to Telegram!
+        const currentTgUser = tgUser || getTelegramUser();
+        if (currentTgUser) {
+          await dataStore.linkTelegramToUser(res.user.id, {
+            id: currentTgUser.id,
+            first_name: currentTgUser.first_name,
+            last_name: currentTgUser.last_name,
+            username: currentTgUser.username,
+            photo_url: currentTgUser.photo_url,
+          });
+        }
+        triggerHaptic('success');
         onSuccess(res.user);
       } else {
+        triggerHaptic('error');
         setError(res.error || (isRegister ? 'Не удалось зарегистрироваться.' : 'Неверная почта или пароль.'));
       }
     } catch {
+      triggerHaptic('error');
       setError('Ошибка авторизации. Проверьте соединение.');
     } finally {
       setLoading(false);

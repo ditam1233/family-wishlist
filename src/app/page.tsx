@@ -195,6 +195,19 @@ export default function HomePage() {
 
         const user = await dataStore.getCurrentUser();
         if (user) {
+          // If logged in via email/session while inside Telegram, automatically link Telegram profile!
+          if (tgUser && (!user.telegram_id || String(user.telegram_id) !== String(tgUser.id))) {
+            await dataStore.linkTelegramToUser(user.id, {
+              id: tgUser.id,
+              first_name: tgUser.first_name,
+              last_name: tgUser.last_name,
+              username: tgUser.username,
+              photo_url: tgUser.photo_url,
+            });
+            user.telegram_id = tgUser.id;
+            user.telegram_username = tgUser.username;
+          }
+
           setCurrentUser(user);
           setSelectedUserId(user.id);
           await loadInitialData(user);
