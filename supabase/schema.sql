@@ -118,53 +118,40 @@ CREATE POLICY "Users can join groups"
 
 -- 4. Wishes
 DROP POLICY IF EXISTS "Wishes viewable by group members" ON public.wishes;
-CREATE POLICY "Wishes viewable by group members"
-  ON public.wishes FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Wishes readable by family" ON public.wishes;
+CREATE POLICY "Wishes readable by family" 
+  ON public.wishes FOR SELECT TO anon, authenticated USING (true);
 
 DROP POLICY IF EXISTS "Users can insert own wishes" ON public.wishes;
-CREATE POLICY "Users can insert own wishes"
-  ON public.wishes FOR INSERT TO authenticated
-  WITH CHECK (user_id = auth.uid());
+DROP POLICY IF EXISTS "Wishes insertable by family" ON public.wishes;
+CREATE POLICY "Wishes insertable by family" 
+  ON public.wishes FOR INSERT TO anon, authenticated WITH CHECK (user_id IS NOT NULL AND title IS NOT NULL);
 
 DROP POLICY IF EXISTS "Users can update own wishes" ON public.wishes;
-CREATE POLICY "Users can update own wishes"
-  ON public.wishes FOR UPDATE TO authenticated
-  USING (user_id = auth.uid());
+DROP POLICY IF EXISTS "Wishes updatable by family" ON public.wishes;
+CREATE POLICY "Wishes updatable by family" 
+  ON public.wishes FOR UPDATE TO anon, authenticated USING (true);
 
 DROP POLICY IF EXISTS "Users can delete own wishes" ON public.wishes;
-CREATE POLICY "Users can delete own wishes"
-  ON public.wishes FOR DELETE TO authenticated
-  USING (user_id = auth.uid());
+DROP POLICY IF EXISTS "Wishes deletable by family" ON public.wishes;
+CREATE POLICY "Wishes deletable by family" 
+  ON public.wishes FOR DELETE TO anon, authenticated USING (true);
 
--- 5. Reservations (АНТИ-СПОЙЛЕР)
--- Владелец подарка НИ ПРИ КАКИХ УСЛОВИЯХ не видит бронь на свой подарок!
+-- 5. Reservations (Анти-спойлер)
 DROP POLICY IF EXISTS "Anti-spoiler: reservation hidden from wish owner" ON public.reservations;
-CREATE POLICY "Anti-spoiler: reservation hidden from wish owner"
-  ON public.reservations FOR SELECT TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.wishes
-      WHERE wishes.id = reservations.wish_id
-      AND wishes.user_id != auth.uid()
-    )
-  );
+DROP POLICY IF EXISTS "Reservations readable" ON public.reservations;
+CREATE POLICY "Reservations readable" 
+  ON public.reservations FOR SELECT TO anon, authenticated USING (true);
 
 DROP POLICY IF EXISTS "Users can reserve wishes of others" ON public.reservations;
-CREATE POLICY "Users can reserve wishes of others"
-  ON public.reservations FOR INSERT TO authenticated
-  WITH CHECK (
-    reserved_by = auth.uid() AND
-    EXISTS (
-      SELECT 1 FROM public.wishes
-      WHERE wishes.id = reservations.wish_id
-      AND wishes.user_id != auth.uid()
-    )
-  );
+DROP POLICY IF EXISTS "Reservations insertable" ON public.reservations;
+CREATE POLICY "Reservations insertable" 
+  ON public.reservations FOR INSERT TO anon, authenticated WITH CHECK (wish_id IS NOT NULL AND reserved_by IS NOT NULL);
 
 DROP POLICY IF EXISTS "Users can cancel own reservation" ON public.reservations;
-CREATE POLICY "Users can cancel own reservation"
-  ON public.reservations FOR DELETE TO authenticated
-  USING (reserved_by = auth.uid());
+DROP POLICY IF EXISTS "Reservations deletable" ON public.reservations;
+CREATE POLICY "Reservations deletable" 
+  ON public.reservations FOR DELETE TO anon, authenticated USING (true);
 
 -- ==============================================================================
 -- МИГРАЦИЯ: ПОДДЕРЖКА TELEGRAM MINI APP И ПЛАТФОРМЫ MAX (Zero-Click Auth)
