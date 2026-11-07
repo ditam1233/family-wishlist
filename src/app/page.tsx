@@ -7,7 +7,8 @@ import { getInitials } from '@/lib/avatar';
 import { useColorMode } from '@/components/ThemeRegistry/MuiThemeProvider';
 import { WishCard } from '@/components/WishCard';
 import { WishRow } from '@/components/WishRow';
-import { getTelegramWebApp, getTelegramUser, initTelegramApp } from '@/lib/telegram';
+import { getTelegramWebApp, getTelegramUser, initTelegramApp, waitForTelegramSDK } from '@/lib/telegram';
+import { isMaxWebApp, loadMaxScript, getMaxUser, signalMaxReady } from '@/lib/max';
 import dynamic from 'next/dynamic';
 import { Button, Tabs, Chip, Avatar, AvatarFallback, Dropdown, DropdownTrigger, DropdownPopover, DropdownMenu, DropdownItem } from '@heroui/react';
 import {
@@ -153,8 +154,15 @@ export default function HomePage() {
 
   // Run ONCE on mount
   useEffect(() => {
-    // 0. Initialize Telegram WebApp window properties
-    initTelegramApp();
+    // Immediately tell MAX Messenger native wrapper that WebApp is ready
+    if (isMaxWebApp()) {
+      signalMaxReady();
+    }
+
+    // Hard safety timer: dismiss initial loading spinner after 2.2s maximum no matter what
+    const safetyTimer = setTimeout(() => {
+      setIsInitialLoading(false);
+    }, 2200);
 
     const cachedUser = dataStore.getCachedUser();
     if (cachedUser) {
@@ -180,16 +188,47 @@ export default function HomePage() {
     // Remote sync
     (async () => {
       try {
+        // 0. Wait for Telegram SDK to load (dynamically injected, non-blocking).
+        //    Returns instantly (null) when NOT inside Telegram.
+        const tgApp = await waitForTelegramSDK();
+        if (tgApp) {
+          initTelegramApp();
+        }
+
         // 1. If opened inside Telegram, check if already bound to an existing user (0-click login)
-        const tgApp = getTelegramWebApp();
-        const tgUser = getTelegramUser();
+        const tgUser = tgApp ? getTelegramUser() : null;
         if (tgApp && tgUser) {
           const boundUser = await dataStore.findUserByTelegramId(tgUser.id);
           if (boundUser) {
+            clearTimeout(safetyTimer);
             setCurrentUser(boundUser);
             setSelectedUserId(boundUser.id);
             await loadInitialData(boundUser);
             return;
+          }
+        }
+
+        // 2. If opened inside MAX Messenger, check if bound to an existing user (0-click login)
+        if (isMaxWebApp()) {
+          try {
+            await Promise.race([
+              loadMaxScript(),
+              new Promise((r) => setTimeout(r, 1000)),
+            ]);
+            signalMaxReady();
+            const maxUser = getMaxUser();
+            if (maxUser) {
+              const boundUser = await dataStore.findUserByMaxId(maxUser.id);
+              if (boundUser) {
+                clearTimeout(safetyTimer);
+                setCurrentUser(boundUser);
+                setSelectedUserId(boundUser.id);
+                await loadInitialData(boundUser);
+                return;
+              }
+            }
+          } catch (e) {
+            console.warn('MAX mount error:', e);
           }
         }
 
@@ -208,18 +247,37 @@ export default function HomePage() {
             user.telegram_username = tgUser.username;
           }
 
+          if (isMaxWebApp()) {
+            const maxUser = getMaxUser();
+            if (maxUser && (!user.max_user_id || String(user.max_user_id) !== String(maxUser.id))) {
+              await dataStore.linkMaxToUser(user.id, {
+                id: maxUser.id,
+                first_name: maxUser.first_name,
+                last_name: maxUser.last_name,
+                username: maxUser.username,
+                photo_url: maxUser.photo_url,
+              });
+              user.max_user_id = String(maxUser.id);
+            }
+          }
+
+          clearTimeout(safetyTimer);
           setCurrentUser(user);
           setSelectedUserId(user.id);
           await loadInitialData(user);
         } else {
+          clearTimeout(safetyTimer);
           setCurrentUser(null);
           setIsInitialLoading(false);
         }
       } catch (err) {
         console.error('Mount init error:', err);
+        clearTimeout(safetyTimer);
         setIsInitialLoading(false);
       }
     })();
+
+    return () => clearTimeout(safetyTimer);
   }, [loadInitialData]);
 
   // Smooth switch target user: zero twitching, instant local cache, stable scroll

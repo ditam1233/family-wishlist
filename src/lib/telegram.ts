@@ -55,6 +55,37 @@ export function getTelegramWebApp(): TelegramWebApp | null {
 }
 
 /**
+ * Wait for Telegram SDK to load (since we load it dynamically).
+ * Returns the WebApp instance or null after timeout.
+ */
+export function waitForTelegramSDK(timeoutMs = 2000): Promise<TelegramWebApp | null> {
+  return new Promise((resolve) => {
+    const existing = getTelegramWebApp();
+    if (existing) { resolve(existing); return; }
+
+    // Only wait if we appear to be inside Telegram
+    if (typeof window === 'undefined') { resolve(null); return; }
+    const h = window.location.hash || '';
+    const s = window.location.search || '';
+    const looksLikeTelegram =
+      h.includes('tgWebAppData') ||
+      s.includes('tgWebAppData') ||
+      navigator.userAgent.includes('Telegram');
+
+    if (!looksLikeTelegram) { resolve(null); return; }
+
+    const start = Date.now();
+    const check = () => {
+      const tg = getTelegramWebApp();
+      if (tg) { resolve(tg); return; }
+      if (Date.now() - start > timeoutMs) { resolve(null); return; }
+      setTimeout(check, 50);
+    };
+    check();
+  });
+}
+
+/**
  * Check if the application is opened inside Telegram WebApp
  */
 export function isTelegramWebApp(): boolean {

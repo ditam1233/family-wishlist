@@ -273,6 +273,126 @@ class WishlistDataStore {
     return { success: true, user: newUser };
   }
 
+  /**
+   * Find an existing user bound to a MAX Messenger user ID
+   */
+  public async findUserByMaxId(
+    maxUserId: number | string
+  ): Promise<User | null> {
+    const midStr = String(maxUserId);
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('max_user_id', midStr)
+          .maybeSingle();
+
+        if (profile) {
+          const userObj: User = {
+            id: profile.id,
+            name: profile.name,
+            email: profile.email,
+            avatar_url: profile.avatar_url,
+            birthday: profile.birthday,
+            telegram_id: profile.telegram_id,
+            telegram_username: profile.telegram_username,
+            max_user_id: profile.max_user_id,
+            created_at: profile.created_at,
+          };
+          this.setCachedUser(userObj);
+          return userObj;
+        }
+      } catch (err) {
+        console.error('Error finding user by max_user_id in Supabase:', err);
+      }
+    }
+
+    const users = localStore.get<User[]>(STORAGE_USERS, []);
+    const localUser = users.find((u) => String(u.max_user_id) === midStr);
+    if (localUser) {
+      localStore.set(STORAGE_SESSION, localUser.id);
+      this.setCachedUser(localUser);
+      return localUser;
+    }
+    return null;
+  }
+
+  /**
+   * Link an existing family member to a MAX account
+   */
+  public async linkMaxToUser(
+    targetUserId: string,
+    maxUser: { id: number | string; first_name: string; last_name?: string; username?: string; photo_url?: string }
+  ): Promise<{ success: boolean; user?: User; error?: string }> {
+    const midStr = String(maxUser.id);
+
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        const { data: existingOther } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .eq('max_user_id', midStr)
+          .maybeSingle();
+
+        if (existingOther && existingOther.id !== targetUserId) {
+          return {
+            success: false,
+            error: `Этот аккаунт MAX уже привязан к «${existingOther.name}»`,
+          };
+        }
+
+        const updatePayload: Record<string, unknown> = {
+          max_user_id: midStr,
+        };
+        if (maxUser.photo_url) {
+          updatePayload.avatar_url = maxUser.photo_url;
+        }
+
+        const { data: updatedProfile, error: updateErr } = await supabase
+          .from('profiles')
+          .update(updatePayload)
+          .eq('id', targetUserId)
+          .select()
+          .single();
+
+        if (updateErr) {
+          console.warn('Supabase update max_user_id warning:', updateErr.message);
+        } else if (updatedProfile) {
+          const userObj: User = {
+            id: updatedProfile.id,
+            name: updatedProfile.name,
+            email: updatedProfile.email,
+            avatar_url: updatedProfile.avatar_url,
+            birthday: updatedProfile.birthday,
+            telegram_id: updatedProfile.telegram_id,
+            telegram_username: updatedProfile.telegram_username,
+            max_user_id: updatedProfile.max_user_id,
+            created_at: updatedProfile.created_at,
+          };
+          this.setCachedUser(userObj);
+          return { success: true, user: userObj };
+        }
+      } catch (err: unknown) {
+        console.warn('Error linking MAX in Supabase:', err);
+      }
+    }
+
+    // Local storage fallback
+    const users = localStore.get<User[]>(STORAGE_USERS, []);
+    const userIndex = users.findIndex((u) => u.id === targetUserId);
+    if (userIndex !== -1) {
+      users[userIndex].max_user_id = midStr;
+      if (maxUser.photo_url) users[userIndex].avatar_url = maxUser.photo_url;
+      localStore.set(STORAGE_USERS, users);
+      localStore.set(STORAGE_SESSION, users[userIndex].id);
+      this.setCachedUser(users[userIndex]);
+      return { success: true, user: users[userIndex] };
+    }
+
+    return { success: true };
+  }
+
   public async register(
     name: string,
     email: string,
@@ -898,7 +1018,6 @@ class WishlistDataStore {
               is_reserved: false,
               reserved_by_me: false,
             }));
-            localStore.set(STORAGE_WISHES, wishes);
           } else {
             const wishIds = wishes.map((w) => w.id);
             const { data: reservations } = await supabase
@@ -913,6 +1032,11 @@ class WishlistDataStore {
               targetUserId
             );
           }
+
+          // Safely merge into local storage: keep wishes of other family members, update only targetUserId
+          const allStored = localStore.get<Wish[]>(STORAGE_WISHES, []);
+          const otherStored = allStored.filter((w) => w.user_id !== targetUserId);
+          localStore.set(STORAGE_WISHES, [...otherStored, ...wishes]);
         }
       } catch (err) {
         console.warn('Error fetching wishes from Supabase:', err);
