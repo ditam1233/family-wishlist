@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { MuiThemeProvider } from "@/components/ThemeRegistry/MuiThemeProvider";
 import "./globals.css";
 
@@ -33,12 +34,15 @@ export default function RootLayout({
   return (
     <html lang="ru" suppressHydrationWarning>
       <head>
+        <Script
+          src="https://telegram.org/js/telegram-web-app.js"
+          strategy="beforeInteractive"
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('wishlist_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}})()`,
           }}
         />
-        <script src="https://telegram.org/js/telegram-web-app.js" async />
       </head>
       <body className="antialiased min-h-screen">
         <MuiThemeProvider>

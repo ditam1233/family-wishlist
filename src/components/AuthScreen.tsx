@@ -53,16 +53,22 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
   const [tgUser, setTgUser] = useState<ReturnType<typeof getTelegramUser>>(null);
 
   useEffect(() => {
-    // 1. Check if running inside Telegram
-    const tgApp = getTelegramWebApp();
-    if (tgApp) {
-      try {
-        tgApp.ready();
-        tgApp.expand();
-      } catch {
-        // ignore
-      }
+    // Check Telegram WebApp with retry polling (handles async webview injection on iOS/Android)
+    let attempts = 0;
+    const checkTelegram = () => {
+      attempts++;
+      const tgApp = getTelegramWebApp();
       const user = getTelegramUser();
+
+      if (tgApp) {
+        try {
+          tgApp.ready();
+          tgApp.expand();
+        } catch {
+          // ignore
+        }
+      }
+
       if (user) {
         setTgUser(user);
         if (user.first_name) {
@@ -70,13 +76,20 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
           setRelativeName(autoName);
         }
       }
-      // Check start_param for family invite code (e.g. t.me/bot/app?startapp=FAM-1234)
+
       const startParam = getTelegramStartParam();
       if (startParam) {
         setInviteCode(startParam.toUpperCase());
         setTab('code');
       }
-    }
+
+      // If user not detected yet and under 15 attempts (~3 seconds), try again
+      if (!user && attempts < 15) {
+        setTimeout(checkTelegram, 200);
+      }
+    };
+
+    checkTelegram();
 
     // 2. Auto-fill code from URL query: ?code=STE-1234
     if (typeof window !== 'undefined') {
