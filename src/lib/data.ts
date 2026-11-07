@@ -372,6 +372,11 @@ class WishlistDataStore {
               (data.user.user_metadata?.name as string) ||
               cleanEmail.split('@')[0],
             email: cleanEmail,
+            avatar_url: profile?.avatar_url,
+            birthday: profile?.birthday,
+            telegram_id: profile?.telegram_id,
+            telegram_username: profile?.telegram_username,
+            max_user_id: profile?.max_user_id,
             created_at: data.user.created_at,
           };
           this.setCachedUser(userObj);

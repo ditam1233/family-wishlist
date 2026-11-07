@@ -146,6 +146,39 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
       return;
     }
 
+    // Check if this member is a real email account (not @family.local)
+    const isRealEmailAccount = member.email && !member.email.endsWith('@family.local');
+
+    if (isRealEmailAccount) {
+      // If user is already bound to current Telegram, we can auto-login or if in Telegram and telegram_id matches
+      if (tgUser && member.telegram_id && String(member.telegram_id) === String(tgUser.id)) {
+        setLoading(true);
+        setError(null);
+        try {
+          const user = await dataStore.findUserByTelegramId(tgUser.id);
+          if (user) {
+            triggerHaptic('success');
+            onSuccess(user);
+            return;
+          }
+        } catch {
+          // fallback to password
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      // Switch to Email tab, prefill email and prompt for password (no duplicate profile created!)
+      setTab('email');
+      setIsRegister(false);
+      setEmail(member.email);
+      setPassword('');
+      setError(`Для входа в профиль «${member.name}» введите пароль вашей учетной записи (${member.email})`);
+      triggerHaptic('light');
+      return;
+    }
+
+    // For relative profiles (@family.local without custom email)
     setLoading(true);
     setError(null);
     try {
@@ -250,17 +283,25 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
       if (res.success && res.user) {
         // If opened inside Telegram, automatically bind this account to Telegram!
         const currentTgUser = tgUser || getTelegramUser();
+        let finalUser = res.user;
         if (currentTgUser) {
-          await dataStore.linkTelegramToUser(res.user.id, {
-            id: currentTgUser.id,
-            first_name: currentTgUser.first_name,
-            last_name: currentTgUser.last_name,
-            username: currentTgUser.username,
-            photo_url: currentTgUser.photo_url,
-          });
+          try {
+            const linkRes = await dataStore.linkTelegramToUser(res.user.id, {
+              id: currentTgUser.id,
+              first_name: currentTgUser.first_name,
+              last_name: currentTgUser.last_name,
+              username: currentTgUser.username,
+              photo_url: currentTgUser.photo_url,
+            });
+            if (linkRes.success && linkRes.user) {
+              finalUser = linkRes.user;
+            }
+          } catch (linkErr) {
+            console.error('Failed to link Telegram user during login:', linkErr);
+          }
         }
         triggerHaptic('success');
-        onSuccess(res.user);
+        onSuccess(finalUser);
       } else {
         triggerHaptic('error');
         setError(res.error || (isRegister ? 'Не удалось зарегистрироваться.' : 'Неверная почта или пароль.'));
@@ -435,15 +476,23 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                               <div>
                                 <div className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
                                   <span>{member.name}</span>
-                                  {isBoundToOtherTg && (
-                                    <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-full bg-stone-200 dark:bg-stone-700 text-stone-500">
-                                      Привязан
+                                  {member.telegram_id ? (
+                                    <span className={`text-[10px] font-normal px-1.5 py-0.5 rounded-full ${
+                                      tgUser && String(member.telegram_id) === String(tgUser.id)
+                                        ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-semibold'
+                                        : 'bg-stone-200 dark:bg-stone-700 text-stone-500'
+                                    }`}>
+                                      {tgUser && String(member.telegram_id) === String(tgUser.id) ? 'Ваш Telegram' : 'TG привязан'}
                                     </span>
-                                  )}
+                                  ) : null}
                                 </div>
                                 <div className="text-[11px] text-stone-400">
                                   {isBoundToOtherTg
                                     ? 'Уже привязан к другому Telegram'
+                                    : tgUser && member.telegram_id && String(member.telegram_id) === String(tgUser.id)
+                                    ? 'Нажмите для мгновенного входа'
+                                    : member.email && !member.email.endsWith('@family.local')
+                                    ? 'Вход по Email и паролю'
                                     : tgUser
                                     ? 'Нажмите, чтобы привязать к Telegram'
                                     : 'Нажмите, чтобы войти в профиль'}

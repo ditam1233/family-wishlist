@@ -71,13 +71,13 @@ export function getTelegramUser(): TelegramUser | null {
     return tg.initDataUnsafe.user;
   }
 
-  // Fallback: parse raw initData query string if unsafe object is empty
+  // Fallback 1: parse raw initData query string if unsafe object is empty
   if (tg?.initData && typeof window !== 'undefined') {
     try {
       const searchParams = new URLSearchParams(tg.initData);
       const userRaw = searchParams.get('user');
       if (userRaw) {
-        return JSON.parse(userRaw) as TelegramUser;
+        return JSON.parse(decodeURIComponent(userRaw)) as TelegramUser;
       }
     } catch {
       // ignore
@@ -87,14 +87,31 @@ export function getTelegramUser(): TelegramUser | null {
   // Fallback 2: check if passed via window.location.hash (#tgWebAppData=...)
   if (typeof window !== 'undefined' && window.location.hash) {
     try {
-      const hash = window.location.hash.substring(1);
+      const hash = window.location.hash.replace(/^[#?]/, '');
       const hashParams = new URLSearchParams(hash);
       const tgWebAppData = hashParams.get('tgWebAppData');
       if (tgWebAppData) {
-        const innerParams = new URLSearchParams(tgWebAppData);
+        const innerParams = new URLSearchParams(decodeURIComponent(tgWebAppData));
         const userRaw = innerParams.get('user');
         if (userRaw) {
-          return JSON.parse(userRaw) as TelegramUser;
+          return JSON.parse(decodeURIComponent(userRaw)) as TelegramUser;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // Fallback 3: check search params (?tgWebAppData=...)
+  if (typeof window !== 'undefined' && window.location.search) {
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const tgWebAppData = searchParams.get('tgWebAppData');
+      if (tgWebAppData) {
+        const innerParams = new URLSearchParams(decodeURIComponent(tgWebAppData));
+        const userRaw = innerParams.get('user');
+        if (userRaw) {
+          return JSON.parse(decodeURIComponent(userRaw)) as TelegramUser;
         }
       }
     } catch {
