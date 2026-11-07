@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { User, FamilyGroup } from '@/types';
 import { dataStore } from '@/lib/data';
 import { Button, Chip, Input, Tabs, Modal, ModalBackdrop, ModalContainer, ModalDialog, ModalCloseTrigger } from '@heroui/react';
+import { triggerHaptic } from '@/lib/telegram';
 import {
   Users,
   Plus,
@@ -64,9 +65,11 @@ export const FamilyGroupModal: React.FC<FamilyGroupModalProps> = ({
   if (!isOpen) return null;
 
   const handleCopyCode = (code: string) => {
-    navigator.clipboard.writeText(code);
+    const shareText = `Присоединяйся к нашему семейному вишлисту! Код семьи: ${code}\nИли открой ссылку: https://ditam1233.github.io/family-wishlist/?code=${code}`;
+    navigator.clipboard.writeText(shareText);
+    triggerHaptic('success');
     setCopiedCode(code);
-    setTimeout(() => setCopiedCode(null), 2000);
+    setTimeout(() => setCopiedCode(null), 2500);
   };
 
   const handleCreateGroup = async (e: React.FormEvent) => {

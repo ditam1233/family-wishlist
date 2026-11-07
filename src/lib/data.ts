@@ -65,7 +65,11 @@ class WishlistDataStore {
               id: profile.id,
               name: profile.name,
               email: profile.email,
+              avatar_url: profile.avatar_url,
               birthday: profile.birthday,
+              telegram_id: profile.telegram_id,
+              telegram_username: profile.telegram_username,
+              max_user_id: profile.max_user_id,
               created_at: profile.created_at,
             }
           : {
@@ -400,6 +404,240 @@ class WishlistDataStore {
     localStore.remove(STORAGE_SESSION);
     localStore.remove(STORAGE_GROUPS);
     localStore.remove(STORAGE_MEMBERSHIPS);
+  }
+
+  // --- Telegram & MAX Platform Integration ---
+
+  /**
+   * Find an existing user bound to a Telegram ID (0-click auto-login)
+   */
+  public async findUserByTelegramId(
+    telegramId: number | string
+  ): Promise<User | null> {
+    const tidStr = String(telegramId);
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('telegram_id', tidStr)
+          .maybeSingle();
+
+        if (profile) {
+          const userObj: User = {
+            id: profile.id,
+            name: profile.name,
+            email: profile.email,
+            avatar_url: profile.avatar_url,
+            birthday: profile.birthday,
+            telegram_id: profile.telegram_id,
+            telegram_username: profile.telegram_username,
+            max_user_id: profile.max_user_id,
+            created_at: profile.created_at,
+          };
+          this.setCachedUser(userObj);
+          return userObj;
+        }
+      } catch (err) {
+        console.error('Error finding user by telegram_id in Supabase:', err);
+      }
+    }
+
+    const users = localStore.get<User[]>(STORAGE_USERS, []);
+    const localUser = users.find((u) => String(u.telegram_id) === tidStr);
+    if (localUser) {
+      localStore.set(STORAGE_SESSION, localUser.id);
+      this.setCachedUser(localUser);
+      return localUser;
+    }
+    return null;
+  }
+
+  /**
+   * Link an existing family member to a Telegram account
+   */
+  public async linkTelegramToUser(
+    targetUserId: string,
+    tgUser: { id: number | string; first_name: string; last_name?: string; username?: string; photo_url?: string }
+  ): Promise<{ success: boolean; user?: User; error?: string }> {
+    const tidStr = String(tgUser.id);
+
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        // Verify no other profile already has this telegram_id
+        const { data: existingOther } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .eq('telegram_id', tidStr)
+          .maybeSingle();
+
+        if (existingOther && existingOther.id !== targetUserId) {
+          return {
+            success: false,
+            error: `Этот Telegram аккаунт уже привязан к «${existingOther.name}»`,
+          };
+        }
+
+        const updatePayload: Record<string, unknown> = {
+          telegram_id: tidStr,
+        };
+        if (tgUser.username) {
+          updatePayload.telegram_username = tgUser.username;
+        }
+        if (tgUser.photo_url) {
+          updatePayload.avatar_url = tgUser.photo_url;
+        }
+
+        const { data: updatedProfile, error: updateErr } = await supabase
+          .from('profiles')
+          .update(updatePayload)
+          .eq('id', targetUserId)
+          .select()
+          .single();
+
+        if (updateErr) {
+          return { success: false, error: updateErr.message };
+        }
+
+        const userObj: User = {
+          id: updatedProfile.id,
+          name: updatedProfile.name,
+          email: updatedProfile.email,
+          avatar_url: updatedProfile.avatar_url,
+          birthday: updatedProfile.birthday,
+          telegram_id: updatedProfile.telegram_id,
+          telegram_username: updatedProfile.telegram_username,
+          max_user_id: updatedProfile.max_user_id,
+          created_at: updatedProfile.created_at,
+        };
+
+        this.setCachedUser(userObj);
+        return { success: true, user: userObj };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Ошибка привязки Telegram';
+        return { success: false, error: msg };
+      }
+    }
+
+    // Local fallback
+    const users = localStore.get<User[]>(STORAGE_USERS, []);
+    const userIndex = users.findIndex((u) => u.id === targetUserId);
+    if (userIndex === -1) {
+      return { success: false, error: 'Пользователь не найден' };
+    }
+
+    users[userIndex].telegram_id = tidStr;
+    if (tgUser.username) users[userIndex].telegram_username = tgUser.username;
+    if (tgUser.photo_url) users[userIndex].avatar_url = tgUser.photo_url;
+
+    localStore.set(STORAGE_USERS, users);
+    localStore.set(STORAGE_SESSION, users[userIndex].id);
+    this.setCachedUser(users[userIndex]);
+
+    return { success: true, user: users[userIndex] };
+  }
+
+  /**
+   * Create a brand new family member and instantly link their Telegram profile
+   */
+  public async createAndLinkTelegramUser(
+    groupId: string,
+    tgUser: { id: number | string; first_name: string; last_name?: string; username?: string; photo_url?: string }
+  ): Promise<{ success: boolean; user?: User; error?: string }> {
+    const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') || 'Родственник';
+    const tidStr = String(tgUser.id);
+
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        const deterministicEmail = `tg_${tidStr}@family.local`;
+        const deterministicPassword = `pwd_tg_${tidStr}_wishlist2026`;
+
+        let userId = '';
+        let userCreatedAt = new Date().toISOString();
+
+        const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+          email: deterministicEmail,
+          password: deterministicPassword,
+        });
+
+        if (!signInErr && signInData.user) {
+          userId = signInData.user.id;
+          userCreatedAt = signInData.user.created_at;
+        } else {
+          const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+            email: deterministicEmail,
+            password: deterministicPassword,
+            options: {
+              data: { name: fullName },
+            },
+          });
+          if (signUpErr || !signUpData.user) {
+            return { success: false, error: signUpErr?.message || 'Ошибка создания аккаунта' };
+          }
+          userId = signUpData.user.id;
+          userCreatedAt = signUpData.user.created_at;
+        }
+
+        // Upsert profile with telegram details
+        await supabase.from('profiles').upsert({
+          id: userId,
+          name: fullName,
+          email: deterministicEmail,
+          avatar_url: tgUser.photo_url || null,
+          telegram_id: tidStr,
+          telegram_username: tgUser.username || null,
+        });
+
+        // Add to family group
+        await supabase.from('group_members').insert({
+          group_id: groupId,
+          user_id: userId,
+        });
+
+        const userObj: User = {
+          id: userId,
+          name: fullName,
+          email: deterministicEmail,
+          avatar_url: tgUser.photo_url,
+          telegram_id: tidStr,
+          telegram_username: tgUser.username,
+          created_at: userCreatedAt,
+        };
+
+        this.setCachedUser(userObj);
+        return { success: true, user: userObj };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Ошибка создания профиля Telegram';
+        return { success: false, error: msg };
+      }
+    }
+
+    // Local fallback
+    const newUser: User = {
+      id: `user-tg-${tidStr}`,
+      name: fullName,
+      email: `tg_${tidStr}@family.local`,
+      avatar_url: tgUser.photo_url,
+      telegram_id: tidStr,
+      telegram_username: tgUser.username,
+      created_at: new Date().toISOString(),
+    };
+
+    const users = localStore.get<User[]>(STORAGE_USERS, []);
+    users.push(newUser);
+    localStore.set(STORAGE_USERS, users);
+
+    const memberships = localStore.get<{ group_id: string; user_id: string }[]>(
+      STORAGE_MEMBERSHIPS,
+      []
+    );
+    memberships.push({ group_id: groupId, user_id: newUser.id });
+    localStore.set(STORAGE_MEMBERSHIPS, memberships);
+
+    localStore.set(STORAGE_SESSION, newUser.id);
+    this.setCachedUser(newUser);
+
+    return { success: true, user: newUser };
   }
 
   // --- Family Groups ---

@@ -38,6 +38,7 @@ export default function RootLayout({
             __html: `(function(){try{var t=localStorage.getItem('wishlist_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}})()`,
           }}
         />
+        <script src="https://telegram.org/js/telegram-web-app.js" async />
       </head>
       <body className="antialiased min-h-screen">
         <MuiThemeProvider>

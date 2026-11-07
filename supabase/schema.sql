@@ -165,3 +165,13 @@ DROP POLICY IF EXISTS "Users can cancel own reservation" ON public.reservations;
 CREATE POLICY "Users can cancel own reservation"
   ON public.reservations FOR DELETE TO authenticated
   USING (reserved_by = auth.uid());
+
+-- ==============================================================================
+-- МИГРАЦИЯ: ПОДДЕРЖКА TELEGRAM MINI APP И ПЛАТФОРМЫ MAX (Zero-Click Auth)
+-- ==============================================================================
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS telegram_id TEXT UNIQUE;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS telegram_username TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS max_user_id TEXT UNIQUE;
+
+CREATE INDEX IF NOT EXISTS idx_profiles_telegram_id ON public.profiles(telegram_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_max_user_id ON public.profiles(max_user_id);

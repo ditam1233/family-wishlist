@@ -5,6 +5,7 @@ import { dataStore } from '@/lib/data';
 import { User } from '@/types';
 import { getInitials } from '@/lib/avatar';
 import { useColorMode } from '@/components/ThemeRegistry/MuiThemeProvider';
+import { getTelegramWebApp, getTelegramUser, getTelegramStartParam, triggerHaptic } from '@/lib/telegram';
 import { Button, Tabs, Avatar, AvatarFallback } from '@heroui/react';
 import {
   Gift,
@@ -20,6 +21,7 @@ import {
   Loader2,
   AlertCircle,
   ChevronRight,
+  Send,
 } from 'lucide-react';
 
 interface AuthScreenProps {
@@ -47,8 +49,36 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Auto-fill code from URL: ?code=STE-1234
+  // Telegram Mini App detection & auto-fill
+  const [tgUser, setTgUser] = useState<ReturnType<typeof getTelegramUser>>(null);
+
   useEffect(() => {
+    // 1. Check if running inside Telegram
+    const tgApp = getTelegramWebApp();
+    if (tgApp) {
+      try {
+        tgApp.ready();
+        tgApp.expand();
+      } catch {
+        // ignore
+      }
+      const user = getTelegramUser();
+      if (user) {
+        setTgUser(user);
+        if (user.first_name) {
+          const autoName = [user.first_name, user.last_name].filter(Boolean).join(' ');
+          setRelativeName(autoName);
+        }
+      }
+      // Check start_param for family invite code (e.g. t.me/bot/app?startapp=FAM-1234)
+      const startParam = getTelegramStartParam();
+      if (startParam) {
+        setInviteCode(startParam.toUpperCase());
+        setTab('code');
+      }
+    }
+
+    // 2. Auto-fill code from URL query: ?code=STE-1234
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const codeFromUrl = params.get('code');
@@ -96,16 +126,36 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
 
   // Click on existing member in the list
   const handleSelectExistingMember = async (member: User) => {
+    // If running in Telegram and member already linked to a different TG user
+    if (tgUser && member.telegram_id && String(member.telegram_id) !== String(tgUser.id)) {
+      setError(`Профиль «${member.name}» уже привязан к другому Telegram аккаунту.`);
+      triggerHaptic('error');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
       const res = await dataStore.joinByCode(inviteCode.trim(), member.name);
       if (res.success && res.user) {
+        // If in Telegram, automatically link this member to TG!
+        if (tgUser) {
+          await dataStore.linkTelegramToUser(res.user.id, {
+            id: tgUser.id,
+            first_name: tgUser.first_name,
+            last_name: tgUser.last_name,
+            username: tgUser.username,
+            photo_url: tgUser.photo_url,
+          });
+        }
+        triggerHaptic('success');
         onSuccess(res.user);
       } else {
+        triggerHaptic('error');
         setError(res.error || 'Не удалось войти');
       }
     } catch {
+      triggerHaptic('error');
       setError('Не удалось войти в аккаунт');
     } finally {
       setLoading(false);
@@ -124,13 +174,40 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
     setError(null);
 
     try {
+      if (tgUser && foundFamily) {
+        // Create brand new member directly bound to this Telegram user
+        const tgRes = await dataStore.createAndLinkTelegramUser(foundFamily.id, {
+          id: tgUser.id,
+          first_name: relativeName.trim(),
+          username: tgUser.username,
+          photo_url: tgUser.photo_url,
+        });
+        if (tgRes.success && tgRes.user) {
+          triggerHaptic('success');
+          onSuccess(tgRes.user);
+          return;
+        }
+      }
+
       const res = await dataStore.joinByCode(inviteCode.trim(), relativeName.trim());
       if (res.success && res.user) {
+        if (tgUser) {
+          await dataStore.linkTelegramToUser(res.user.id, {
+            id: tgUser.id,
+            first_name: tgUser.first_name,
+            last_name: tgUser.last_name,
+            username: tgUser.username,
+            photo_url: tgUser.photo_url,
+          });
+        }
+        triggerHaptic('success');
         onSuccess(res.user);
       } else {
+        triggerHaptic('error');
         setError(res.error || 'Семья с таким кодом не найдена. Проверьте код и попробуйте снова.');
       }
     } catch {
+      triggerHaptic('error');
       setError('Не удалось подключиться к семье. Попробуйте еще раз.');
     } finally {
       setLoading(false);
@@ -264,6 +341,23 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                   </div>
                 </div>
 
+                {/* Telegram Welcome Banner if inside TG */}
+                {tgUser && (
+                  <div className="flex items-center gap-3 p-3 rounded-2xl bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800 text-xs">
+                    <div className="w-8 h-8 rounded-full bg-sky-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <Send className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sky-600 dark:text-sky-400 font-semibold text-[10px] uppercase tracking-wider">
+                        Telegram вход
+                      </div>
+                      <div className="font-bold text-stone-900 dark:text-stone-100 truncate">
+                        Привет, {tgUser.first_name}!
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Found Family Banner */}
                 {foundFamily && (
                   <div className="flex items-center gap-3 p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 text-xs">
@@ -283,36 +377,60 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                 {foundFamily && familyMembers.length > 0 && !isNewMemberMode && (
                   <div className="space-y-2">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">
-                      Выберите себя из списка:
+                      {tgUser ? 'Кого привязать к вашему Telegram?' : 'Выберите себя из списка:'}
                     </span>
 
                     <div className="space-y-1.5">
-                      {familyMembers.map((member) => (
-                        <button
-                          key={member.id}
-                          type="button"
-                          disabled={loading}
-                          onClick={() => handleSelectExistingMember(member)}
-                          className="w-full flex items-center justify-between p-3 rounded-2xl bg-stone-50 dark:bg-stone-800/40 border border-stone-200/80 dark:border-stone-800 hover:border-indigo-500 dark:hover:border-indigo-500 transition-all cursor-pointer text-left"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <Avatar className="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center font-mono">
-                              <AvatarFallback className="bg-indigo-600 text-white font-bold text-xs font-mono">
-                                {getInitials(member.name)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <div className="text-sm font-bold text-stone-900 dark:text-stone-100">
-                                {member.name}
-                              </div>
-                              <div className="text-[11px] text-stone-400">
-                                Нажмите, чтобы войти в профиль
+                      {familyMembers.map((member) => {
+                        const isBoundToOtherTg =
+                          tgUser &&
+                          member.telegram_id &&
+                          String(member.telegram_id) !== String(tgUser.id);
+
+                        return (
+                          <button
+                            key={member.id}
+                            type="button"
+                            disabled={loading || Boolean(isBoundToOtherTg)}
+                            onClick={() => handleSelectExistingMember(member)}
+                            className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all text-left ${
+                              isBoundToOtherTg
+                                ? 'bg-stone-100/50 dark:bg-stone-800/20 border-stone-200/50 dark:border-stone-800 opacity-60 cursor-not-allowed'
+                                : 'bg-stone-50 dark:bg-stone-800/40 border-stone-200/80 dark:border-stone-800 hover:border-indigo-500 dark:hover:border-indigo-500 cursor-pointer'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <Avatar className="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center font-mono">
+                                <AvatarFallback className="bg-indigo-600 text-white font-bold text-xs font-mono">
+                                  {getInitials(member.name)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <div className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+                                  <span>{member.name}</span>
+                                  {isBoundToOtherTg && (
+                                    <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-full bg-stone-200 dark:bg-stone-700 text-stone-500">
+                                      Привязан
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[11px] text-stone-400">
+                                  {isBoundToOtherTg
+                                    ? 'Уже привязан к другому Telegram'
+                                    : tgUser
+                                    ? 'Нажмите, чтобы привязать к Telegram'
+                                    : 'Нажмите, чтобы войти в профиль'}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          <ChevronRight className="w-4 h-4 text-stone-400" />
-                        </button>
-                      ))}
+                            {isBoundToOtherTg ? (
+                              <Lock className="w-4 h-4 text-stone-400" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 text-stone-400" />
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
 
                     <div className="text-center pt-2">

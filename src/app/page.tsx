@@ -7,6 +7,7 @@ import { getInitials } from '@/lib/avatar';
 import { useColorMode } from '@/components/ThemeRegistry/MuiThemeProvider';
 import { WishCard } from '@/components/WishCard';
 import { WishRow } from '@/components/WishRow';
+import { getTelegramWebApp, getTelegramUser, initTelegramApp } from '@/lib/telegram';
 import dynamic from 'next/dynamic';
 import { Button, Tabs, Chip, Avatar, AvatarFallback, Dropdown, DropdownTrigger, DropdownPopover, DropdownMenu, DropdownItem } from '@heroui/react';
 import {
@@ -152,6 +153,9 @@ export default function HomePage() {
 
   // Run ONCE on mount
   useEffect(() => {
+    // 0. Initialize Telegram WebApp window properties
+    initTelegramApp();
+
     const cachedUser = dataStore.getCachedUser();
     if (cachedUser) {
       setCurrentUser(cachedUser);
@@ -176,6 +180,19 @@ export default function HomePage() {
     // Remote sync
     (async () => {
       try {
+        // 1. If opened inside Telegram, check if already bound to an existing user (0-click login)
+        const tgApp = getTelegramWebApp();
+        const tgUser = getTelegramUser();
+        if (tgApp && tgUser) {
+          const boundUser = await dataStore.findUserByTelegramId(tgUser.id);
+          if (boundUser) {
+            setCurrentUser(boundUser);
+            setSelectedUserId(boundUser.id);
+            await loadInitialData(boundUser);
+            return;
+          }
+        }
+
         const user = await dataStore.getCurrentUser();
         if (user) {
           setCurrentUser(user);

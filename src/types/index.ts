@@ -7,6 +7,9 @@ export interface User {
   password?: string; // in local store or Supabase Auth
   avatar_url?: string;
   birthday?: string; // YYYY-MM-DD
+  telegram_id?: number | string;
+  telegram_username?: string;
+  max_user_id?: string;
   created_at: string;
 }
 
