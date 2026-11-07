@@ -8,7 +8,6 @@ import { useColorMode } from '@/components/ThemeRegistry/MuiThemeProvider';
 import { WishCard } from '@/components/WishCard';
 import { WishRow } from '@/components/WishRow';
 import { getTelegramWebApp, getTelegramUser, initTelegramApp } from '@/lib/telegram';
-import { getMaxUser, isMaxWebApp } from '@/lib/max';
 import dynamic from 'next/dynamic';
 import { Button, Tabs, Chip, Avatar, AvatarFallback, Dropdown, DropdownTrigger, DropdownPopover, DropdownMenu, DropdownItem } from '@heroui/react';
 import {
@@ -157,15 +156,6 @@ export default function HomePage() {
     // 0. Initialize Telegram WebApp window properties
     initTelegramApp();
 
-    let isMounted = true;
-
-    // Safety timeout: Never keep the loading spinner hanging longer than 2.5 seconds
-    const safetyTimeout = setTimeout(() => {
-      if (isMounted) {
-        setIsInitialLoading(false);
-      }
-    }, 2500);
-
     const cachedUser = dataStore.getCachedUser();
     if (cachedUser) {
       setCurrentUser(cachedUser);
@@ -190,26 +180,12 @@ export default function HomePage() {
     // Remote sync
     (async () => {
       try {
-        // 1. If opened inside MAX, check if already bound to an existing user (0-click login)
-        const maxUser = getMaxUser();
-        if (maxUser) {
-          const boundUser = await dataStore.findUserByMaxId(maxUser.id);
-          if (boundUser && isMounted) {
-            clearTimeout(safetyTimeout);
-            setCurrentUser(boundUser);
-            setSelectedUserId(boundUser.id);
-            await loadInitialData(boundUser);
-            return;
-          }
-        }
-
-        // 2. If opened inside Telegram, check if already bound to an existing user (0-click login)
+        // 1. If opened inside Telegram, check if already bound to an existing user (0-click login)
         const tgApp = getTelegramWebApp();
         const tgUser = getTelegramUser();
         if (tgApp && tgUser) {
           const boundUser = await dataStore.findUserByTelegramId(tgUser.id);
-          if (boundUser && isMounted) {
-            clearTimeout(safetyTimeout);
+          if (boundUser) {
             setCurrentUser(boundUser);
             setSelectedUserId(boundUser.id);
             await loadInitialData(boundUser);
@@ -218,19 +194,7 @@ export default function HomePage() {
         }
 
         const user = await dataStore.getCurrentUser();
-        if (user && isMounted) {
-          // If logged in via email/session while inside MAX, automatically link MAX profile!
-          if (maxUser && (!user.max_user_id || String(user.max_user_id) !== String(maxUser.id))) {
-            await dataStore.linkMaxToUser(user.id, {
-              id: maxUser.id,
-              first_name: maxUser.first_name,
-              last_name: maxUser.last_name,
-              username: maxUser.username,
-              photo_url: maxUser.photo_url,
-            });
-            user.max_user_id = String(maxUser.id);
-          }
-
+        if (user) {
           // If logged in via email/session while inside Telegram, automatically link Telegram profile!
           if (tgUser && (!user.telegram_id || String(user.telegram_id) !== String(tgUser.id))) {
             await dataStore.linkTelegramToUser(user.id, {
@@ -244,30 +208,18 @@ export default function HomePage() {
             user.telegram_username = tgUser.username;
           }
 
-          clearTimeout(safetyTimeout);
           setCurrentUser(user);
           setSelectedUserId(user.id);
           await loadInitialData(user);
-        } else if (isMounted) {
-          clearTimeout(safetyTimeout);
-          if (!cachedUser) {
-            setCurrentUser(null);
-          }
+        } else {
+          setCurrentUser(null);
           setIsInitialLoading(false);
         }
       } catch (err) {
         console.error('Mount init error:', err);
-        if (isMounted) {
-          clearTimeout(safetyTimeout);
-          setIsInitialLoading(false);
-        }
+        setIsInitialLoading(false);
       }
     })();
-
-    return () => {
-      isMounted = false;
-      clearTimeout(safetyTimeout);
-    };
   }, [loadInitialData]);
 
   // Smooth switch target user: zero twitching, instant local cache, stable scroll
@@ -409,20 +361,13 @@ export default function HomePage() {
 
   if (isInitialLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-4 bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100">
         <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30 animate-bounce">
           <Gift className="w-6 h-6" />
         </div>
         <p className="text-sm font-semibold text-stone-500 dark:text-stone-400">
           Загрузка вишлиста...
         </p>
-        <button
-          type="button"
-          onClick={() => setIsInitialLoading(false)}
-          className="mt-2 text-xs font-medium text-stone-400 hover:text-indigo-600 dark:hover:text-indigo-400 underline cursor-pointer"
-        >
-          Нажмите сюда, если экран не открывается
-        </button>
       </div>
     );
   }

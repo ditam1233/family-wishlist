@@ -38,30 +38,6 @@ export default function RootLayout({
           src="https://telegram.org/js/telegram-web-app.js"
           strategy="beforeInteractive"
         />
-        <Script
-          src="https://st.max.ru/js/max-web-app.js"
-          strategy="beforeInteractive"
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.addEventListener('error', function(e) {
-                console.error('GLOBAL ERROR:', e.message, e.filename, e.lineno);
-              });
-              window.addEventListener('unhandledrejection', function(e) {
-                console.error('UNHANDLED PROMISE:', e.reason);
-              });
-            `,
-          }}
-        />
-        <Script
-          src="https://telegram.org/js/telegram-web-app.js"
-          strategy="beforeInteractive"
-        />
-        <Script
-          src="https://st.max.ru/js/max-web-app.js"
-          strategy="beforeInteractive"
-        />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('wishlist_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}})()`,
