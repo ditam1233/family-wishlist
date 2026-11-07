@@ -163,6 +163,10 @@ export default function HomePage() {
         setWishes(wishes);
         setIsWishesLoaded(true);
       }
+
+      // Preload all family members' wishes in background for 0ms tab switching
+      const familyUserIds = members.map((m) => m.id);
+      dataStore.syncAllFamilyWishes(familyUserIds);
     } catch (err) {
       console.error('Initial data load error:', err);
     } finally {
@@ -723,7 +727,7 @@ export default function HomePage() {
         )}
 
         {/* Wishes Content List / Grid */}
-        {displayedWishes.length === 0 && (!isWishesLoaded || isRefreshing) ? (
+        {displayedWishes.length === 0 && !isWishesLoaded ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {[1, 2, 3].map((k) => (
               <div
@@ -736,7 +740,7 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-        ) : displayedWishes.length === 0 && isWishesLoaded && !isRefreshing ? (
+        ) : displayedWishes.length === 0 ? (
           <div className="motion-entrance py-12 px-6 rounded-[22px] bg-white dark:bg-stone-900 border border-dashed border-stone-300 dark:border-stone-800 text-center max-w-lg mx-auto space-y-3">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
               <Gift className="w-7 h-7" />

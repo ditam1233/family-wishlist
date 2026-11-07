@@ -991,6 +991,33 @@ class WishlistDataStore {
     return localMembers;
   }
 
+  /**
+   * Preload wishes and reservations for all family members at once
+   * so that switching between family members is 100% instant (0ms).
+   */
+  public async syncAllFamilyWishes(familyUserIds: string[]): Promise<void> {
+    if (!isSupabaseConfigured() || !supabase || familyUserIds.length === 0) return;
+    try {
+      const [wishesRes, resRes] = await Promise.all([
+        supabase
+          .from('wishes')
+          .select('*')
+          .in('user_id', familyUserIds)
+          .order('created_at', { ascending: false }),
+        supabase.from('reservations').select('*'),
+      ]);
+
+      if (wishesRes.data) {
+        localStore.set(STORAGE_WISHES, wishesRes.data);
+      }
+      if (resRes.data) {
+        localStore.set(STORAGE_RESERVATIONS, resRes.data);
+      }
+    } catch (e) {
+      console.warn('Batch preload wishes error:', e);
+    }
+  }
+
   // --- Wishes & Anti-Spoiler ---
 
   public getLocalWishes(targetUserId: string, viewerId: string) {
