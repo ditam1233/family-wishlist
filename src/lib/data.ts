@@ -33,12 +33,12 @@ class WishlistDataStore {
     localStore.setCachedGroups(groups);
   }
 
-  public getCachedMembers(): User[] {
-    return localStore.getCachedMembers();
+  public getCachedMembers(groupId?: string): User[] {
+    return localStore.getCachedMembers(groupId);
   }
 
-  public setCachedMembers(members: User[]): void {
-    localStore.setCachedMembers(members);
+  public setCachedMembers(members: User[], groupId?: string): void {
+    localStore.setCachedMembers(members, groupId);
   }
 
   // --- Auth / Users ---
@@ -923,18 +923,17 @@ class WishlistDataStore {
   public async getFamilyMembers(userId: string, groupId?: string): Promise<User[]> {
     if (isSupabaseConfigured() && supabase) {
       try {
-        let groupIds: string[] = [];
-        if (groupId && groupId !== 'all') {
-          groupIds = [groupId];
-        } else {
+        let targetGroupId = groupId;
+        if (!targetGroupId || targetGroupId === 'all') {
           const { data: myMemberships } = await supabase
             .from('group_members')
             .select('group_id')
-            .eq('user_id', userId);
-          groupIds = (myMemberships || []).map((m) => m.group_id);
+            .eq('user_id', userId)
+            .limit(1);
+          targetGroupId = myMemberships?.[0]?.group_id;
         }
 
-        if (groupIds.length === 0) {
+        if (!targetGroupId) {
           const { data: me } = await supabase
             .from('profiles')
             .select('*')
@@ -943,12 +942,13 @@ class WishlistDataStore {
           return me ? [me] : [];
         }
 
-        const { data: allGroupMembers } = await supabase
+        // Strictly query ONLY members of this specific group
+        const { data: groupMembers } = await supabase
           .from('group_members')
           .select('user_id')
-          .in('group_id', groupIds);
+          .eq('group_id', targetGroupId);
 
-        const userIds = Array.from(new Set((allGroupMembers || []).map((m) => m.user_id)));
+        const userIds = Array.from(new Set((groupMembers || []).map((m) => m.user_id)));
         if (!userIds.includes(userId)) {
           userIds.push(userId);
         }
@@ -963,17 +963,19 @@ class WishlistDataStore {
           if (b.id === userId) return 1;
           return a.name.localeCompare(b.name, 'ru');
         });
-        this.setCachedMembers(result);
+        this.setCachedMembers(result, targetGroupId);
         return result;
       } catch (err) {
         console.error('Error fetching family members from Supabase:', err);
       }
     }
 
-    const targetGroupIds =
+    const targetGroupId =
       groupId && groupId !== 'all'
-        ? [groupId]
-        : (await this.getUserGroups(userId)).map((g) => g.id);
+        ? groupId
+        : (await this.getUserGroups(userId))[0]?.id;
+
+    if (!targetGroupId) return [];
 
     const memberships = localStore.get<{ group_id: string; user_id: string }[]>(
       STORAGE_MEMBERSHIPS,
@@ -983,11 +985,17 @@ class WishlistDataStore {
     const relatedUserIds = new Set<string>([userId]);
 
     memberships.forEach((m) => {
-      if (targetGroupIds.includes(m.group_id)) relatedUserIds.add(m.user_id);
+      if (m.group_id === targetGroupId) relatedUserIds.add(m.user_id);
     });
 
-    const localMembers = users.filter((u) => relatedUserIds.has(u.id));
-    this.setCachedMembers(localMembers);
+    const localMembers = users
+      .filter((u) => relatedUserIds.has(u.id))
+      .sort((a, b) => {
+        if (a.id === userId) return -1;
+        if (b.id === userId) return 1;
+        return a.name.localeCompare(b.name, 'ru');
+      });
+    this.setCachedMembers(localMembers, targetGroupId);
     return localMembers;
   }
 

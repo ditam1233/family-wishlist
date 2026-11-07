@@ -132,24 +132,30 @@ export default function HomePage() {
     }
   }, []);
 
-  // Complete user and family data loader (parallelized without waterfalls)
+  // Complete user and family data loader (parallelized and strictly scoped to active family)
   const loadInitialData = useCallback(async (user: User) => {
     setSelectedUserId(user.id);
     selectedUserIdRef.current = user.id;
 
     try {
-      // Parallelize all independent initial queries
-      const [groups, members, wishes] = await Promise.all([
-        dataStore.getUserGroups(user.id),
-        dataStore.getFamilyMembers(user.id),
+      // 1. Get user groups
+      const groups = await dataStore.getUserGroups(user.id);
+      setUserGroups(groups);
+
+      const activeGroup = groups[0];
+      const activeGroupId = activeGroup?.id;
+      if (activeGroupId) {
+        setSelectedGroupId(activeGroupId);
+      }
+
+      // 2. Load members FOR THIS SPECIFIC GROUP ONLY (prevents mixing with other families!)
+      const [members, wishes] = await Promise.all([
+        activeGroupId
+          ? dataStore.getFamilyMembers(user.id, activeGroupId)
+          : Promise.resolve([user]),
         dataStore.getWishesForUser(user.id, user.id),
         fetchReservations(user.id),
       ]);
-
-      setUserGroups(groups);
-      if (groups.length > 0) {
-        setSelectedGroupId(groups[0].id);
-      }
 
       // Ensure current logged-in user is ALWAYS first in the family list!
       const sortedMembers = [...members].sort((a, b) => {
@@ -167,6 +173,13 @@ export default function HomePage() {
       // Preload all family members' wishes in background for 0ms tab switching
       const familyUserIds = members.map((m) => m.id);
       dataStore.syncAllFamilyWishes(familyUserIds);
+
+      // Preload other groups' members in background so switching between families is 0ms
+      for (const g of groups) {
+        if (g.id !== activeGroupId) {
+          dataStore.getFamilyMembers(user.id, g.id);
+        }
+      }
     } catch (err) {
       console.error('Initial data load error:', err);
     } finally {
@@ -175,30 +188,27 @@ export default function HomePage() {
     }
   }, [fetchReservations]);
 
-  // Run ONCE on mount
+  // Run ONCE on mount: clean loading until authentication and data are genuinely ready
   useEffect(() => {
     // Immediately tell MAX Messenger native wrapper that WebApp is ready
     if (isMaxWebApp()) {
       signalMaxReady();
     }
 
-    // Hard safety timer: dismiss initial loading spinner after 2.2s maximum no matter what
-    const safetyTimer = setTimeout(() => {
-      setIsInitialLoading(false);
-    }, 2200);
-
     const cachedUser = dataStore.getCachedUser();
     if (cachedUser) {
       setCurrentUser(cachedUser);
       setSelectedUserId(cachedUser.id);
+      selectedUserIdRef.current = cachedUser.id;
       const cachedGroups = dataStore.getCachedGroups();
       if (cachedGroups && cachedGroups.length > 0) {
         setUserGroups(cachedGroups);
-        setSelectedGroupId(cachedGroups[0].id);
-      }
-      const cachedMembers = dataStore.getCachedMembers();
-      if (cachedMembers && cachedMembers.length > 0) {
-        setFamilyMembers(cachedMembers);
+        const firstGroup = cachedGroups[0];
+        setSelectedGroupId(firstGroup.id);
+        const cachedMembers = dataStore.getCachedMembers(firstGroup.id);
+        if (cachedMembers && cachedMembers.length > 0) {
+          setFamilyMembers(cachedMembers);
+        }
       }
       const cachedWishes = dataStore.getLocalWishes(cachedUser.id, cachedUser.id);
       if (cachedWishes.length > 0) {
@@ -212,7 +222,6 @@ export default function HomePage() {
     (async () => {
       try {
         // 0. Wait for Telegram SDK to load (dynamically injected, non-blocking).
-        //    Returns instantly (null) when NOT inside Telegram.
         const tgApp = await waitForTelegramSDK();
         if (tgApp) {
           initTelegramApp();
@@ -223,7 +232,6 @@ export default function HomePage() {
         if (tgApp && tgUser) {
           const boundUser = await dataStore.findUserByTelegramId(tgUser.id);
           if (boundUser) {
-            clearTimeout(safetyTimer);
             setCurrentUser(boundUser);
             setSelectedUserId(boundUser.id);
             await loadInitialData(boundUser);
@@ -243,7 +251,6 @@ export default function HomePage() {
             if (maxUser) {
               const boundUser = await dataStore.findUserByMaxId(maxUser.id);
               if (boundUser) {
-                clearTimeout(safetyTimer);
                 setCurrentUser(boundUser);
                 setSelectedUserId(boundUser.id);
                 await loadInitialData(boundUser);
@@ -284,23 +291,18 @@ export default function HomePage() {
             }
           }
 
-          clearTimeout(safetyTimer);
           setCurrentUser(user);
           setSelectedUserId(user.id);
           await loadInitialData(user);
         } else {
-          clearTimeout(safetyTimer);
           setCurrentUser(null);
           setIsInitialLoading(false);
         }
       } catch (err) {
         console.error('Mount init error:', err);
-        clearTimeout(safetyTimer);
         setIsInitialLoading(false);
       }
     })();
-
-    return () => clearTimeout(safetyTimer);
   }, [loadInitialData]);
 
   // Smooth switch target user: zero twitching, instant local cache, stable scroll
@@ -320,30 +322,60 @@ export default function HomePage() {
     await fetchWishes(targetId, user.id);
   }, [fetchWishes]);
 
-  // Smooth switch family group
+  // Smooth switch family group: 0ms instant transition with cached members
   const handleSwitchGroup = useCallback(async (groupId: string) => {
     const user = currentUserRef.current;
     if (!user) return;
 
     setSelectedGroupId(groupId);
+
+    // 1. Instant local render (0ms):
+    const cachedGroupMembers = dataStore.getCachedMembers(groupId);
+    if (cachedGroupMembers.length > 0) {
+      const sortedCached = [...cachedGroupMembers].sort((a, b) => {
+        if (a.id === user.id) return -1;
+        if (b.id === user.id) return 1;
+        return a.name.localeCompare(b.name, 'ru');
+      });
+      setFamilyMembers(sortedCached);
+    }
+
+    // Switch to current user in this new group immediately:
+    setSelectedUserId(user.id);
+    selectedUserIdRef.current = user.id;
+    setActiveTab('wishes');
+
+    const localWishes = dataStore.getLocalWishes(user.id, user.id);
+    setWishes(localWishes);
+    setIsWishesLoaded(true);
+
+    // 2. Background sync (non-blocking):
     setIsRefreshing(true);
-
     try {
-      const members = await dataStore.getFamilyMembers(user.id, groupId);
-      setFamilyMembers(members);
+      const [members, wishes] = await Promise.all([
+        dataStore.getFamilyMembers(user.id, groupId),
+        dataStore.getWishesForUser(user.id, user.id),
+      ]);
 
-      const nextTargetId = members.some((m) => m.id === user.id)
-        ? user.id
-        : members[0]?.id || user.id;
+      const sortedMembers = [...members].sort((a, b) => {
+        if (a.id === user.id) return -1;
+        if (b.id === user.id) return 1;
+        return a.name.localeCompare(b.name, 'ru');
+      });
+      setFamilyMembers(sortedMembers);
 
-      setSelectedUserId(nextTargetId);
-      await fetchWishes(nextTargetId, user.id);
+      if (selectedUserIdRef.current === user.id) {
+        setWishes(wishes);
+      }
+
+      // Preload wishes of all members in this group in background
+      dataStore.syncAllFamilyWishes(members.map((m) => m.id));
     } catch (err) {
       console.error('Error switching group:', err);
     } finally {
       setIsRefreshing(false);
     }
-  }, [fetchWishes]);
+  }, []);
 
   // Add wish
   const handleAddWish = useCallback(async (wishData: Omit<Wish, 'id' | 'created_at'>) => {
