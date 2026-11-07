@@ -1,12 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-// Proxy via Cloudflare Pages (wishlist-api.pages.dev) to ensure 100% reliable connection in Russia without VPN
-const supabaseUrl =
-  rawUrl.includes('hvnxspbltdmctugcsnmn.supabase.co') || !rawUrl
-    ? 'https://wishlist-api.pages.dev'
-    : rawUrl;
-
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
@@ -20,7 +14,7 @@ export const isSupabaseConfigured = () => {
   );
 };
 
-// Custom fetch with 5-second timeout to prevent infinite hanging when network issues occur
+// Custom fetch with 5-second timeout to prevent infinite hanging when Supabase domain is blocked/unreachable
 const fetchWithTimeout: typeof fetch = async (input, init) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 5000);
