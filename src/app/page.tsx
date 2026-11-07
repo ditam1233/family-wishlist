@@ -409,13 +409,20 @@ export default function HomePage() {
 
   if (isInitialLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-4 bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100">
         <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30 animate-bounce">
           <Gift className="w-6 h-6" />
         </div>
         <p className="text-sm font-semibold text-stone-500 dark:text-stone-400">
           Загрузка вишлиста...
         </p>
+        <button
+          type="button"
+          onClick={() => setIsInitialLoading(false)}
+          className="mt-2 text-xs font-medium text-stone-400 hover:text-indigo-600 dark:hover:text-indigo-400 underline cursor-pointer"
+        >
+          Нажмите сюда, если экран не открывается
+        </button>
       </div>
     );
   }
