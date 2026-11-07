@@ -95,8 +95,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
         setTab('code');
       }
 
-      // If user not detected yet and under 15 attempts (~3 seconds), try again
-      if (!user && attempts < 15) {
+      // Continue polling until either TG or MAX user is detected (handles async script & bridge loading)
+      if (!user && !mUser && attempts < 25) {
         setTimeout(checkTelegram, 200);
       }
     };
@@ -493,7 +493,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                 )}
 
                 {/* MAX Welcome Banner if inside MAX */}
-                {maxUser && !tgUser && (
+                {maxUser && (
                   <div className="flex items-center gap-3 p-3 rounded-2xl bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 text-xs">
                     <div className="w-8 h-8 rounded-full bg-violet-600 text-white flex items-center justify-center shrink-0 shadow-xs">
                       <Smartphone className="w-4 h-4" />

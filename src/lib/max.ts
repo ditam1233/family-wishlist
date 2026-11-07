@@ -55,8 +55,10 @@ declare global {
  */
 export function getMaxWebApp(): MaxWebApp | null {
   if (typeof window === 'undefined') return null;
-  // MAX injects window.WebApp (or window.maxClient)
-  return window.WebApp || window.maxClient || null;
+  // MAX Bridge exposes window.WebApp directly, or inside window.maxClient
+  // We make sure it is not confused with Telegram (window.Telegram.WebApp)
+  const app = window.WebApp || window.maxClient;
+  return app || null;
 }
 
 /**
@@ -65,22 +67,35 @@ export function getMaxWebApp(): MaxWebApp | null {
 export function isMaxWebApp(): boolean {
   if (typeof window === 'undefined') return false;
 
-  // 1. Check window.WebApp from MAX bridge
   const max = getMaxWebApp();
-  if (max?.initDataUnsafe?.user || max?.platform) {
+  if (max?.initDataUnsafe?.user || max?.platform || max?.deviceName) {
     return true;
   }
 
-  // 2. Check User-Agent or URL parameters for MAX
-  const ua = window.navigator.userAgent.toLowerCase();
+  const ua = (window.navigator?.userAgent || '').toLowerCase();
   if (ua.includes('max') || ua.includes('maxmessenger') || ua.includes('maxapp')) {
     return true;
   }
 
-  // 3. Check query param ?platform=max or ?max_user_id=...
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('platform') === 'max' || params.has('max_user_id') || params.has('max_user')) {
-    return true;
+  try {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (
+      searchParams.get('platform') === 'max' ||
+      searchParams.has('max_user_id') ||
+      searchParams.has('max_user')
+    ) {
+      return true;
+    }
+
+    if (window.location.hash) {
+      const hash = window.location.hash.replace(/^[#?]/, '');
+      const hashParams = new URLSearchParams(hash);
+      if (hashParams.get('platform') === 'max' || hashParams.has('max_user_id')) {
+        return true;
+      }
+    }
+  } catch {
+    // ignore
   }
 
   return false;
@@ -93,25 +108,40 @@ export function getMaxUser(): MaxUser | null {
   if (typeof window === 'undefined') return null;
 
   const max = getMaxWebApp();
-  if (max?.initDataUnsafe?.user) {
+
+  // 1. Direct object from MAX Bridge: window.WebApp.initDataUnsafe.user
+  if (max?.initDataUnsafe?.user && max.initDataUnsafe.user.id) {
     return max.initDataUnsafe.user;
   }
 
-  // Fallback 1: check URL query params ?max_user_id=...
+  // 2. Parse initData query string if present
+  if (max?.initData) {
+    try {
+      const searchParams = new URLSearchParams(max.initData);
+      const userRaw = searchParams.get('user');
+      if (userRaw) {
+        return JSON.parse(decodeURIComponent(userRaw)) as MaxUser;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // 3. Check URL query parameters (?max_user_id=... or ?user=...)
   try {
-    const params = new URLSearchParams(window.location.search);
-    const maxUserId = params.get('max_user_id');
+    const searchParams = new URLSearchParams(window.location.search);
+    const maxUserId = searchParams.get('max_user_id') || (searchParams.get('platform') === 'max' ? searchParams.get('user_id') : null);
     if (maxUserId) {
       return {
         id: maxUserId,
-        first_name: params.get('max_first_name') || params.get('name') || 'Пользователь MAX',
-        last_name: params.get('max_last_name') || undefined,
-        username: params.get('max_username') || undefined,
-        photo_url: params.get('max_photo_url') || undefined,
+        first_name: searchParams.get('max_first_name') || searchParams.get('first_name') || 'Пользователь MAX',
+        last_name: searchParams.get('max_last_name') || searchParams.get('last_name') || undefined,
+        username: searchParams.get('max_username') || searchParams.get('username') || undefined,
+        photo_url: searchParams.get('max_photo_url') || searchParams.get('photo_url') || undefined,
       };
     }
 
-    const rawUserJson = params.get('max_user');
+    const rawUserJson = searchParams.get('max_user');
     if (rawUserJson) {
       return JSON.parse(decodeURIComponent(rawUserJson)) as MaxUser;
     }
@@ -119,13 +149,18 @@ export function getMaxUser(): MaxUser | null {
     // ignore
   }
 
-  // Fallback 2: parse initData if present
-  if (max?.initData) {
+  // 4. Check URL hash parameters (#tgWebAppData= or #maxWebAppData=)
+  if (window.location.hash) {
     try {
-      const searchParams = new URLSearchParams(max.initData);
-      const userRaw = searchParams.get('user');
-      if (userRaw) {
-        return JSON.parse(decodeURIComponent(userRaw)) as MaxUser;
+      const hash = window.location.hash.replace(/^[#?]/, '');
+      const hashParams = new URLSearchParams(hash);
+      const maxData = hashParams.get('maxWebAppData') || hashParams.get('max_user');
+      if (maxData) {
+        const innerParams = new URLSearchParams(decodeURIComponent(maxData));
+        const userRaw = innerParams.get('user');
+        if (userRaw) {
+          return JSON.parse(decodeURIComponent(userRaw)) as MaxUser;
+        }
       }
     } catch {
       // ignore
