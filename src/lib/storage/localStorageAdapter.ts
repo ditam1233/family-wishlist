@@ -61,17 +61,19 @@ export class LocalStorageAdapter {
 
   public getCachedMembers(groupId?: string): User[] {
     if (groupId) {
-      const perGroup = this.get<User[]>(`${CACHE_MEMBERS}_${groupId}`, []);
-      if (perGroup.length > 0) return perGroup;
+      return this.get<User[]>(`${CACHE_MEMBERS}_${groupId}`, []);
     }
-    return this.get<User[]>(CACHE_MEMBERS, []);
+    return [];
   }
 
   public setCachedMembers(members: User[], groupId?: string): void {
     if (groupId) {
       this.set(`${CACHE_MEMBERS}_${groupId}`, members);
     }
-    this.set(CACHE_MEMBERS, members);
+  }
+
+  public purgeLegacyMixedMembers(): void {
+    this.remove(CACHE_MEMBERS);
   }
 }
 

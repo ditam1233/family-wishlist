@@ -132,30 +132,38 @@ export default function HomePage() {
     }
   }, []);
 
-  // Complete user and family data loader (parallelized and strictly scoped to active family)
+  // Complete user and family data loader (fully parallelized, direct Supabase, no waterfalls)
   const loadInitialData = useCallback(async (user: User) => {
     setSelectedUserId(user.id);
     selectedUserIdRef.current = user.id;
 
     try {
-      // 1. Get user groups
-      const groups = await dataStore.getUserGroups(user.id);
-      setUserGroups(groups);
+      const cachedGroups = dataStore.getCachedGroups();
+      const initialActiveGroupId = cachedGroups[0]?.id;
 
+      // Fire all queries simultaneously in parallel:
+      const [groups, initialMembers, wishes] = await Promise.all([
+        dataStore.getUserGroups(user.id),
+        initialActiveGroupId
+          ? dataStore.getFamilyMembers(user.id, initialActiveGroupId)
+          : Promise.resolve([]),
+        dataStore.getWishesForUser(user.id, user.id),
+        fetchReservations(user.id),
+      ]);
+
+      setUserGroups(groups);
       const activeGroup = groups[0];
       const activeGroupId = activeGroup?.id;
       if (activeGroupId) {
         setSelectedGroupId(activeGroupId);
       }
 
-      // 2. Load members FOR THIS SPECIFIC GROUP ONLY (prevents mixing with other families!)
-      const [members, wishes] = await Promise.all([
-        activeGroupId
-          ? dataStore.getFamilyMembers(user.id, activeGroupId)
-          : Promise.resolve([user]),
-        dataStore.getWishesForUser(user.id, user.id),
-        fetchReservations(user.id),
-      ]);
+      let members = initialMembers;
+      if (!initialActiveGroupId || initialActiveGroupId !== activeGroupId) {
+        if (activeGroupId) {
+          members = await dataStore.getFamilyMembers(user.id, activeGroupId);
+        }
+      }
 
       // Ensure current logged-in user is ALWAYS first in the family list!
       const sortedMembers = [...members].sort((a, b) => {
@@ -170,11 +178,11 @@ export default function HomePage() {
         setIsWishesLoaded(true);
       }
 
-      // Preload all family members' wishes in background for 0ms tab switching
+      // Preload wishes in background
       const familyUserIds = members.map((m) => m.id);
       dataStore.syncAllFamilyWishes(familyUserIds);
 
-      // Preload other groups' members in background so switching between families is 0ms
+      // Preload other groups in background
       for (const g of groups) {
         if (g.id !== activeGroupId) {
           dataStore.getFamilyMembers(user.id, g.id);
@@ -185,6 +193,7 @@ export default function HomePage() {
     } finally {
       setIsInitialLoading(false);
       setIsRefreshing(false);
+      setIsWishesLoaded(true);
     }
   }, [fetchReservations]);
 
@@ -194,6 +203,9 @@ export default function HomePage() {
     if (isMaxWebApp()) {
       signalMaxReady();
     }
+
+    // Purge legacy mixed member cache
+    dataStore.purgeLegacyMixedMembers();
 
     const cachedUser = dataStore.getCachedUser();
     if (cachedUser) {
@@ -211,10 +223,8 @@ export default function HomePage() {
         }
       }
       const cachedWishes = dataStore.getLocalWishes(cachedUser.id, cachedUser.id);
-      if (cachedWishes.length > 0) {
-        setWishes(cachedWishes);
-        setIsWishesLoaded(true);
-      }
+      setWishes(cachedWishes);
+      setIsWishesLoaded(true);
       setIsInitialLoading(false);
     }
 

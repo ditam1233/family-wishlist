@@ -41,6 +41,10 @@ class WishlistDataStore {
     localStore.setCachedMembers(members, groupId);
   }
 
+  public purgeLegacyMixedMembers(): void {
+    localStore.purgeLegacyMixedMembers();
+  }
+
   // --- Auth / Users ---
 
   public async getCurrentUser(): Promise<User | null> {
