@@ -412,6 +412,131 @@ class WishlistDataStore {
   }
 
   // --- Telegram & MAX Platform Integration ---
+  // --- MAX Platform Integration ---
+
+  /**
+   * Find an existing user bound to a MAX User ID (0-click auto-login)
+   */
+  public async findUserByMaxId(
+    maxUserId: number | string
+  ): Promise<User | null> {
+    const midStr = String(maxUserId);
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('max_user_id', midStr)
+          .maybeSingle();
+
+        if (profile) {
+          const userObj: User = {
+            id: profile.id,
+            name: profile.name,
+            email: profile.email,
+            avatar_url: profile.avatar_url,
+            birthday: profile.birthday,
+            telegram_id: profile.telegram_id,
+            telegram_username: profile.telegram_username,
+            max_user_id: profile.max_user_id,
+            created_at: profile.created_at,
+          };
+          this.setCachedUser(userObj);
+          return userObj;
+        }
+      } catch (err) {
+        console.error('Error finding user by max_user_id in Supabase:', err);
+      }
+    }
+
+    const users = localStore.get<User[]>(STORAGE_USERS, []);
+    const localUser = users.find((u) => String(u.max_user_id) === midStr);
+    if (localUser) {
+      localStore.set(STORAGE_SESSION, localUser.id);
+      this.setCachedUser(localUser);
+      return localUser;
+    }
+    return null;
+  }
+
+  /**
+   * Link an existing user profile to a MAX account
+   */
+  public async linkMaxToUser(
+    targetUserId: string,
+    maxUser: { id: number | string; first_name: string; last_name?: string; username?: string; photo_url?: string }
+  ): Promise<{ success: boolean; user?: User; error?: string }> {
+    const midStr = String(maxUser.id);
+
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        // Verify no other profile already has this max_user_id
+        const { data: existingOther } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .eq('max_user_id', midStr)
+          .maybeSingle();
+
+        if (existingOther && existingOther.id !== targetUserId) {
+          return {
+            success: false,
+            error: `Этот аккаунт MAX уже привязан к «${existingOther.name}»`,
+          };
+        }
+
+        const updatePayload: Record<string, unknown> = {
+          max_user_id: midStr,
+        };
+        if (maxUser.photo_url) {
+          updatePayload.avatar_url = maxUser.photo_url;
+        }
+
+        const { data: updatedProfile, error: updateErr } = await supabase
+          .from('profiles')
+          .update(updatePayload)
+          .eq('id', targetUserId)
+          .select()
+          .single();
+
+        if (updateErr) {
+          return { success: false, error: updateErr.message };
+        }
+
+        const userObj: User = {
+          id: updatedProfile.id,
+          name: updatedProfile.name,
+          email: updatedProfile.email,
+          avatar_url: updatedProfile.avatar_url,
+          birthday: updatedProfile.birthday,
+          telegram_id: updatedProfile.telegram_id,
+          telegram_username: updatedProfile.telegram_username,
+          max_user_id: updatedProfile.max_user_id,
+          created_at: updatedProfile.created_at,
+        };
+
+        this.setCachedUser(userObj);
+        return { success: true, user: userObj };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Ошибка привязки MAX';
+        return { success: false, error: msg };
+      }
+    }
+
+    const users = localStore.get<User[]>(STORAGE_USERS, []);
+    const userIndex = users.findIndex((u) => u.id === targetUserId);
+    if (userIndex === -1) {
+      return { success: false, error: 'Пользователь не найден' };
+    }
+
+    users[userIndex].max_user_id = midStr;
+    if (maxUser.photo_url) {
+      users[userIndex].avatar_url = maxUser.photo_url;
+    }
+    localStore.set(STORAGE_USERS, users);
+    this.setCachedUser(users[userIndex]);
+    return { success: true, user: users[userIndex] };
+  }
+
 
   /**
    * Find an existing user bound to a Telegram ID (0-click auto-login)

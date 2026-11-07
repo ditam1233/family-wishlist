@@ -6,6 +6,7 @@ import { User } from '@/types';
 import { getInitials } from '@/lib/avatar';
 import { useColorMode } from '@/components/ThemeRegistry/MuiThemeProvider';
 import { getTelegramWebApp, getTelegramUser, getTelegramStartParam, triggerHaptic } from '@/lib/telegram';
+import { getMaxUser, isMaxWebApp, triggerMaxHaptic } from '@/lib/max';
 import { Button, Tabs, Avatar, AvatarFallback } from '@heroui/react';
 import {
   Gift,
@@ -22,6 +23,7 @@ import {
   AlertCircle,
   ChevronRight,
   Send,
+  Smartphone,
 } from 'lucide-react';
 
 interface AuthScreenProps {
@@ -51,6 +53,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
 
   // Telegram Mini App detection & auto-fill
   const [tgUser, setTgUser] = useState<ReturnType<typeof getTelegramUser>>(null);
+  const [maxUser, setMaxUser] = useState<ReturnType<typeof getMaxUser>>(null);
 
   useEffect(() => {
     // Check Telegram WebApp with retry polling (handles async webview injection on iOS/Android)
@@ -73,6 +76,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
         setTgUser(user);
         if (user.first_name) {
           const autoName = [user.first_name, user.last_name].filter(Boolean).join(' ');
+          setRelativeName(autoName);
+        }
+      }
+
+      const mUser = getMaxUser();
+      if (mUser) {
+        setMaxUser(mUser);
+        if (mUser.first_name && !user) {
+          const autoName = [mUser.first_name, mUser.last_name].filter(Boolean).join(' ');
           setRelativeName(autoName);
         }
       }
@@ -146,11 +158,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
       return;
     }
 
+    // If running in MAX and member already linked to a different MAX user
+    if (maxUser && member.max_user_id && String(member.max_user_id) !== String(maxUser.id)) {
+      setError(`Профиль «${member.name}» уже привязан к другому аккаунту MAX.`);
+      triggerMaxHaptic('error');
+      return;
+    }
+
     // Check if this member is a real email account (not @family.local)
     const isRealEmailAccount = member.email && !member.email.endsWith('@family.local');
 
     if (isRealEmailAccount) {
-      // If user is already bound to current Telegram, we can auto-login or if in Telegram and telegram_id matches
+      // If user is already bound to current Telegram, instant login
       if (tgUser && member.telegram_id && String(member.telegram_id) === String(tgUser.id)) {
         setLoading(true);
         setError(null);
@@ -158,6 +177,24 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
           const user = await dataStore.findUserByTelegramId(tgUser.id);
           if (user) {
             triggerHaptic('success');
+            onSuccess(user);
+            return;
+          }
+        } catch {
+          // fallback to password
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      // If user is already bound to current MAX, instant login
+      if (maxUser && member.max_user_id && String(member.max_user_id) === String(maxUser.id)) {
+        setLoading(true);
+        setError(null);
+        try {
+          const user = await dataStore.findUserByMaxId(maxUser.id);
+          if (user) {
+            triggerMaxHaptic('success');
             onSuccess(user);
             return;
           }
@@ -192,6 +229,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
             last_name: tgUser.last_name,
             username: tgUser.username,
             photo_url: tgUser.photo_url,
+          });
+        }
+        // If in MAX, automatically link this member to MAX!
+        if (maxUser) {
+          await dataStore.linkMaxToUser(res.user.id, {
+            id: maxUser.id,
+            first_name: maxUser.first_name,
+            last_name: maxUser.last_name,
+            username: maxUser.username,
+            photo_url: maxUser.photo_url,
           });
         }
         triggerHaptic('success');
@@ -298,6 +345,25 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
             }
           } catch (linkErr) {
             console.error('Failed to link Telegram user during login:', linkErr);
+          }
+        }
+
+        // If opened inside MAX, automatically bind this account to MAX!
+        const currentMaxUser = maxUser || getMaxUser();
+        if (currentMaxUser) {
+          try {
+            const linkRes = await dataStore.linkMaxToUser(finalUser.id, {
+              id: currentMaxUser.id,
+              first_name: currentMaxUser.first_name,
+              last_name: currentMaxUser.last_name,
+              username: currentMaxUser.username,
+              photo_url: currentMaxUser.photo_url,
+            });
+            if (linkRes.success && linkRes.user) {
+              finalUser = linkRes.user;
+            }
+          } catch (linkErr) {
+            console.error('Failed to link MAX user during login:', linkErr);
           }
         }
         triggerHaptic('success');
@@ -426,6 +492,23 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                   </div>
                 )}
 
+                {/* MAX Welcome Banner if inside MAX */}
+                {maxUser && !tgUser && (
+                  <div className="flex items-center gap-3 p-3 rounded-2xl bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 text-xs">
+                    <div className="w-8 h-8 rounded-full bg-violet-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <Smartphone className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-violet-600 dark:text-violet-400 font-semibold text-[10px] uppercase tracking-wider">
+                        MAX Мессенджер
+                      </div>
+                      <div className="font-bold text-stone-900 dark:text-stone-100 truncate">
+                        Привет, {maxUser.first_name}!
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Found Family Banner */}
                 {foundFamily && (
                   <div className="flex items-center gap-3 p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 text-xs">
@@ -445,7 +528,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                 {foundFamily && familyMembers.length > 0 && !isNewMemberMode && (
                   <div className="space-y-2">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">
-                      {tgUser ? 'Кого привязать к вашему Telegram?' : 'Выберите себя из списка:'}
+                      {tgUser ? 'Кого привязать к вашему Telegram?' : maxUser ? 'Кого привязать к вашему MAX?' : 'Выберите себя из списка:'}
                     </span>
 
                     <div className="space-y-1.5">
@@ -455,14 +538,21 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                           member.telegram_id &&
                           String(member.telegram_id) !== String(tgUser.id);
 
+                        const isBoundToOtherMax =
+                          maxUser &&
+                          member.max_user_id &&
+                          String(member.max_user_id) !== String(maxUser.id);
+
+                        const isLocked = Boolean(isBoundToOtherTg || isBoundToOtherMax);
+
                         return (
                           <button
                             key={member.id}
                             type="button"
-                            disabled={loading || Boolean(isBoundToOtherTg)}
+                            disabled={loading || isLocked}
                             onClick={() => handleSelectExistingMember(member)}
                             className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all text-left ${
-                              isBoundToOtherTg
+                              isLocked
                                 ? 'bg-stone-100/50 dark:bg-stone-800/20 border-stone-200/50 dark:border-stone-800 opacity-60 cursor-not-allowed'
                                 : 'bg-stone-50 dark:bg-stone-800/40 border-stone-200/80 dark:border-stone-800 hover:border-indigo-500 dark:hover:border-indigo-500 cursor-pointer'
                             }`}
@@ -482,24 +572,39 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                                         ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-semibold'
                                         : 'bg-stone-200 dark:bg-stone-700 text-stone-500'
                                     }`}>
-                                      {tgUser && String(member.telegram_id) === String(tgUser.id) ? 'Ваш Telegram' : 'TG привязан'}
+                                      {tgUser && String(member.telegram_id) === String(tgUser.id) ? 'Ваш Telegram' : 'TG'}
+                                    </span>
+                                  ) : null}
+                                  {member.max_user_id ? (
+                                    <span className={`text-[10px] font-normal px-1.5 py-0.5 rounded-full ${
+                                      maxUser && String(member.max_user_id) === String(maxUser.id)
+                                        ? 'bg-violet-100 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 font-semibold'
+                                        : 'bg-stone-200 dark:bg-stone-700 text-stone-500'
+                                    }`}>
+                                      {maxUser && String(member.max_user_id) === String(maxUser.id) ? 'Ваш MAX' : 'MAX'}
                                     </span>
                                   ) : null}
                                 </div>
                                 <div className="text-[11px] text-stone-400">
                                   {isBoundToOtherTg
                                     ? 'Уже привязан к другому Telegram'
+                                    : isBoundToOtherMax
+                                    ? 'Уже привязан к другому MAX'
                                     : tgUser && member.telegram_id && String(member.telegram_id) === String(tgUser.id)
+                                    ? 'Нажмите для мгновенного входа'
+                                    : maxUser && member.max_user_id && String(member.max_user_id) === String(maxUser.id)
                                     ? 'Нажмите для мгновенного входа'
                                     : member.email && !member.email.endsWith('@family.local')
                                     ? 'Вход по Email и паролю'
+                                    : maxUser
+                                    ? 'Нажмите, чтобы привязать к MAX'
                                     : tgUser
                                     ? 'Нажмите, чтобы привязать к Telegram'
                                     : 'Нажмите, чтобы войти в профиль'}
                                 </div>
                               </div>
                             </div>
-                            {isBoundToOtherTg ? (
+                            {isLocked ? (
                               <Lock className="w-4 h-4 text-stone-400" />
                             ) : (
                               <ChevronRight className="w-4 h-4 text-stone-400" />

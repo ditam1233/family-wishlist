@@ -8,6 +8,7 @@ import { useColorMode } from '@/components/ThemeRegistry/MuiThemeProvider';
 import { WishCard } from '@/components/WishCard';
 import { WishRow } from '@/components/WishRow';
 import { getTelegramWebApp, getTelegramUser, initTelegramApp } from '@/lib/telegram';
+import { getMaxUser, isMaxWebApp } from '@/lib/max';
 import dynamic from 'next/dynamic';
 import { Button, Tabs, Chip, Avatar, AvatarFallback, Dropdown, DropdownTrigger, DropdownPopover, DropdownMenu, DropdownItem } from '@heroui/react';
 import {
@@ -180,7 +181,19 @@ export default function HomePage() {
     // Remote sync
     (async () => {
       try {
-        // 1. If opened inside Telegram, check if already bound to an existing user (0-click login)
+        // 1. If opened inside MAX, check if already bound to an existing user (0-click login)
+        const maxUser = getMaxUser();
+        if (maxUser) {
+          const boundUser = await dataStore.findUserByMaxId(maxUser.id);
+          if (boundUser) {
+            setCurrentUser(boundUser);
+            setSelectedUserId(boundUser.id);
+            await loadInitialData(boundUser);
+            return;
+          }
+        }
+
+        // 2. If opened inside Telegram, check if already bound to an existing user (0-click login)
         const tgApp = getTelegramWebApp();
         const tgUser = getTelegramUser();
         if (tgApp && tgUser) {
@@ -195,6 +208,18 @@ export default function HomePage() {
 
         const user = await dataStore.getCurrentUser();
         if (user) {
+          // If logged in via email/session while inside MAX, automatically link MAX profile!
+          if (maxUser && (!user.max_user_id || String(user.max_user_id) !== String(maxUser.id))) {
+            await dataStore.linkMaxToUser(user.id, {
+              id: maxUser.id,
+              first_name: maxUser.first_name,
+              last_name: maxUser.last_name,
+              username: maxUser.username,
+              photo_url: maxUser.photo_url,
+            });
+            user.max_user_id = String(maxUser.id);
+          }
+
           // If logged in via email/session while inside Telegram, automatically link Telegram profile!
           if (tgUser && (!user.telegram_id || String(user.telegram_id) !== String(tgUser.id))) {
             await dataStore.linkTelegramToUser(user.id, {
