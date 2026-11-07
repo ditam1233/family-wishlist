@@ -55,10 +55,7 @@ declare global {
  */
 export function getMaxWebApp(): MaxWebApp | null {
   if (typeof window === 'undefined') return null;
-  // MAX Bridge exposes window.WebApp directly, or inside window.maxClient
-  // We make sure it is not confused with Telegram (window.Telegram.WebApp)
-  const app = window.WebApp || window.maxClient;
-  return app || null;
+  return window.WebApp || window.maxClient || null;
 }
 
 /**
@@ -70,6 +67,15 @@ export function isMaxWebApp(): boolean {
   const max = getMaxWebApp();
   if (max?.initDataUnsafe?.user || max?.platform || max?.deviceName) {
     return true;
+  }
+
+  // Check sessionStorage for WebAppData / WebAppPlatform saved by MAX Bridge
+  try {
+    if (sessionStorage.getItem('WebAppData') || sessionStorage.getItem('WebAppPlatform')) {
+      return true;
+    }
+  } catch {
+    // ignore
   }
 
   const ua = (window.navigator?.userAgent || '').toLowerCase();
@@ -90,7 +96,12 @@ export function isMaxWebApp(): boolean {
     if (window.location.hash) {
       const hash = window.location.hash.replace(/^[#?]/, '');
       const hashParams = new URLSearchParams(hash);
-      if (hashParams.get('platform') === 'max' || hashParams.has('max_user_id')) {
+      if (
+        hashParams.has('WebAppData') ||
+        hashParams.has('WebAppPlatform') ||
+        hashParams.get('platform') === 'max' ||
+        hashParams.has('max_user_id')
+      ) {
         return true;
       }
     }
@@ -99,6 +110,31 @@ export function isMaxWebApp(): boolean {
   }
 
   return false;
+}
+
+/**
+ * Helper to parse user object from encoded WebAppData string
+ */
+function parseUserFromInitDataString(rawInitData: string): MaxUser | null {
+  try {
+    const params = new URLSearchParams(decodeURIComponent(rawInitData));
+    const userJson = params.get('user');
+    if (userJson) {
+      return JSON.parse(decodeURIComponent(userJson)) as MaxUser;
+    }
+  } catch {
+    // fallback if not double-encoded
+    try {
+      const params = new URLSearchParams(rawInitData);
+      const userJson = params.get('user');
+      if (userJson) {
+        return JSON.parse(userJson) as MaxUser;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return null;
 }
 
 /**
@@ -114,22 +150,55 @@ export function getMaxUser(): MaxUser | null {
     return max.initDataUnsafe.user;
   }
 
-  // 2. Parse initData query string if present
+  // 2. Parse from window.WebApp.initData
   if (max?.initData) {
+    const parsed = parseUserFromInitDataString(max.initData);
+    if (parsed && parsed.id) return parsed;
+  }
+
+  // 3. Check sessionStorage ('WebAppData' is standard MAX bridge storage key)
+  try {
+    const storedData = sessionStorage.getItem('WebAppData');
+    if (storedData) {
+      const parsed = parseUserFromInitDataString(storedData);
+      if (parsed && parsed.id) return parsed;
+    }
+  } catch {
+    // ignore
+  }
+
+  // 4. Check URL hash parameters: location.hash (#WebAppData=... or #maxWebAppData=...)
+  if (window.location.hash) {
     try {
-      const searchParams = new URLSearchParams(max.initData);
-      const userRaw = searchParams.get('user');
-      if (userRaw) {
-        return JSON.parse(decodeURIComponent(userRaw)) as MaxUser;
+      const hash = window.location.hash.replace(/^[#?]/, '');
+      const hashParams = new URLSearchParams(hash);
+      const webAppData =
+        hashParams.get('WebAppData') ||
+        hashParams.get('maxWebAppData') ||
+        hashParams.get('initData');
+      if (webAppData) {
+        const parsed = parseUserFromInitDataString(webAppData);
+        if (parsed && parsed.id) return parsed;
+      }
+
+      const directUser = hashParams.get('user') || hashParams.get('max_user');
+      if (directUser) {
+        return JSON.parse(decodeURIComponent(directUser)) as MaxUser;
       }
     } catch {
       // ignore
     }
   }
 
-  // 3. Check URL query parameters (?max_user_id=... or ?user=...)
+  // 5. Check URL query parameters (?WebAppData=... or ?max_user_id=...)
   try {
     const searchParams = new URLSearchParams(window.location.search);
+    const webAppData = searchParams.get('WebAppData');
+    if (webAppData) {
+      const parsed = parseUserFromInitDataString(webAppData);
+      if (parsed && parsed.id) return parsed;
+    }
+
     const maxUserId = searchParams.get('max_user_id') || (searchParams.get('platform') === 'max' ? searchParams.get('user_id') : null);
     if (maxUserId) {
       return {
@@ -141,30 +210,12 @@ export function getMaxUser(): MaxUser | null {
       };
     }
 
-    const rawUserJson = searchParams.get('max_user');
+    const rawUserJson = searchParams.get('max_user') || searchParams.get('user');
     if (rawUserJson) {
       return JSON.parse(decodeURIComponent(rawUserJson)) as MaxUser;
     }
   } catch {
     // ignore
-  }
-
-  // 4. Check URL hash parameters (#tgWebAppData= or #maxWebAppData=)
-  if (window.location.hash) {
-    try {
-      const hash = window.location.hash.replace(/^[#?]/, '');
-      const hashParams = new URLSearchParams(hash);
-      const maxData = hashParams.get('maxWebAppData') || hashParams.get('max_user');
-      if (maxData) {
-        const innerParams = new URLSearchParams(decodeURIComponent(maxData));
-        const userRaw = innerParams.get('user');
-        if (userRaw) {
-          return JSON.parse(decodeURIComponent(userRaw)) as MaxUser;
-        }
-      }
-    } catch {
-      // ignore
-    }
   }
 
   return null;

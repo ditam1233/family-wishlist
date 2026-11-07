@@ -54,6 +54,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
   // Telegram Mini App detection & auto-fill
   const [tgUser, setTgUser] = useState<ReturnType<typeof getTelegramUser>>(null);
   const [maxUser, setMaxUser] = useState<ReturnType<typeof getMaxUser>>(null);
+  const [isInsideMax, setIsInsideMax] = useState(false);
 
   useEffect(() => {
     // Check Telegram WebApp with retry polling (handles async webview injection on iOS/Android)
@@ -78,6 +79,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
           const autoName = [user.first_name, user.last_name].filter(Boolean).join(' ');
           setRelativeName(autoName);
         }
+      }
+
+      const inMax = isMaxWebApp();
+      if (inMax) {
+        setIsInsideMax(true);
       }
 
       const mUser = getMaxUser();
@@ -493,7 +499,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                 )}
 
                 {/* MAX Welcome Banner if inside MAX */}
-                {maxUser && (
+                {(maxUser || isInsideMax) && (
                   <div className="flex items-center gap-3 p-3 rounded-2xl bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 text-xs">
                     <div className="w-8 h-8 rounded-full bg-violet-600 text-white flex items-center justify-center shrink-0 shadow-xs">
                       <Smartphone className="w-4 h-4" />
@@ -503,7 +509,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                         MAX Мессенджер
                       </div>
                       <div className="font-bold text-stone-900 dark:text-stone-100 truncate">
-                        Привет, {maxUser.first_name}!
+                        Привет{maxUser?.first_name ? `, ${maxUser.first_name}` : ''}!
                       </div>
                     </div>
                   </div>

@@ -157,6 +157,15 @@ export default function HomePage() {
     // 0. Initialize Telegram WebApp window properties
     initTelegramApp();
 
+    let isMounted = true;
+
+    // Safety timeout: Never keep the loading spinner hanging longer than 2.5 seconds
+    const safetyTimeout = setTimeout(() => {
+      if (isMounted) {
+        setIsInitialLoading(false);
+      }
+    }, 2500);
+
     const cachedUser = dataStore.getCachedUser();
     if (cachedUser) {
       setCurrentUser(cachedUser);
@@ -185,7 +194,8 @@ export default function HomePage() {
         const maxUser = getMaxUser();
         if (maxUser) {
           const boundUser = await dataStore.findUserByMaxId(maxUser.id);
-          if (boundUser) {
+          if (boundUser && isMounted) {
+            clearTimeout(safetyTimeout);
             setCurrentUser(boundUser);
             setSelectedUserId(boundUser.id);
             await loadInitialData(boundUser);
@@ -198,7 +208,8 @@ export default function HomePage() {
         const tgUser = getTelegramUser();
         if (tgApp && tgUser) {
           const boundUser = await dataStore.findUserByTelegramId(tgUser.id);
-          if (boundUser) {
+          if (boundUser && isMounted) {
+            clearTimeout(safetyTimeout);
             setCurrentUser(boundUser);
             setSelectedUserId(boundUser.id);
             await loadInitialData(boundUser);
@@ -207,7 +218,7 @@ export default function HomePage() {
         }
 
         const user = await dataStore.getCurrentUser();
-        if (user) {
+        if (user && isMounted) {
           // If logged in via email/session while inside MAX, automatically link MAX profile!
           if (maxUser && (!user.max_user_id || String(user.max_user_id) !== String(maxUser.id))) {
             await dataStore.linkMaxToUser(user.id, {
@@ -233,18 +244,30 @@ export default function HomePage() {
             user.telegram_username = tgUser.username;
           }
 
+          clearTimeout(safetyTimeout);
           setCurrentUser(user);
           setSelectedUserId(user.id);
           await loadInitialData(user);
-        } else {
-          setCurrentUser(null);
+        } else if (isMounted) {
+          clearTimeout(safetyTimeout);
+          if (!cachedUser) {
+            setCurrentUser(null);
+          }
           setIsInitialLoading(false);
         }
       } catch (err) {
         console.error('Mount init error:', err);
-        setIsInitialLoading(false);
+        if (isMounted) {
+          clearTimeout(safetyTimeout);
+          setIsInitialLoading(false);
+        }
       }
     })();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimeout);
+    };
   }, [loadInitialData]);
 
   // Smooth switch target user: zero twitching, instant local cache, stable scroll
