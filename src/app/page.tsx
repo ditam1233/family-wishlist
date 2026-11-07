@@ -93,25 +93,32 @@ export default function HomePage() {
     currentUserRef.current = currentUser;
   }, [currentUser]);
 
+  const selectedUserIdRef = useRef<string>('');
+  useEffect(() => {
+    selectedUserIdRef.current = selectedUserId;
+  }, [selectedUserId]);
+
   // Load wishes: first show local cache instantly, then sync remote in background
   const fetchWishes = useCallback(async (targetId: string, viewerId: string) => {
-    // 1. Instant local render (0ms)
+    // 1. Instant local render (0ms): ALWAYS update wishes to avoid displaying previous user's wishes
     const local = dataStore.getLocalWishes(targetId, viewerId);
-    if (local.length > 0) {
-      setWishes(local);
-      setIsWishesLoaded(true);
-    }
+    setWishes(local);
+    setIsWishesLoaded(true);
 
     // 2. Background remote sync
     setIsRefreshing(true);
     try {
       const items = await dataStore.getWishesForUser(targetId, viewerId);
-      setWishes(items);
+      if (selectedUserIdRef.current === targetId) {
+        setWishes(items);
+      }
     } catch (err) {
       console.error('Error fetching wishes:', err);
     } finally {
-      setIsRefreshing(false);
-      setIsWishesLoaded(true);
+      if (selectedUserIdRef.current === targetId) {
+        setIsRefreshing(false);
+        setIsWishesLoaded(true);
+      }
     }
   }, []);
 
@@ -128,29 +135,41 @@ export default function HomePage() {
   // Complete user and family data loader (parallelized without waterfalls)
   const loadInitialData = useCallback(async (user: User) => {
     setSelectedUserId(user.id);
+    selectedUserIdRef.current = user.id;
 
     try {
-      const reservationsPromise = fetchReservations(user.id);
-      const groups = await dataStore.getUserGroups(user.id);
-      setUserGroups(groups);
-
-      const activeGroup = groups[0];
-      const activeGroupId = activeGroup?.id || 'all';
-      setSelectedGroupId(activeGroupId);
-
-      const members = await dataStore.getFamilyMembers(user.id, activeGroupId);
-      setFamilyMembers(members);
-
-      await Promise.all([
-        fetchWishes(user.id, user.id),
-        reservationsPromise,
+      // Parallelize all independent initial queries
+      const [groups, members, wishes] = await Promise.all([
+        dataStore.getUserGroups(user.id),
+        dataStore.getFamilyMembers(user.id),
+        dataStore.getWishesForUser(user.id, user.id),
+        fetchReservations(user.id),
       ]);
+
+      setUserGroups(groups);
+      if (groups.length > 0) {
+        setSelectedGroupId(groups[0].id);
+      }
+
+      // Ensure current logged-in user is ALWAYS first in the family list!
+      const sortedMembers = [...members].sort((a, b) => {
+        if (a.id === user.id) return -1;
+        if (b.id === user.id) return 1;
+        return a.name.localeCompare(b.name, 'ru');
+      });
+      setFamilyMembers(sortedMembers);
+
+      if (selectedUserIdRef.current === user.id) {
+        setWishes(wishes);
+        setIsWishesLoaded(true);
+      }
     } catch (err) {
       console.error('Initial data load error:', err);
     } finally {
       setIsInitialLoading(false);
+      setIsRefreshing(false);
     }
-  }, [fetchWishes, fetchReservations]);
+  }, [fetchReservations]);
 
   // Run ONCE on mount
   useEffect(() => {
@@ -286,7 +305,13 @@ export default function HomePage() {
     if (!user) return;
 
     setSelectedUserId(targetId);
+    selectedUserIdRef.current = targetId;
     setActiveTab('wishes');
+
+    // Immediately clear / set local wishes for target user so previous user's wishes never leak!
+    const local = dataStore.getLocalWishes(targetId, user.id);
+    setWishes(local);
+    setIsWishesLoaded(true);
 
     await fetchWishes(targetId, user.id);
   }, [fetchWishes]);
@@ -413,6 +438,16 @@ export default function HomePage() {
     : (selectedUserId || currentUser?.id || '');
 
   const activeGroup = userGroups.find((g) => g.id === selectedGroupId) || userGroups[0];
+    // Sorted family members: the logged-in user is ALWAYS first!
+  const sortedFamilyMembers = useMemo(() => {
+    if (!currentUser) return familyMembers;
+    return [...familyMembers].sort((a, b) => {
+      if (a.id === currentUser.id) return -1;
+      if (b.id === currentUser.id) return 1;
+      return 0;
+    });
+  }, [familyMembers, currentUser]);
+
   const targetMember = isOwner
     ? currentUser
     : (familyMembers.find((m) => m.id === effectiveTargetUserId) || currentUser);
@@ -618,7 +653,7 @@ export default function HomePage() {
           >
             <Tabs.ListContainer>
               <Tabs.List aria-label="Семья и бронирования">
-                {familyMembers.map((member) => {
+                {sortedFamilyMembers.map((member) => {
                   const isSelected = effectiveTargetUserId === member.id && activeTab === 'wishes';
                   const isMe = member.id === currentUser.id;
 

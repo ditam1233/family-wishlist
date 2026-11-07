@@ -958,7 +958,11 @@ class WishlistDataStore {
           .select('*')
           .in('id', userIds);
 
-        const result = profiles || [];
+        const result = (profiles || []).sort((a, b) => {
+          if (a.id === userId) return -1;
+          if (b.id === userId) return 1;
+          return a.name.localeCompare(b.name, 'ru');
+        });
         this.setCachedMembers(result);
         return result;
       } catch (err) {
@@ -1011,8 +1015,9 @@ class WishlistDataStore {
 
         if (!error && wishes) {
           remoteFetched = true;
-          const isOwner = targetUserId === viewerId;
-          if (isOwner) {
+          if (wishes.length === 0) {
+            remoteWishes = [];
+          } else if (targetUserId === viewerId) {
             remoteWishes = wishes.map((w) => ({
               ...w,
               is_reserved: false,
@@ -1049,19 +1054,9 @@ class WishlistDataStore {
       return formattedLocal;
     }
 
-    const merged = [...remoteWishes];
-    for (const lw of formattedLocal) {
-      const exists = merged.some(
-        (rw) =>
-          rw.id === lw.id ||
-          (rw.title === lw.title &&
-            Math.abs(new Date(rw.created_at).getTime() - new Date(lw.created_at).getTime()) < 60000)
-      );
-      if (!exists) {
-        merged.unshift(lw);
-      }
-    }
-    return merged;
+    // Only prepend locally created offline wishes that are still pending sync
+    const pendingLocal = formattedLocal.filter((lw) => String(lw.id).startsWith('wish-'));
+    return [...pendingLocal, ...remoteWishes];
   }
 
   public async toggleReservation(wishId: string, viewerId: string): Promise<boolean> {
